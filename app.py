@@ -15,11 +15,11 @@ from modules.auto_insights import generate_auto_insights
 from modules.kpi_engine import generate_kpis
 import os
 from dotenv import load_dotenv
-
+import streamlit as st
 # Load environment variables
 load_dotenv()
 
-api_key = os.getenv("GROQ_API_KEY")
+api_key = os.getenv("GROQ_API_KEY") or st.secrets["GROQ_API_KEY"]
 
 if not api_key:
     st.error("Groq API key not found. Please check your .env file.")

@@ -1,12 +1,11 @@
 from groq import Groq
 import os
+import streamlit as st
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Get API key from .env
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY") or st.secrets["GROQ_API_KEY"]
 
 
 def suggest_business_questions(query, df, schema):

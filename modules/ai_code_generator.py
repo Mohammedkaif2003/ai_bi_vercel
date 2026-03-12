@@ -1,7 +1,7 @@
 import streamlit as st
 from groq import Groq
-
-
+import os
+api_key = os.getenv("GROQ_API_KEY") or st.secrets["GROQ_API_KEY"]
 @st.cache_data(show_spinner=False)
 def generate_analysis_code(api_key, query, df, dataset_context):
 
