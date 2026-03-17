@@ -5,7 +5,7 @@ An AI-powered business intelligence tool that lets you **upload datasets and ask
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B?logo=streamlit&logoColor=white)
 ![Groq](https://img.shields.io/badge/Groq-LLaMA_3.3_70B-orange?logo=meta&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
+
 
 ---
 
@@ -203,9 +203,7 @@ The app comes with 3 pre-loaded datasets for testing:
 
 ---
 
-## 📝 License
 
-This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
