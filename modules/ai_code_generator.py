@@ -36,6 +36,8 @@ RULES
 6. Do NOT explain anything
 7. Only use the columns listed above
 8. Ensure the code always returns a pandas result if possible
+9. IMPORTANT: If using nlargest() on a DataFrame, you MUST specify the 'columns' argument (e.g., nlargest(n=3, columns='Revenue')). If using it on a Series, just pass the n value.
+10. If the question asks for predictions or forecasts over time, use the np.polyfit function since we have numpy imported as np, rather than complex ML libraries.
 
 EXAMPLE FORMAT
 --------------
@@ -55,12 +57,21 @@ result = df.groupby("column").sum()
         # Remove markdown blocks
         code = code.replace("```python", "").replace("```", "").strip()
 
-        # Remove explanations if AI adds them
+        # Remove explanations and imports if AI adds them
         lines = code.split("\n")
         code_lines = []
         for line in lines:
-            if not line.lower().startswith(("here", "sure", "this code")):
-                code_lines.append(line)
+            stripped_line = line.strip()
+            
+            # Skip conversational text
+            if stripped_line.lower().startswith(("here", "sure", "this code", "hope this")):
+                continue
+                
+            # Skip import lines to prevent triggering the security block
+            if stripped_line.startswith("import ") or stripped_line.startswith("from "):
+                continue
+                
+            code_lines.append(line)
 
         code = "\n".join(code_lines)
 

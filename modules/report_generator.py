@@ -1,148 +1,637 @@
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Image
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, Image,
+    PageBreak, HRFlowable, TableStyle
+)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from reportlab.platypus import TableStyle
-from reportlab.lib.units import inch
+from reportlab.lib.units import inch, cm
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus.frames import Frame
+from reportlab.platypus.doctemplate import PageTemplate
 from datetime import datetime
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import os
 
 
-def generate_pdf(query, summary_text, dataframe=None, charts=None):
+# ═══════════════════════════════════════════════════
+#  BRAND COLORS
+# ═══════════════════════════════════════════════════
 
-    file_path = "AI_Executive_Report.pdf"
+BRAND_DARK = colors.HexColor("#1E293B")       # Dark navy
+BRAND_PRIMARY = colors.HexColor("#2563EB")     # Blue accent
+BRAND_LIGHT = colors.HexColor("#3B82F6")       # Lighter blue
+BRAND_GOLD = colors.HexColor("#F59E0B")        # Gold accent
+BRAND_GREEN = colors.HexColor("#10B981")       # Green for positive
+BRAND_RED = colors.HexColor("#EF4444")         # Red for alerts
+BRAND_GRAY = colors.HexColor("#64748B")        # Muted gray
+BRAND_BG = colors.HexColor("#F8FAFC")          # Light background
+TABLE_HEADER_BG = colors.HexColor("#1E3A5F")   # Deep blue for table headers
+TABLE_ROW_ALT = colors.HexColor("#F1F5F9")     # Alternating row color
 
-    doc = SimpleDocTemplate(file_path)
-    elements = []
 
+# ═══════════════════════════════════════════════════
+#  CUSTOM STYLES
+# ═══════════════════════════════════════════════════
+
+def get_custom_styles():
     styles = getSampleStyleSheet()
-    title_style = styles["Heading1"]
-    heading_style = styles["Heading2"]
-    normal_style = styles["BodyText"]
 
-    # ------------------------------------------------
-    # HEADER
-    # ------------------------------------------------
+    styles.add(ParagraphStyle(
+        name="ReportTitle",
+        fontName="Helvetica-Bold",
+        fontSize=26,
+        textColor=BRAND_DARK,
+        spaceAfter=4,
+        alignment=TA_LEFT,
+        leading=32,
+    ))
 
-    elements.append(Paragraph("AI Business Intelligence Report", title_style))
-    elements.append(Spacer(1, 8))
+    styles.add(ParagraphStyle(
+        name="ReportSubtitle",
+        fontName="Helvetica",
+        fontSize=12,
+        textColor=BRAND_GRAY,
+        spaceAfter=20,
+        alignment=TA_LEFT,
+    ))
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    styles.add(ParagraphStyle(
+        name="SectionHeader",
+        fontName="Helvetica-Bold",
+        fontSize=16,
+        textColor=BRAND_PRIMARY,
+        spaceBefore=16,
+        spaceAfter=8,
+        leading=20,
+        borderPadding=(0, 0, 4, 0),
+    ))
 
-    elements.append(Paragraph(f"Generated on: {timestamp}", normal_style))
-    elements.append(Spacer(1, 20))
+    styles.add(ParagraphStyle(
+        name="SubSection",
+        fontName="Helvetica-Bold",
+        fontSize=12,
+        textColor=BRAND_DARK,
+        spaceBefore=10,
+        spaceAfter=6,
+    ))
 
-    # ------------------------------------------------
-    # USER QUERY
-    # ------------------------------------------------
+    styles.add(ParagraphStyle(
+        name="BodyText2",
+        fontName="Helvetica",
+        fontSize=10,
+        textColor=BRAND_DARK,
+        spaceAfter=6,
+        leading=14,
+    ))
 
-    elements.append(Paragraph("User Query", heading_style))
-    elements.append(Spacer(1, 6))
-    elements.append(Paragraph(str(query), normal_style))
-    elements.append(Spacer(1, 20))
+    styles.add(ParagraphStyle(
+        name="InsightBox",
+        fontName="Helvetica-Oblique",
+        fontSize=10,
+        textColor=BRAND_DARK,
+        spaceAfter=6,
+        leading=14,
+        borderColor=BRAND_PRIMARY,
+        borderWidth=1,
+        borderPadding=10,
+        backColor=colors.HexColor("#EFF6FF"),
+    ))
 
-    # ------------------------------------------------
-    # AI INSIGHT
-    # ------------------------------------------------
+    styles.add(ParagraphStyle(
+        name="RecItem",
+        fontName="Helvetica",
+        fontSize=10,
+        textColor=BRAND_DARK,
+        spaceAfter=4,
+        leading=14,
+        leftIndent=16,
+        bulletIndent=6,
+    ))
 
-    elements.append(Paragraph("AI Business Insight", heading_style))
-    elements.append(Spacer(1, 6))
-    elements.append(Paragraph(str(summary_text), normal_style))
-    elements.append(Spacer(1, 20))
+    styles.add(ParagraphStyle(
+        name="FooterStyle",
+        fontName="Helvetica",
+        fontSize=8,
+        textColor=BRAND_GRAY,
+        alignment=TA_CENTER,
+    ))
 
-    chart_files = []
+    styles.add(ParagraphStyle(
+        name="QueryNum",
+        fontName="Helvetica-Bold",
+        fontSize=20,
+        leading=24,
+        textColor=BRAND_PRIMARY,
+        spaceBefore=10,
+        spaceAfter=12,
+    ))
 
-    # ------------------------------------------------
-    # VISUAL ANALYSIS
-    # ------------------------------------------------
+    styles.add(ParagraphStyle(
+        name="QueryText",
+        fontName="Helvetica-Oblique",
+        fontSize=12,
+        leading=16,
+        textColor=BRAND_DARK,
+        spaceBefore=12,
+        spaceAfter=16,
+        leftIndent=8,
+        borderColor=BRAND_GOLD,
+        borderWidth=2,
+        borderPadding=10,
+        backColor=colors.HexColor("#FFFBEB"),
+    ))
 
-    if isinstance(dataframe, (pd.DataFrame, pd.Series)):
+    styles.add(ParagraphStyle(
+        name="TOCItem",
+        fontName="Helvetica",
+        fontSize=11,
+        textColor=BRAND_DARK,
+        spaceBefore=6,
+        spaceAfter=6,
+        leftIndent=20,
+        leading=16,
+    ))
+
+    styles.add(ParagraphStyle(
+        name="CoverDate",
+        fontName="Helvetica",
+        fontSize=11,
+        textColor=colors.white,
+        alignment=TA_LEFT,
+    ))
+
+    return styles
+
+
+# ═══════════════════════════════════════════════════
+#  PAGE HEADER & FOOTER
+# ═══════════════════════════════════════════════════
+
+def add_page_decoration(canvas, doc):
+    """Add header bar and page number to every page."""
+    canvas.saveState()
+
+    # Top accent bar
+    canvas.setFillColor(BRAND_PRIMARY)
+    canvas.rect(0, A4[1] - 8, A4[0], 8, fill=True, stroke=False)
+
+    # Bottom bar
+    canvas.setFillColor(BRAND_DARK)
+    canvas.rect(0, 0, A4[0], 30, fill=True, stroke=False)
+
+    # Footer text
+    canvas.setFillColor(colors.white)
+    canvas.setFont("Helvetica", 8)
+    canvas.drawCentredString(
+        A4[0] / 2, 10,
+        f"AI Business Intelligence Report  •  Page {doc.page}  •  Confidential"
+    )
+
+    canvas.restoreState()
+
+
+def add_first_page_decoration(canvas, doc):
+    """Cover page — no header, just the accent bar."""
+    canvas.saveState()
+
+    # Top accent bar (thicker for cover)
+    canvas.setFillColor(BRAND_PRIMARY)
+    canvas.rect(0, A4[1] - 12, A4[0], 12, fill=True, stroke=False)
+
+    # Bottom bar
+    canvas.setFillColor(BRAND_DARK)
+    canvas.rect(0, 0, A4[0], 30, fill=True, stroke=False)
+
+    # Footer
+    canvas.setFillColor(colors.white)
+    canvas.setFont("Helvetica", 8)
+    canvas.drawCentredString(A4[0] / 2, 10, "AI Business Intelligence Report  •  Confidential")
+
+    canvas.restoreState()
+
+
+# ═══════════════════════════════════════════════════
+#  SECTION DIVIDER
+# ═══════════════════════════════════════════════════
+
+def section_divider():
+    return HRFlowable(
+        width="100%",
+        thickness=1.5,
+        color=BRAND_PRIMARY,
+        spaceBefore=10,
+        spaceAfter=10
+    )
+
+
+def thin_divider():
+    return HRFlowable(
+        width="100%",
+        thickness=0.5,
+        color=colors.HexColor("#E2E8F0"),
+        spaceBefore=6,
+        spaceAfter=6
+    )
+
+
+# ═══════════════════════════════════════════════════
+#  RECOMMENDATIONS GENERATOR
+# ═══════════════════════════════════════════════════
+
+def generate_recommendations(dataframe):
+    recommendations = []
+
+    if dataframe is None:
+        return recommendations
+
+    if isinstance(dataframe, pd.Series):
+        dataframe = dataframe.reset_index()
+
+    if not isinstance(dataframe, pd.DataFrame) or dataframe.empty:
+        return recommendations
+
+    numeric_cols = dataframe.select_dtypes(include="number").columns.tolist()
+    cat_cols = dataframe.select_dtypes(include=["object", "category"]).columns.tolist()
+
+    if numeric_cols and cat_cols:
+        metric = numeric_cols[0]
+        category = cat_cols[0]
 
         try:
+            grouped = dataframe.groupby(category)[metric].sum().sort_values(ascending=False)
 
+            if len(grouped) >= 2:
+                top = grouped.index[0]
+                bottom = grouped.index[-1]
+                recommendations.append(
+                    f"Investigate why <b>{bottom}</b> underperforms compared to <b>{top}</b> and develop targeted improvement strategies."
+                )
+                top_share = (grouped.iloc[0] / grouped.sum()) * 100
+                if top_share > 40:
+                    recommendations.append(
+                        f"Revenue concentration risk: <b>{top}</b> accounts for {top_share:.0f}% of total. Consider diversification."
+                    )
+        except:
+            pass
+
+    if numeric_cols:
+        metric = numeric_cols[0]
+        try:
+            std = dataframe[metric].std()
+            mean = dataframe[metric].mean()
+            if mean != 0:
+                cv = (std / mean) * 100
+                if cv > 50:
+                    recommendations.append(
+                        f"High variability in <b>{metric}</b> (CV={cv:.0f}%). Investigate root causes and prioritize stabilization."
+                    )
+        except:
+            pass
+
+    if not recommendations:
+        recommendations.append("Continue monitoring key metrics and schedule quarterly performance reviews.")
+        recommendations.append("Establish KPI targets for the next period based on current performance baselines.")
+
+    return recommendations
+
+
+# ═══════════════════════════════════════════════════
+#  BUILD ONE QUERY SECTION
+# ═══════════════════════════════════════════════════
+
+def _build_query_section(elements, query, summary_text, dataframe, styles, chart_files, query_num=None):
+    """Build PDF elements for a single query analysis."""
+
+    # Query number badge
+    if query_num:
+        elements.append(Paragraph(f"ANALYSIS #{query_num}", styles["QueryNum"]))
+
+    # User query in a styled box
+    elements.append(Paragraph(f'"{query}"', styles["QueryText"]))
+    elements.append(Spacer(1, 8))
+
+    # ── AI Insight ──
+    elements.append(Paragraph("AI BUSINESS INSIGHT", styles["SectionHeader"]))
+    elements.append(thin_divider())
+
+    # Clean summary text for XML
+    clean_summary = str(summary_text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    clean_summary = clean_summary.replace("**", "")
+    elements.append(Paragraph(clean_summary, styles["InsightBox"]))
+    elements.append(Spacer(1, 12))
+
+    # ── Visual Analysis ──
+    if isinstance(dataframe, (pd.DataFrame, pd.Series)):
+        try:
             df_chart = dataframe
-
             if isinstance(df_chart, pd.Series):
                 df_chart = df_chart.reset_index()
 
-            df_chart = df_chart.reset_index(drop=False)
+            if isinstance(df_chart.index, pd.MultiIndex):
+                df_chart = df_chart.reset_index()
+            else:
+                df_chart = df_chart.reset_index(drop=False)
 
             numeric_cols = df_chart.select_dtypes(include="number").columns
 
             if len(numeric_cols) > 0 and df_chart.shape[1] >= 2:
-
-                elements.append(Paragraph("Visual Analysis", heading_style))
-                elements.append(Spacer(1, 10))
+                elements.append(Paragraph("VISUAL ANALYSIS", styles["SectionHeader"]))
+                elements.append(thin_divider())
 
                 for col in numeric_cols[:2]:
+                    chart_path = f"chart_{query_num or 0}_{col}.png"
 
-                    chart_path = f"chart_{col}.png"
+                    # Professional chart styling
+                    fig, ax = plt.subplots(figsize=(7, 3.5))
 
-                    plt.figure(figsize=(6,4))
-                    plt.bar(df_chart.iloc[:,0], df_chart[col])
+                    x_labels = df_chart.iloc[:, 0].astype(str)
+                    values = df_chart[col]
 
-                    plt.title(f"{col} by {df_chart.columns[0]}")
-                    plt.xticks(rotation=45)
+                    bar_colors = ["#2563EB", "#3B82F6", "#60A5FA", "#93C5FD", "#BFDBFE",
+                                  "#F59E0B", "#FBBF24", "#FCD34D", "#FDE68A", "#FEF3C7"]
+
+                    bars = ax.bar(
+                        range(len(x_labels)),
+                        values,
+                        color=[bar_colors[i % len(bar_colors)] for i in range(len(x_labels))],
+                        edgecolor="white",
+                        linewidth=0.5
+                    )
+
+                    ax.set_xticks(range(len(x_labels)))
+                    ax.set_xticklabels(x_labels, rotation=45, ha="right", fontsize=8)
+                    ax.set_ylabel(str(col), fontsize=9, fontweight="bold")
+                    ax.set_title(f"{col} by {df_chart.columns[0]}", fontsize=11, fontweight="bold", pad=12)
+
+                    # Clean grid
+                    ax.spines["top"].set_visible(False)
+                    ax.spines["right"].set_visible(False)
+                    ax.spines["left"].set_color("#E2E8F0")
+                    ax.spines["bottom"].set_color("#E2E8F0")
+                    ax.yaxis.grid(True, alpha=0.3, linestyle="--")
+                    ax.set_axisbelow(True)
+
+                    # Value labels on bars
+                    for bar in bars:
+                        height = bar.get_height()
+                        if height > 0:
+                            label = f"{height:,.0f}" if height > 100 else f"{height:.2f}"
+                            ax.text(
+                                bar.get_x() + bar.get_width() / 2., height,
+                                label, ha="center", va="bottom", fontsize=7, color="#475569"
+                            )
 
                     plt.tight_layout()
-                    plt.savefig(chart_path)
+                    plt.savefig(chart_path, dpi=200, bbox_inches="tight", facecolor="white")
                     plt.close()
 
                     chart_files.append(chart_path)
+                    elements.append(Image(chart_path, width=6.5 * inch, height=3 * inch))
+                    elements.append(Spacer(1, 8))
 
-                    elements.append(Image(chart_path, width=6*inch, height=3*inch))
-                    elements.append(Spacer(1, 12))
-
-        except:
+        except Exception:
             pass
 
-    # ------------------------------------------------
-    # DATA TABLE
-    # ------------------------------------------------
-
+    # ── Data Table ──
     if dataframe is not None:
+        elements.append(Paragraph("DATA ANALYSIS", styles["SectionHeader"]))
+        elements.append(thin_divider())
 
-        elements.append(Paragraph("Data Analysis Table", heading_style))
-        elements.append(Spacer(1, 10))
+        df_table = dataframe
+        if isinstance(df_table, pd.Series):
+            df_table = df_table.reset_index()
 
-        if isinstance(dataframe, pd.Series):
-            dataframe = dataframe.reset_index()
+        if isinstance(df_table, pd.DataFrame):
+            if isinstance(df_table.index, pd.MultiIndex):
+                df_table = df_table.reset_index()
+            else:
+                df_table = df_table.reset_index().head(15)
 
-        if isinstance(dataframe, pd.DataFrame):
-
-            dataframe = dataframe.reset_index().head(20)
-
-            table_data = [dataframe.columns.tolist()] + dataframe.values.tolist()
-
+            # Build table with truncated values
+            header = [str(c)[:20] for c in df_table.columns.tolist()]
+            table_data = [header]
+            for _, row in df_table.iterrows():
+                table_data.append([str(v)[:25] for v in row.values])
         else:
+            table_data = [["Result"], [str(df_table)[:100]]]
 
-            table_data = [["Result"], [str(dataframe)]]
+        # Calculate column widths
+        n_cols = len(table_data[0])
+        available_width = 6.5 * inch
+        col_width = available_width / n_cols
 
-        table = Table(table_data)
+        table = Table(table_data, colWidths=[col_width] * n_cols)
 
-        table.setStyle(
-            TableStyle([
-                ("BACKGROUND",(0,0),(-1,0),colors.darkblue),
-                ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-                ("GRID",(0,0),(-1,-1),0.5,colors.grey),
-                ("ALIGN",(0,0),(-1,-1),"CENTER"),
-                ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold")
-            ])
+        # Professional table styling
+        style_commands = [
+            # Header
+            ("BACKGROUND", (0, 0), (-1, 0), TABLE_HEADER_BG),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+            ("TOPPADDING", (0, 0), (-1, 0), 8),
+
+            # Body
+            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 1), (-1, -1), 7.5),
+            ("BOTTOMPADDING", (0, 1), (-1, -1), 5),
+            ("TOPPADDING", (0, 1), (-1, -1), 5),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+
+            # Grid
+            ("GRID", (0, 0), (-1, 0), 0.5, colors.white),
+            ("LINEBELOW", (0, 0), (-1, 0), 1.5, BRAND_PRIMARY),
+            ("LINEBELOW", (0, -1), (-1, -1), 1, colors.HexColor("#CBD5E1")),
+            ("LINEBEFORE", (0, 1), (0, -1), 0.5, colors.HexColor("#E2E8F0")),
+            ("LINEAFTER", (-1, 1), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+        ]
+
+        # Alternating row colors
+        for i in range(1, len(table_data)):
+            bg = TABLE_ROW_ALT if i % 2 == 0 else colors.white
+            style_commands.append(("BACKGROUND", (0, i), (-1, i), bg))
+
+        table.setStyle(TableStyle(style_commands))
+        elements.append(table)
+        elements.append(Spacer(1, 16))
+
+    # ── Recommendations ──
+    elements.append(Paragraph("RECOMMENDATIONS", styles["SectionHeader"]))
+    elements.append(thin_divider())
+
+    recs = generate_recommendations(dataframe)
+    for i, rec in enumerate(recs, 1):
+        bullet = f'<font color="{BRAND_PRIMARY.hexval()}">\u25B6</font>  {rec}'
+        elements.append(Paragraph(bullet, styles["RecItem"]))
+
+    elements.append(Spacer(1, 10))
+
+
+# ═══════════════════════════════════════════════════
+#  MAIN PDF GENERATOR
+# ═══════════════════════════════════════════════════
+
+def generate_pdf(query=None, summary_text=None, dataframe=None, charts=None, analysis_history=None):
+
+    file_path = "AI_Executive_Report.pdf"
+
+    doc = SimpleDocTemplate(
+        file_path,
+        pagesize=A4,
+        topMargin=1 * inch,
+        bottomMargin=0.8 * inch,
+        leftMargin=0.75 * inch,
+        rightMargin=0.75 * inch,
+    )
+
+    elements = []
+    styles = get_custom_styles()
+    chart_files = []
+    timestamp = datetime.now().strftime("%B %d, %Y  •  %H:%M")
+
+    # ══════════════════════════════════════════════
+    #  COVER PAGE
+    # ══════════════════════════════════════════════
+
+    elements.append(Spacer(1, 1.5 * inch))
+
+    # Title block with side accent
+    title_table = Table(
+        [[
+            "",
+            Paragraph("AI Business Intelligence<br/>Executive Report", styles["ReportTitle"])
+        ]],
+        colWidths=[6, 5.5 * inch]
+    )
+    title_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, 0), BRAND_PRIMARY),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (1, 0), (1, 0), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(title_table)
+    elements.append(Spacer(1, 12))
+
+    elements.append(Paragraph(f"Generated on {timestamp}", styles["ReportSubtitle"]))
+    elements.append(Spacer(1, 8))
+
+    # Meta info box
+    if analysis_history and len(analysis_history) > 0:
+        n_queries = len(analysis_history)
+    else:
+        n_queries = 1 if query else 0
+
+    meta_data = [
+        ["Report Type", "Executive Analytics Report"],
+        ["Analyses Included", str(n_queries)],
+        ["Generated By", "AI Business Intelligence Assistant"],
+        ["Classification", "Confidential"],
+    ]
+
+    meta_table = Table(meta_data, colWidths=[1.8 * inch, 4 * inch])
+    meta_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("TEXTCOLOR", (0, 0), (0, -1), BRAND_GRAY),
+        ("TEXTCOLOR", (1, 0), (1, -1), BRAND_DARK),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.5, colors.HexColor("#E2E8F0")),
+        ("LINEBELOW", (0, -1), (-1, -1), 1, BRAND_PRIMARY),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(meta_table)
+
+    # ── Table of Contents ──
+    if analysis_history and len(analysis_history) > 1:
+        elements.append(Spacer(1, 30))
+        elements.append(Paragraph("CONTENTS", styles["SectionHeader"]))
+        elements.append(section_divider())
+
+        for i, entry in enumerate(analysis_history, 1):
+            q_text = str(entry.get("query", "N/A"))[:80]
+            elements.append(Paragraph(
+                f'<font color="{BRAND_PRIMARY.hexval()}"><b>Analysis #{i}</b></font>  —  {q_text}',
+                styles["TOCItem"]
+            ))
+
+    # ══════════════════════════════════════════════
+    #  ANALYSIS SECTIONS
+    # ══════════════════════════════════════════════
+
+    if analysis_history and len(analysis_history) > 0:
+
+        for i, entry in enumerate(analysis_history, 1):
+            elements.append(PageBreak())
+
+            _build_query_section(
+                elements=elements,
+                query=entry.get("query", "N/A"),
+                summary_text=entry.get("insight", "N/A"),
+                dataframe=entry.get("result"),
+                styles=styles,
+                chart_files=chart_files,
+                query_num=i
+            )
+
+    elif query is not None:
+
+        elements.append(PageBreak())
+
+        _build_query_section(
+            elements=elements,
+            query=query,
+            summary_text=summary_text,
+            dataframe=dataframe,
+            styles=styles,
+            chart_files=chart_files
         )
 
-        elements.append(table)
+    else:
+        elements.append(PageBreak())
+        elements.append(Paragraph("No analysis data available.", styles["BodyText2"]))
 
-    # ------------------------------------------------
-    # BUILD PDF
-    # ------------------------------------------------
+    # ══════════════════════════════════════════════
+    #  DISCLAIMER PAGE
+    # ══════════════════════════════════════════════
 
-    doc.build(elements)
+    elements.append(PageBreak())
+    elements.append(Spacer(1, 2 * inch))
+    elements.append(Paragraph("DISCLAIMER", styles["SectionHeader"]))
+    elements.append(section_divider())
+    elements.append(Paragraph(
+        "This report was generated by an AI-powered Business Intelligence system. "
+        "The insights, recommendations, and forecasts contained herein are based on "
+        "automated analysis of the provided dataset and should be validated by domain "
+        "experts before making strategic business decisions. Past performance does not "
+        "guarantee future results.",
+        styles["BodyText2"]
+    ))
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph(
+        f"Report generated on {timestamp} using AI Business Intelligence Assistant.",
+        styles["BodyText2"]
+    ))
 
-    # ------------------------------------------------
-    # CLEANUP TEMP CHARTS
-    # ------------------------------------------------
+    # ══════════════════════════════════════════════
+    #  BUILD PDF
+    # ══════════════════════════════════════════════
 
+    doc.build(
+        elements,
+        onFirstPage=add_first_page_decoration,
+        onLaterPages=add_page_decoration
+    )
+
+    # Cleanup temp charts
     for file in chart_files:
         if os.path.exists(file):
             os.remove(file)

@@ -1,3 +1,7 @@
+import pandas as pd
+import numpy as np
+
+
 def execute_code(code, df):
 
     # Block unsafe operations
@@ -11,19 +15,31 @@ def execute_code(code, df):
         "eval(",
         "exec(",
         "write(",
-        "read("
+        "read(",
+        "shutil",
+        "pathlib",
+        "socket",
+        "requests",
+        "http",
     ]
 
     for word in forbidden:
         if word in code:
             return f"Unsafe code detected: {word}"
 
+    # Provide pandas and numpy in the execution scope
+    # so AI-generated code like df.groupby().agg() works correctly
+    global_vars = {
+        "pd": pd,
+        "np": np,
+    }
+
     local_vars = {"df": df}
 
     try:
 
         # Execute generated code
-        exec(code, {}, local_vars)
+        exec(code, global_vars, local_vars)
 
         # Extract result safely
         result = local_vars.get("result", None)

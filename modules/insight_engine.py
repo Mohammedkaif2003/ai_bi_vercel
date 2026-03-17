@@ -10,6 +10,9 @@ def generate_business_insight(data):
 
     elif isinstance(data, pd.DataFrame):
         df = data.copy()
+        # Flatten MultiIndex to avoid .astype(str) errors
+        if isinstance(df.index, pd.MultiIndex):
+            df = df.reset_index()
 
     else:
         return "No insight available."
@@ -33,7 +36,7 @@ def generate_business_insight(data):
     if non_numeric_cols:
         entity_col = non_numeric_cols[0]
     else:
-        df["Entity"] = df.index.astype(str)
+        df["Entity"] = [str(x) for x in df.index]
         entity_col = "Entity"
 
     # Sort by metric
@@ -83,7 +86,7 @@ def generate_business_insight(data):
 
     for col in df.columns:
         col_name = str(col).lower()
-        if col.lower() in possible_time_cols:
+        if col_name in possible_time_cols:
 
             try:
                 trend = df.sort_values(col)[metric].diff().mean()

@@ -1,0 +1,501 @@
+employee_id,name,department,position,location,hire_date,salary,performance_score,attrition
+EMP00001,Employee 1,Sales,Senior,San Francisco,2025-12-09,126776,3.0,0
+EMP00002,Employee 2,Product,Senior,New York,2023-02-18,100581,3.9,1
+EMP00003,Employee 3,Operations,Manager,San Francisco,2023-01-14,118168,4.2,0
+EMP00004,Employee 4,Marketing,Intern,Chicago,2025-09-16,41505,3.5,1
+EMP00005,Employee 5,Product,Mid-Level,New York,2025-02-16,90451,4.1,0
+EMP00006,Employee 6,Marketing,Mid-Level,Austin,2024-04-17,95917,4.0,0
+EMP00007,Employee 7,Engineering,Junior,Chicago,2025-03-31,57143,3.6,0
+EMP00008,Employee 8,Product,Junior,Austin,2025-06-05,57204,4.5,0
+EMP00009,Employee 9,Product,Mid-Level,Austin,2024-12-23,85824,2.6,1
+EMP00010,Employee 10,HR,Mid-Level,San Francisco,2024-11-05,98411,3.6,0
+EMP00011,Employee 11,Sales,Manager,Austin,2025-11-29,147678,2.7,0
+EMP00012,Employee 12,Sales,Intern,Boston,2023-10-22,46425,3.7,0
+EMP00013,Employee 13,Marketing,Mid-Level,San Francisco,2023-06-07,70919,2.5,0
+EMP00014,Employee 14,HR,Mid-Level,New York,2023-12-15,87142,4.7,0
+EMP00015,Employee 15,HR,Junior,San Francisco,2024-07-18,66146,3.8,1
+EMP00016,Employee 16,Finance,Junior,San Francisco,2025-06-03,55003,3.5,0
+EMP00017,Employee 17,Engineering,Senior,San Francisco,2024-06-10,132435,4.7,0
+EMP00018,Employee 18,Sales,Manager,Boston,2024-05-04,124892,5.0,0
+EMP00019,Employee 19,Engineering,Manager,New York,2025-11-07,114685,4.5,0
+EMP00020,Employee 20,Engineering,Junior,Chicago,2024-10-24,53244,3.8,0
+EMP00021,Employee 21,Finance,Mid-Level,Chicago,2024-12-29,68744,4.2,0
+EMP00022,Employee 22,Finance,Manager,Chicago,2025-04-23,109806,3.2,0
+EMP00023,Employee 23,Marketing,Mid-Level,Austin,2023-05-30,94293,3.0,0
+EMP00024,Employee 24,HR,Intern,San Francisco,2023-07-02,46438,3.6,0
+EMP00025,Employee 25,Marketing,Mid-Level,Austin,2025-06-03,87801,4.8,0
+EMP00026,Employee 26,Sales,Senior,Boston,2024-12-28,126664,4.5,0
+EMP00027,Employee 27,Operations,Intern,Austin,2025-12-29,38203,2.7,0
+EMP00028,Employee 28,Marketing,Junior,New York,2023-08-16,67691,2.8,0
+EMP00029,Employee 29,Operations,Junior,San Francisco,2024-09-19,53642,4.7,0
+EMP00030,Employee 30,Finance,Senior,Boston,2024-08-04,92840,3.5,1
+EMP00031,Employee 31,HR,Mid-Level,New York,2025-07-26,91801,4.9,0
+EMP00032,Employee 32,Finance,Intern,Boston,2023-01-09,31592,2.7,1
+EMP00033,Employee 33,Product,Junior,New York,2024-10-02,64880,4.4,0
+EMP00034,Employee 34,Operations,Senior,New York,2025-07-19,92312,3.9,0
+EMP00035,Employee 35,Sales,Manager,Chicago,2024-07-15,109860,3.9,0
+EMP00036,Employee 36,Operations,Junior,San Francisco,2024-07-08,54985,4.5,0
+EMP00037,Employee 37,Sales,Senior,New York,2025-05-20,86150,3.5,0
+EMP00038,Employee 38,Operations,Senior,Boston,2024-12-23,93902,5.0,1
+EMP00039,Employee 39,Sales,Mid-Level,San Francisco,2024-10-23,68616,3.5,0
+EMP00040,Employee 40,HR,Manager,Chicago,2025-10-09,101899,3.1,0
+EMP00041,Employee 41,Product,Intern,Boston,2024-07-14,39300,2.7,0
+EMP00042,Employee 42,Engineering,Senior,Chicago,2024-12-10,114682,3.2,1
+EMP00043,Employee 43,Marketing,Mid-Level,New York,2024-05-20,99337,3.0,0
+EMP00044,Employee 44,HR,Manager,Boston,2025-08-11,174056,4.0,1
+EMP00045,Employee 45,Marketing,Mid-Level,New York,2024-02-19,79810,4.8,1
+EMP00046,Employee 46,HR,Manager,Austin,2023-12-23,163467,2.7,0
+EMP00047,Employee 47,Marketing,Senior,San Francisco,2025-08-30,129577,4.7,0
+EMP00048,Employee 48,Sales,Junior,Austin,2025-06-21,56619,3.4,0
+EMP00049,Employee 49,Finance,Senior,Austin,2024-04-06,103394,3.7,0
+EMP00050,Employee 50,Marketing,Intern,New York,2023-07-19,39440,3.7,0
+EMP00051,Employee 51,Finance,Junior,Austin,2024-05-20,48465,3.3,0
+EMP00052,Employee 52,Product,Intern,San Francisco,2025-08-05,49897,3.2,0
+EMP00053,Employee 53,Product,Senior,New York,2023-07-21,102658,2.6,0
+EMP00054,Employee 54,Marketing,Senior,San Francisco,2023-11-19,117315,2.6,0
+EMP00055,Employee 55,Product,Intern,Boston,2024-08-12,40831,3.8,0
+EMP00056,Employee 56,Finance,Senior,San Francisco,2023-05-24,126193,4.7,0
+EMP00057,Employee 57,HR,Intern,New York,2023-08-18,37243,3.6,0
+EMP00058,Employee 58,Engineering,Senior,Austin,2025-01-12,102717,4.0,0
+EMP00059,Employee 59,Operations,Manager,Chicago,2023-07-03,123692,2.7,0
+EMP00060,Employee 60,Operations,Senior,San Francisco,2025-03-12,82201,4.6,0
+EMP00061,Employee 61,Operations,Mid-Level,Boston,2024-07-19,65822,2.6,0
+EMP00062,Employee 62,Sales,Junior,Chicago,2024-08-17,52064,3.5,0
+EMP00063,Employee 63,Product,Senior,Boston,2023-07-10,132976,4.5,0
+EMP00064,Employee 64,Sales,Manager,New York,2023-12-05,160737,4.1,0
+EMP00065,Employee 65,Finance,Junior,Boston,2025-08-03,52830,3.3,0
+EMP00066,Employee 66,Product,Intern,Austin,2025-09-14,47870,3.3,1
+EMP00067,Employee 67,HR,Senior,San Francisco,2024-03-22,115416,4.4,1
+EMP00068,Employee 68,Engineering,Intern,New York,2024-03-09,31965,4.2,0
+EMP00069,Employee 69,Sales,Mid-Level,Boston,2025-09-01,87795,4.1,0
+EMP00070,Employee 70,Marketing,Mid-Level,Austin,2023-09-04,84227,3.9,0
+EMP00071,Employee 71,HR,Mid-Level,Austin,2024-07-15,61822,3.1,0
+EMP00072,Employee 72,Operations,Senior,San Francisco,2025-02-14,92046,4.3,0
+EMP00073,Employee 73,Product,Junior,Boston,2023-05-14,54340,4.8,0
+EMP00074,Employee 74,Operations,Junior,San Francisco,2024-10-02,55908,2.8,0
+EMP00075,Employee 75,Marketing,Manager,Boston,2025-10-20,148031,2.8,0
+EMP00076,Employee 76,Operations,Junior,Chicago,2025-01-09,68056,4.5,0
+EMP00077,Employee 77,Finance,Mid-Level,Austin,2024-04-13,60826,2.6,0
+EMP00078,Employee 78,Finance,Mid-Level,San Francisco,2025-03-20,71949,3.9,0
+EMP00079,Employee 79,HR,Mid-Level,San Francisco,2023-11-24,65785,2.5,0
+EMP00080,Employee 80,Sales,Mid-Level,New York,2025-09-09,77404,3.3,0
+EMP00081,Employee 81,Operations,Mid-Level,San Francisco,2024-04-15,89698,4.1,0
+EMP00082,Employee 82,Finance,Manager,Chicago,2025-05-29,109186,3.2,0
+EMP00083,Employee 83,Engineering,Senior,Boston,2023-06-08,135460,3.7,0
+EMP00084,Employee 84,Finance,Senior,San Francisco,2023-09-07,118688,3.9,1
+EMP00085,Employee 85,Product,Senior,Chicago,2024-09-29,121836,4.4,0
+EMP00086,Employee 86,Operations,Senior,Boston,2025-01-26,90015,2.9,1
+EMP00087,Employee 87,Operations,Mid-Level,Boston,2024-06-17,85829,4.7,1
+EMP00088,Employee 88,Product,Junior,Boston,2023-04-22,55761,3.0,0
+EMP00089,Employee 89,Finance,Intern,San Francisco,2025-04-05,39635,4.4,0
+EMP00090,Employee 90,HR,Manager,New York,2024-09-28,157449,3.8,0
+EMP00091,Employee 91,Finance,Junior,Austin,2024-03-30,64908,3.3,0
+EMP00092,Employee 92,Operations,Manager,Boston,2025-04-16,140540,3.0,0
+EMP00093,Employee 93,Operations,Mid-Level,New York,2024-01-06,94693,3.3,0
+EMP00094,Employee 94,Operations,Junior,San Francisco,2024-01-13,63706,3.7,0
+EMP00095,Employee 95,HR,Senior,San Francisco,2023-10-20,132900,4.8,0
+EMP00096,Employee 96,Operations,Senior,Austin,2024-09-14,96059,4.1,0
+EMP00097,Employee 97,Finance,Intern,Boston,2023-04-23,35427,3.7,0
+EMP00098,Employee 98,Marketing,Junior,San Francisco,2024-05-08,51305,4.5,0
+EMP00099,Employee 99,Marketing,Junior,Austin,2024-12-24,58033,2.8,1
+EMP00100,Employee 100,Marketing,Intern,Austin,2025-02-14,32848,3.9,0
+EMP00101,Employee 101,Finance,Senior,Boston,2025-11-30,133330,3.9,0
+EMP00102,Employee 102,Finance,Intern,San Francisco,2024-06-05,38907,4.9,0
+EMP00103,Employee 103,Product,Senior,Boston,2025-05-24,103607,2.7,0
+EMP00104,Employee 104,Marketing,Junior,New York,2024-07-13,52521,4.2,1
+EMP00105,Employee 105,HR,Intern,San Francisco,2024-05-22,37711,4.7,0
+EMP00106,Employee 106,Engineering,Junior,Boston,2025-08-18,69287,3.0,0
+EMP00107,Employee 107,Engineering,Senior,San Francisco,2024-05-22,112372,4.9,0
+EMP00108,Employee 108,HR,Intern,New York,2023-11-20,32983,4.4,0
+EMP00109,Employee 109,Product,Manager,New York,2025-10-23,150535,3.0,0
+EMP00110,Employee 110,Sales,Manager,New York,2023-07-23,120091,3.1,0
+EMP00111,Employee 111,Sales,Manager,San Francisco,2025-03-19,131767,4.5,0
+EMP00112,Employee 112,Operations,Senior,New York,2023-12-30,99076,4.4,1
+EMP00113,Employee 113,Finance,Manager,San Francisco,2025-05-23,132034,2.8,0
+EMP00114,Employee 114,Engineering,Manager,San Francisco,2024-05-16,145571,4.0,1
+EMP00115,Employee 115,Product,Junior,Austin,2023-01-29,65827,3.3,1
+EMP00116,Employee 116,Engineering,Manager,Boston,2025-02-09,110378,4.9,0
+EMP00117,Employee 117,Product,Senior,San Francisco,2025-12-20,99269,4.6,0
+EMP00118,Employee 118,Sales,Intern,Austin,2023-05-29,33726,3.4,0
+EMP00119,Employee 119,Operations,Junior,Chicago,2023-08-21,59265,4.0,0
+EMP00120,Employee 120,Operations,Manager,Boston,2025-09-15,159270,2.5,1
+EMP00121,Employee 121,Sales,Manager,Chicago,2024-05-01,106976,2.6,0
+EMP00122,Employee 122,Operations,Intern,New York,2024-02-18,47868,4.8,0
+EMP00123,Employee 123,Operations,Intern,New York,2023-12-10,35856,4.6,1
+EMP00124,Employee 124,Operations,Manager,New York,2024-03-15,149107,4.7,0
+EMP00125,Employee 125,Operations,Manager,Boston,2024-12-18,130596,2.8,0
+EMP00126,Employee 126,Finance,Junior,San Francisco,2023-03-29,56827,2.9,0
+EMP00127,Employee 127,Engineering,Senior,New York,2024-12-10,86470,3.6,0
+EMP00128,Employee 128,Sales,Intern,San Francisco,2025-10-08,35487,4.7,0
+EMP00129,Employee 129,Engineering,Manager,Austin,2023-08-20,158449,3.8,0
+EMP00130,Employee 130,Finance,Intern,Austin,2023-01-15,34446,4.9,0
+EMP00131,Employee 131,Engineering,Mid-Level,San Francisco,2024-06-09,93239,3.5,0
+EMP00132,Employee 132,Finance,Junior,San Francisco,2023-03-25,45515,2.9,0
+EMP00133,Employee 133,Marketing,Manager,Austin,2023-02-17,144303,3.0,0
+EMP00134,Employee 134,Operations,Manager,Chicago,2025-12-04,125871,2.7,0
+EMP00135,Employee 135,Engineering,Manager,Chicago,2024-10-16,103600,3.6,1
+EMP00136,Employee 136,Marketing,Intern,Chicago,2025-04-25,35367,3.9,0
+EMP00137,Employee 137,Finance,Manager,San Francisco,2025-06-12,165086,3.8,0
+EMP00138,Employee 138,Finance,Manager,New York,2024-04-10,173286,4.1,0
+EMP00139,Employee 139,Operations,Junior,Austin,2023-03-24,53932,4.1,0
+EMP00140,Employee 140,HR,Senior,Chicago,2023-01-16,101474,4.3,1
+EMP00141,Employee 141,Sales,Junior,San Francisco,2025-06-25,59895,4.1,0
+EMP00142,Employee 142,Operations,Senior,Boston,2023-08-30,92281,3.9,0
+EMP00143,Employee 143,HR,Senior,San Francisco,2023-07-04,80713,3.4,0
+EMP00144,Employee 144,Engineering,Senior,Chicago,2024-02-05,81814,3.6,0
+EMP00145,Employee 145,HR,Manager,New York,2023-03-02,178189,2.6,0
+EMP00146,Employee 146,Engineering,Junior,Chicago,2025-08-18,47104,2.7,0
+EMP00147,Employee 147,Product,Mid-Level,Austin,2025-08-01,65088,4.3,1
+EMP00148,Employee 148,Finance,Mid-Level,Boston,2025-06-19,83045,4.8,0
+EMP00149,Employee 149,HR,Intern,Austin,2023-07-03,36397,4.1,0
+EMP00150,Employee 150,Product,Mid-Level,New York,2023-02-21,89349,4.3,0
+EMP00151,Employee 151,Marketing,Intern,New York,2025-12-03,38075,3.9,1
+EMP00152,Employee 152,Engineering,Manager,New York,2024-11-17,135962,4.6,0
+EMP00153,Employee 153,Finance,Junior,Austin,2023-05-26,59384,3.5,0
+EMP00154,Employee 154,Marketing,Senior,Chicago,2023-03-01,116994,3.5,1
+EMP00155,Employee 155,Engineering,Intern,San Francisco,2024-09-19,33098,3.6,0
+EMP00156,Employee 156,Finance,Junior,New York,2024-02-26,49224,4.7,0
+EMP00157,Employee 157,Marketing,Mid-Level,San Francisco,2023-11-29,80010,3.6,0
+EMP00158,Employee 158,Operations,Senior,Chicago,2023-11-01,136494,3.0,1
+EMP00159,Employee 159,Marketing,Intern,San Francisco,2025-08-29,47436,3.2,0
+EMP00160,Employee 160,Marketing,Intern,Austin,2023-12-18,35722,4.9,0
+EMP00161,Employee 161,Sales,Senior,Chicago,2023-02-02,125913,3.7,0
+EMP00162,Employee 162,Marketing,Manager,Boston,2025-04-01,131808,3.9,0
+EMP00163,Employee 163,Sales,Intern,Boston,2024-08-09,40103,4.4,0
+EMP00164,Employee 164,Marketing,Senior,Austin,2024-04-21,96283,4.0,0
+EMP00165,Employee 165,Product,Junior,Chicago,2023-06-08,49288,4.3,0
+EMP00166,Employee 166,HR,Junior,Austin,2023-11-15,58279,2.9,0
+EMP00167,Employee 167,Marketing,Senior,San Francisco,2023-01-07,136156,3.3,0
+EMP00168,Employee 168,Operations,Senior,New York,2025-05-18,135843,2.8,0
+EMP00169,Employee 169,Marketing,Manager,New York,2023-09-30,134315,4.2,1
+EMP00170,Employee 170,Finance,Senior,Chicago,2024-12-04,137818,4.2,0
+EMP00171,Employee 171,Product,Junior,San Francisco,2025-12-17,58144,2.9,0
+EMP00172,Employee 172,Sales,Senior,San Francisco,2024-08-03,103883,3.6,0
+EMP00173,Employee 173,Marketing,Mid-Level,New York,2024-08-17,80085,3.0,0
+EMP00174,Employee 174,Engineering,Manager,New York,2024-06-26,161235,3.3,0
+EMP00175,Employee 175,HR,Mid-Level,Austin,2023-06-15,78928,2.9,0
+EMP00176,Employee 176,HR,Mid-Level,San Francisco,2025-11-01,79677,3.4,1
+EMP00177,Employee 177,Marketing,Manager,San Francisco,2025-04-15,114580,2.8,0
+EMP00178,Employee 178,Finance,Intern,San Francisco,2024-08-13,38246,4.2,0
+EMP00179,Employee 179,HR,Intern,Austin,2024-02-23,35686,3.1,0
+EMP00180,Employee 180,Operations,Intern,Boston,2025-02-06,47311,4.7,0
+EMP00181,Employee 181,HR,Manager,Chicago,2023-05-06,131439,4.6,0
+EMP00182,Employee 182,Product,Manager,Chicago,2023-06-04,148311,5.0,0
+EMP00183,Employee 183,Sales,Mid-Level,Austin,2024-04-25,97279,2.9,1
+EMP00184,Employee 184,Finance,Intern,San Francisco,2024-02-07,38522,3.3,0
+EMP00185,Employee 185,Engineering,Intern,New York,2024-09-06,34597,3.1,0
+EMP00186,Employee 186,Sales,Junior,Boston,2025-02-25,65969,4.2,0
+EMP00187,Employee 187,Marketing,Senior,New York,2024-07-04,133606,4.1,0
+EMP00188,Employee 188,Engineering,Junior,Austin,2025-03-08,69129,4.4,1
+EMP00189,Employee 189,Engineering,Junior,Boston,2025-07-02,65534,3.5,0
+EMP00190,Employee 190,HR,Manager,San Francisco,2025-10-02,108370,3.8,0
+EMP00191,Employee 191,Operations,Manager,Austin,2023-06-08,144324,2.5,0
+EMP00192,Employee 192,Marketing,Junior,New York,2023-07-29,56468,4.0,1
+EMP00193,Employee 193,Sales,Mid-Level,New York,2024-01-27,69095,4.3,1
+EMP00194,Employee 194,Engineering,Manager,Chicago,2025-09-11,106907,3.0,0
+EMP00195,Employee 195,Product,Intern,Boston,2025-11-13,43619,4.5,0
+EMP00196,Employee 196,Operations,Senior,New York,2025-03-11,91314,2.7,0
+EMP00197,Employee 197,Marketing,Intern,Boston,2023-03-17,39678,2.9,0
+EMP00198,Employee 198,HR,Junior,Austin,2025-07-16,65246,4.0,0
+EMP00199,Employee 199,Marketing,Senior,New York,2024-08-08,84040,4.1,1
+EMP00200,Employee 200,Product,Mid-Level,San Francisco,2025-09-01,76868,3.5,0
+EMP00201,Employee 201,Finance,Senior,San Francisco,2025-05-16,126239,4.6,1
+EMP00202,Employee 202,Marketing,Intern,Chicago,2024-10-21,35559,3.8,0
+EMP00203,Employee 203,Operations,Intern,Chicago,2025-08-21,44973,4.9,0
+EMP00204,Employee 204,Sales,Junior,Boston,2024-04-15,61509,2.9,1
+EMP00205,Employee 205,Marketing,Junior,Austin,2025-12-30,63834,3.7,0
+EMP00206,Employee 206,Sales,Junior,Austin,2024-09-30,59239,2.5,0
+EMP00207,Employee 207,Engineering,Manager,Chicago,2024-07-12,176890,3.0,0
+EMP00208,Employee 208,HR,Manager,Chicago,2024-04-15,100582,4.4,0
+EMP00209,Employee 209,Sales,Mid-Level,Austin,2025-12-22,61665,4.7,0
+EMP00210,Employee 210,HR,Junior,Boston,2025-05-21,65733,4.9,0
+EMP00211,Employee 211,Product,Intern,Austin,2025-08-16,36929,3.4,0
+EMP00212,Employee 212,Finance,Manager,Austin,2023-12-18,142815,4.6,1
+EMP00213,Employee 213,Engineering,Intern,Chicago,2023-10-08,34244,3.5,0
+EMP00214,Employee 214,Product,Mid-Level,New York,2023-09-25,94497,2.6,0
+EMP00215,Employee 215,Marketing,Intern,Chicago,2024-04-24,31995,3.8,0
+EMP00216,Employee 216,Marketing,Senior,Chicago,2024-05-15,90320,4.5,0
+EMP00217,Employee 217,Finance,Intern,Chicago,2025-05-04,31247,4.6,0
+EMP00218,Employee 218,Marketing,Mid-Level,Austin,2024-05-31,74647,3.7,0
+EMP00219,Employee 219,Operations,Mid-Level,San Francisco,2023-12-16,81643,2.7,0
+EMP00220,Employee 220,Product,Intern,Chicago,2023-04-16,43739,3.6,1
+EMP00221,Employee 221,Finance,Mid-Level,San Francisco,2023-12-25,70341,4.6,0
+EMP00222,Employee 222,HR,Junior,Chicago,2025-03-24,50311,3.0,0
+EMP00223,Employee 223,Operations,Intern,Boston,2024-04-03,31728,2.9,0
+EMP00224,Employee 224,Marketing,Mid-Level,New York,2024-06-21,88682,2.5,0
+EMP00225,Employee 225,Marketing,Intern,New York,2025-04-29,34223,3.2,0
+EMP00226,Employee 226,Marketing,Junior,Chicago,2024-11-28,52254,4.6,1
+EMP00227,Employee 227,Sales,Intern,Austin,2024-11-14,42291,4.3,0
+EMP00228,Employee 228,Marketing,Junior,New York,2025-06-08,55233,2.8,0
+EMP00229,Employee 229,Engineering,Mid-Level,New York,2023-02-15,93496,3.4,0
+EMP00230,Employee 230,Sales,Senior,Chicago,2023-05-22,138008,3.5,0
+EMP00231,Employee 231,Finance,Intern,Austin,2025-12-03,36188,3.6,0
+EMP00232,Employee 232,Finance,Mid-Level,Boston,2025-11-05,72359,4.1,1
+EMP00233,Employee 233,Engineering,Intern,New York,2025-02-26,45760,2.7,1
+EMP00234,Employee 234,Sales,Senior,San Francisco,2025-02-04,84007,3.8,0
+EMP00235,Employee 235,Engineering,Intern,Chicago,2025-05-30,38185,3.5,1
+EMP00236,Employee 236,Sales,Manager,Boston,2025-08-23,126111,2.7,0
+EMP00237,Employee 237,HR,Manager,San Francisco,2024-05-07,108757,2.6,0
+EMP00238,Employee 238,Finance,Junior,Austin,2025-07-20,59997,4.5,0
+EMP00239,Employee 239,Finance,Mid-Level,Austin,2024-12-14,84738,3.3,0
+EMP00240,Employee 240,HR,Manager,San Francisco,2025-10-29,132793,4.7,1
+EMP00241,Employee 241,Marketing,Mid-Level,San Francisco,2023-08-16,83476,4.4,1
+EMP00242,Employee 242,Engineering,Senior,Austin,2024-10-07,120911,3.0,0
+EMP00243,Employee 243,Sales,Manager,Boston,2024-05-25,117733,3.0,0
+EMP00244,Employee 244,Engineering,Senior,Chicago,2023-05-24,124480,4.4,0
+EMP00245,Employee 245,Operations,Intern,Chicago,2023-02-28,41021,4.4,0
+EMP00246,Employee 246,Sales,Junior,Chicago,2025-05-15,45568,3.6,1
+EMP00247,Employee 247,Finance,Mid-Level,New York,2023-09-10,80960,4.1,0
+EMP00248,Employee 248,Marketing,Mid-Level,Boston,2023-08-08,91294,3.6,0
+EMP00249,Employee 249,Finance,Mid-Level,Boston,2024-06-06,76035,4.3,0
+EMP00250,Employee 250,Finance,Intern,Austin,2024-07-31,38167,2.6,1
+EMP00251,Employee 251,HR,Mid-Level,Austin,2023-03-10,71067,3.4,0
+EMP00252,Employee 252,Operations,Mid-Level,Boston,2023-08-17,73516,3.6,0
+EMP00253,Employee 253,HR,Senior,Boston,2023-06-23,97332,3.8,0
+EMP00254,Employee 254,Product,Intern,Chicago,2023-06-19,49770,3.4,0
+EMP00255,Employee 255,Operations,Mid-Level,Boston,2024-07-19,98166,2.7,0
+EMP00256,Employee 256,Product,Junior,Chicago,2024-10-20,54782,3.6,1
+EMP00257,Employee 257,Product,Intern,New York,2025-01-28,30988,3.1,0
+EMP00258,Employee 258,Product,Senior,Boston,2025-01-18,104620,3.7,0
+EMP00259,Employee 259,Finance,Manager,New York,2025-09-26,165812,4.0,0
+EMP00260,Employee 260,Marketing,Manager,New York,2023-03-31,139486,3.4,0
+EMP00261,Employee 261,HR,Senior,Austin,2024-12-04,112118,2.9,0
+EMP00262,Employee 262,Operations,Senior,Boston,2024-09-26,125723,2.6,0
+EMP00263,Employee 263,Finance,Junior,New York,2024-07-06,65815,3.7,0
+EMP00264,Employee 264,Finance,Manager,San Francisco,2024-03-29,113873,3.5,0
+EMP00265,Employee 265,Engineering,Junior,Boston,2023-06-29,65253,2.8,0
+EMP00266,Employee 266,Marketing,Mid-Level,Austin,2025-09-26,81208,4.6,0
+EMP00267,Employee 267,Operations,Senior,Boston,2024-02-17,126637,4.8,0
+EMP00268,Employee 268,Product,Intern,Austin,2025-10-25,46052,4.2,0
+EMP00269,Employee 269,Engineering,Mid-Level,New York,2025-03-12,87715,4.8,0
+EMP00270,Employee 270,HR,Manager,Chicago,2023-08-13,146998,4.4,0
+EMP00271,Employee 271,Marketing,Junior,Austin,2025-04-29,47652,4.6,0
+EMP00272,Employee 272,HR,Mid-Level,New York,2024-05-04,97071,3.1,0
+EMP00273,Employee 273,Finance,Manager,Chicago,2024-10-04,174537,4.7,1
+EMP00274,Employee 274,Finance,Manager,New York,2024-11-15,128715,3.0,0
+EMP00275,Employee 275,Sales,Senior,San Francisco,2023-06-02,97091,4.8,0
+EMP00276,Employee 276,Marketing,Junior,Boston,2023-09-21,58241,2.7,1
+EMP00277,Employee 277,Sales,Junior,Boston,2024-09-30,59779,4.6,0
+EMP00278,Employee 278,Product,Junior,Boston,2025-12-12,60928,3.9,0
+EMP00279,Employee 279,Product,Intern,Boston,2023-06-24,43380,4.3,0
+EMP00280,Employee 280,Sales,Manager,Chicago,2023-04-15,121238,3.7,0
+EMP00281,Employee 281,Sales,Junior,Boston,2024-12-12,51003,3.0,0
+EMP00282,Employee 282,Operations,Manager,Austin,2023-01-09,132825,2.8,0
+EMP00283,Employee 283,Sales,Junior,Chicago,2023-01-21,58283,4.0,1
+EMP00284,Employee 284,Finance,Senior,New York,2025-10-25,129358,4.0,0
+EMP00285,Employee 285,Sales,Junior,New York,2024-12-09,62175,3.4,0
+EMP00286,Employee 286,Finance,Manager,Austin,2023-01-25,119648,2.9,0
+EMP00287,Employee 287,Marketing,Junior,Austin,2024-12-23,51752,4.1,0
+EMP00288,Employee 288,Marketing,Junior,Boston,2025-12-02,68966,3.2,0
+EMP00289,Employee 289,Engineering,Manager,Chicago,2023-03-14,101100,4.6,0
+EMP00290,Employee 290,Operations,Senior,Austin,2023-09-19,93319,2.5,0
+EMP00291,Employee 291,HR,Senior,Austin,2025-02-19,99962,4.7,0
+EMP00292,Employee 292,Product,Mid-Level,San Francisco,2025-04-26,75025,4.5,1
+EMP00293,Employee 293,HR,Intern,San Francisco,2023-01-07,30421,4.9,0
+EMP00294,Employee 294,Finance,Intern,Chicago,2025-04-25,46566,4.2,0
+EMP00295,Employee 295,Operations,Manager,Boston,2023-05-12,143888,3.0,0
+EMP00296,Employee 296,Engineering,Senior,Boston,2025-09-19,129945,2.7,0
+EMP00297,Employee 297,Engineering,Senior,Austin,2024-04-13,107780,3.5,0
+EMP00298,Employee 298,Operations,Intern,Chicago,2023-05-31,45733,2.9,0
+EMP00299,Employee 299,Sales,Junior,Chicago,2024-11-19,64055,3.8,1
+EMP00300,Employee 300,Sales,Junior,Boston,2024-07-23,46613,4.3,0
+EMP00301,Employee 301,Engineering,Senior,Austin,2024-02-10,103673,3.0,0
+EMP00302,Employee 302,Engineering,Senior,San Francisco,2024-12-03,126562,3.1,1
+EMP00303,Employee 303,Operations,Junior,Chicago,2023-07-20,58584,3.6,0
+EMP00304,Employee 304,Marketing,Manager,San Francisco,2025-10-23,107145,3.4,0
+EMP00305,Employee 305,Engineering,Junior,New York,2025-03-26,49122,4.3,0
+EMP00306,Employee 306,Marketing,Intern,Chicago,2025-10-22,47754,4.0,0
+EMP00307,Employee 307,Product,Intern,Boston,2023-12-13,37797,3.8,0
+EMP00308,Employee 308,Operations,Manager,Chicago,2025-08-14,115834,3.2,0
+EMP00309,Employee 309,Finance,Mid-Level,Boston,2023-06-23,65849,3.1,0
+EMP00310,Employee 310,Marketing,Junior,Austin,2023-12-08,56350,2.8,0
+EMP00311,Employee 311,Operations,Junior,New York,2024-07-04,63595,4.1,0
+EMP00312,Employee 312,HR,Manager,San Francisco,2024-06-23,173757,3.3,0
+EMP00313,Employee 313,Marketing,Senior,Chicago,2025-07-27,128519,4.6,0
+EMP00314,Employee 314,Product,Junior,Austin,2024-05-01,47517,4.3,0
+EMP00315,Employee 315,HR,Junior,Chicago,2023-03-11,65490,3.3,0
+EMP00316,Employee 316,HR,Manager,Chicago,2025-03-30,177901,3.4,0
+EMP00317,Employee 317,HR,Senior,San Francisco,2025-01-16,93650,3.9,0
+EMP00318,Employee 318,Product,Intern,San Francisco,2023-08-28,42570,4.5,0
+EMP00319,Employee 319,Marketing,Manager,San Francisco,2025-02-23,160250,2.6,1
+EMP00320,Employee 320,Product,Mid-Level,San Francisco,2025-12-23,86854,2.6,0
+EMP00321,Employee 321,Engineering,Junior,San Francisco,2023-03-01,45023,4.2,0
+EMP00322,Employee 322,Sales,Senior,Boston,2023-05-17,115987,2.8,0
+EMP00323,Employee 323,Product,Intern,Boston,2025-09-03,43989,3.5,0
+EMP00324,Employee 324,Sales,Junior,San Francisco,2025-06-27,45571,3.0,0
+EMP00325,Employee 325,Product,Mid-Level,Boston,2025-02-07,74666,5.0,0
+EMP00326,Employee 326,Finance,Manager,Austin,2023-01-06,113191,3.9,0
+EMP00327,Employee 327,Operations,Mid-Level,Austin,2024-02-01,78808,4.6,0
+EMP00328,Employee 328,Finance,Junior,New York,2025-07-11,55408,3.2,0
+EMP00329,Employee 329,Sales,Manager,Austin,2023-01-12,132932,4.3,0
+EMP00330,Employee 330,Operations,Mid-Level,Chicago,2025-12-26,87899,4.7,0
+EMP00331,Employee 331,Sales,Manager,Chicago,2025-05-28,167827,4.9,0
+EMP00332,Employee 332,Engineering,Senior,Chicago,2023-10-07,93916,5.0,0
+EMP00333,Employee 333,Product,Senior,Austin,2023-09-19,134992,4.7,0
+EMP00334,Employee 334,Finance,Intern,New York,2025-11-22,31070,3.9,1
+EMP00335,Employee 335,Engineering,Manager,Chicago,2024-10-08,150607,2.8,0
+EMP00336,Employee 336,Finance,Manager,New York,2023-04-24,103352,2.7,0
+EMP00337,Employee 337,Engineering,Junior,San Francisco,2024-10-17,62008,3.8,0
+EMP00338,Employee 338,Finance,Senior,Chicago,2024-05-14,127740,3.7,0
+EMP00339,Employee 339,Product,Intern,San Francisco,2023-03-08,48800,4.1,0
+EMP00340,Employee 340,Marketing,Manager,San Francisco,2024-10-13,114065,3.9,0
+EMP00341,Employee 341,Finance,Junior,New York,2023-08-12,62159,3.0,0
+EMP00342,Employee 342,Engineering,Mid-Level,Chicago,2024-06-02,68247,4.8,0
+EMP00343,Employee 343,Operations,Senior,Chicago,2023-06-27,121304,2.7,0
+EMP00344,Employee 344,HR,Manager,San Francisco,2023-01-30,146317,4.0,0
+EMP00345,Employee 345,Sales,Intern,Chicago,2024-10-04,32066,4.6,0
+EMP00346,Employee 346,HR,Intern,Boston,2024-04-12,31191,4.3,0
+EMP00347,Employee 347,Sales,Senior,Boston,2025-05-07,115536,4.3,0
+EMP00348,Employee 348,Finance,Junior,New York,2023-12-05,65734,3.5,0
+EMP00349,Employee 349,HR,Intern,Chicago,2024-09-26,32327,4.7,1
+EMP00350,Employee 350,Sales,Intern,Boston,2025-12-29,45413,3.9,0
+EMP00351,Employee 351,Marketing,Senior,New York,2024-02-07,114606,2.7,0
+EMP00352,Employee 352,Sales,Intern,San Francisco,2024-01-05,44670,4.3,0
+EMP00353,Employee 353,Finance,Senior,Boston,2025-08-24,90934,4.7,1
+EMP00354,Employee 354,Marketing,Intern,New York,2024-03-31,48052,3.3,0
+EMP00355,Employee 355,Product,Manager,New York,2023-04-26,161591,3.8,0
+EMP00356,Employee 356,Product,Junior,Austin,2023-10-07,59821,3.7,0
+EMP00357,Employee 357,Product,Intern,Boston,2023-03-10,49882,2.8,0
+EMP00358,Employee 358,Engineering,Senior,Boston,2025-06-15,109092,3.3,0
+EMP00359,Employee 359,Marketing,Intern,Boston,2023-01-27,36085,3.1,0
+EMP00360,Employee 360,Engineering,Junior,Austin,2023-08-15,61017,3.8,0
+EMP00361,Employee 361,Operations,Senior,Chicago,2023-12-25,129782,4.0,0
+EMP00362,Employee 362,Marketing,Junior,New York,2024-07-31,51204,4.8,0
+EMP00363,Employee 363,Finance,Junior,Chicago,2024-09-25,67872,3.4,0
+EMP00364,Employee 364,Finance,Mid-Level,San Francisco,2024-09-07,83294,3.6,0
+EMP00365,Employee 365,Marketing,Intern,Boston,2024-10-23,34791,5.0,1
+EMP00366,Employee 366,Finance,Intern,Boston,2025-12-02,31590,4.3,0
+EMP00367,Employee 367,Engineering,Manager,New York,2025-09-02,141244,4.3,0
+EMP00368,Employee 368,Product,Senior,Boston,2024-10-16,136662,3.4,0
+EMP00369,Employee 369,Marketing,Junior,Austin,2023-05-04,46214,4.1,0
+EMP00370,Employee 370,Product,Intern,New York,2025-10-29,49939,3.9,0
+EMP00371,Employee 371,Engineering,Intern,San Francisco,2023-05-04,38492,3.6,0
+EMP00372,Employee 372,Finance,Mid-Level,Boston,2024-09-04,88070,2.6,0
+EMP00373,Employee 373,Marketing,Junior,San Francisco,2024-02-28,67549,3.1,0
+EMP00374,Employee 374,HR,Senior,San Francisco,2025-01-06,99703,4.1,1
+EMP00375,Employee 375,Product,Mid-Level,Austin,2024-10-10,63512,3.3,0
+EMP00376,Employee 376,Product,Mid-Level,Austin,2023-10-01,94764,4.8,0
+EMP00377,Employee 377,HR,Intern,New York,2024-07-05,36636,4.5,0
+EMP00378,Employee 378,Operations,Senior,Austin,2025-12-11,85811,3.4,0
+EMP00379,Employee 379,Finance,Senior,Boston,2025-08-05,139590,4.1,0
+EMP00380,Employee 380,Marketing,Junior,Austin,2024-03-17,68702,4.5,0
+EMP00381,Employee 381,Engineering,Senior,Boston,2024-07-25,102579,4.1,0
+EMP00382,Employee 382,Product,Junior,San Francisco,2024-01-23,58540,3.8,0
+EMP00383,Employee 383,Product,Intern,San Francisco,2024-07-28,35860,4.3,1
+EMP00384,Employee 384,Product,Senior,San Francisco,2023-01-02,89142,3.8,0
+EMP00385,Employee 385,Product,Junior,San Francisco,2024-05-28,56420,3.1,0
+EMP00386,Employee 386,Engineering,Intern,Chicago,2024-07-23,38997,3.4,1
+EMP00387,Employee 387,HR,Intern,San Francisco,2025-12-21,40429,3.8,0
+EMP00388,Employee 388,Sales,Manager,Chicago,2024-04-20,100471,2.6,0
+EMP00389,Employee 389,Sales,Manager,San Francisco,2025-06-01,120776,3.8,0
+EMP00390,Employee 390,Marketing,Mid-Level,Boston,2025-07-03,60594,3.3,0
+EMP00391,Employee 391,Product,Intern,Austin,2025-05-23,41805,3.6,0
+EMP00392,Employee 392,HR,Intern,Austin,2023-10-30,34563,2.7,0
+EMP00393,Employee 393,Product,Mid-Level,New York,2025-04-15,94374,3.5,0
+EMP00394,Employee 394,Marketing,Junior,Chicago,2025-06-16,65483,3.0,0
+EMP00395,Employee 395,Operations,Intern,Boston,2023-12-15,35729,3.0,0
+EMP00396,Employee 396,HR,Junior,San Francisco,2024-08-15,62061,4.0,0
+EMP00397,Employee 397,Operations,Senior,Austin,2024-02-19,93719,2.7,0
+EMP00398,Employee 398,Product,Intern,Chicago,2025-08-18,42695,2.6,0
+EMP00399,Employee 399,Finance,Senior,Boston,2024-02-29,130429,2.5,0
+EMP00400,Employee 400,Finance,Mid-Level,Boston,2024-08-04,63217,3.8,0
+EMP00401,Employee 401,Operations,Junior,Chicago,2023-07-04,63709,2.7,0
+EMP00402,Employee 402,Sales,Mid-Level,San Francisco,2023-07-14,62265,3.1,1
+EMP00403,Employee 403,Operations,Manager,Austin,2025-02-07,154008,3.1,0
+EMP00404,Employee 404,Product,Senior,Boston,2024-10-13,97964,3.4,0
+EMP00405,Employee 405,Marketing,Manager,Boston,2025-02-13,143422,3.6,0
+EMP00406,Employee 406,HR,Mid-Level,New York,2025-11-13,66821,4.1,0
+EMP00407,Employee 407,Finance,Manager,New York,2025-04-29,150154,4.3,0
+EMP00408,Employee 408,Operations,Manager,San Francisco,2024-08-29,151048,4.7,0
+EMP00409,Employee 409,Engineering,Manager,Austin,2024-11-18,134320,4.0,0
+EMP00410,Employee 410,Product,Intern,New York,2023-10-02,42443,4.7,0
+EMP00411,Employee 411,Marketing,Manager,New York,2025-10-03,154580,3.5,0
+EMP00412,Employee 412,Marketing,Mid-Level,Austin,2023-10-30,74473,4.6,0
+EMP00413,Employee 413,Finance,Mid-Level,New York,2024-07-14,71645,4.8,0
+EMP00414,Employee 414,Sales,Intern,Boston,2024-06-04,36391,3.4,0
+EMP00415,Employee 415,Engineering,Junior,New York,2023-02-01,47217,4.1,0
+EMP00416,Employee 416,Product,Senior,Boston,2023-12-12,113804,3.4,0
+EMP00417,Employee 417,Operations,Manager,Chicago,2025-06-07,103988,4.6,0
+EMP00418,Employee 418,Marketing,Intern,Chicago,2024-02-12,37667,4.8,0
+EMP00419,Employee 419,Finance,Manager,Chicago,2024-10-10,159648,3.9,0
+EMP00420,Employee 420,Operations,Manager,San Francisco,2023-12-06,173781,4.8,0
+EMP00421,Employee 421,Product,Intern,San Francisco,2024-01-04,35131,2.5,0
+EMP00422,Employee 422,Operations,Intern,New York,2024-01-06,41683,4.5,1
+EMP00423,Employee 423,HR,Mid-Level,San Francisco,2025-03-14,67252,4.6,0
+EMP00424,Employee 424,Engineering,Senior,Austin,2024-11-15,119798,3.6,0
+EMP00425,Employee 425,Product,Mid-Level,New York,2023-10-06,91275,4.3,0
+EMP00426,Employee 426,HR,Manager,San Francisco,2023-04-21,178746,3.2,0
+EMP00427,Employee 427,Operations,Senior,Chicago,2023-12-11,83003,4.4,0
+EMP00428,Employee 428,HR,Junior,San Francisco,2025-11-01,52854,3.9,0
+EMP00429,Employee 429,Marketing,Manager,San Francisco,2024-12-27,163154,4.1,0
+EMP00430,Employee 430,HR,Intern,Boston,2024-12-30,38716,2.9,0
+EMP00431,Employee 431,Engineering,Senior,San Francisco,2024-06-05,81723,3.8,0
+EMP00432,Employee 432,Marketing,Intern,Austin,2023-04-06,38054,4.6,0
+EMP00433,Employee 433,Product,Manager,Chicago,2024-07-11,107500,4.4,0
+EMP00434,Employee 434,HR,Junior,New York,2024-10-07,55963,4.0,1
+EMP00435,Employee 435,Sales,Senior,Austin,2023-05-02,111996,2.9,0
+EMP00436,Employee 436,Finance,Mid-Level,Chicago,2024-04-19,76852,3.7,0
+EMP00437,Employee 437,Operations,Manager,Austin,2024-05-29,116367,3.7,0
+EMP00438,Employee 438,Engineering,Manager,San Francisco,2025-12-17,133580,3.4,0
+EMP00439,Employee 439,HR,Mid-Level,Boston,2025-09-23,85960,3.3,0
+EMP00440,Employee 440,Finance,Mid-Level,Chicago,2025-02-11,99247,3.4,0
+EMP00441,Employee 441,Finance,Senior,San Francisco,2023-04-29,105805,3.4,0
+EMP00442,Employee 442,Product,Junior,Chicago,2023-08-05,48392,2.9,0
+EMP00443,Employee 443,Sales,Junior,Boston,2023-11-12,64471,3.0,0
+EMP00444,Employee 444,Product,Senior,Boston,2024-07-31,124458,4.9,1
+EMP00445,Employee 445,Sales,Intern,San Francisco,2023-02-07,41960,2.8,1
+EMP00446,Employee 446,HR,Mid-Level,Austin,2025-05-31,88911,3.4,0
+EMP00447,Employee 447,Marketing,Intern,New York,2023-07-22,37111,4.2,0
+EMP00448,Employee 448,Finance,Junior,Boston,2023-11-03,47277,3.6,0
+EMP00449,Employee 449,Operations,Intern,New York,2025-09-25,38142,3.3,0
+EMP00450,Employee 450,Marketing,Senior,Boston,2025-11-21,134392,4.7,0
+EMP00451,Employee 451,HR,Senior,New York,2025-01-02,93709,4.9,0
+EMP00452,Employee 452,Marketing,Senior,Austin,2024-12-09,82737,3.8,0
+EMP00453,Employee 453,HR,Intern,Austin,2023-03-03,37757,3.2,1
+EMP00454,Employee 454,Marketing,Intern,Boston,2024-09-15,46018,4.6,0
+EMP00455,Employee 455,Marketing,Mid-Level,Austin,2025-07-09,73218,4.2,0
+EMP00456,Employee 456,Engineering,Mid-Level,Boston,2025-05-04,62611,3.9,0
+EMP00457,Employee 457,Engineering,Intern,Chicago,2025-03-08,41947,4.6,0
+EMP00458,Employee 458,Marketing,Intern,Austin,2025-02-27,44769,3.1,1
+EMP00459,Employee 459,Engineering,Senior,Chicago,2024-02-26,81391,3.4,0
+EMP00460,Employee 460,Finance,Intern,Boston,2025-11-28,33164,4.8,0
+EMP00461,Employee 461,Engineering,Mid-Level,New York,2024-10-04,92565,4.9,0
+EMP00462,Employee 462,Operations,Mid-Level,San Francisco,2023-11-27,62077,3.7,0
+EMP00463,Employee 463,Operations,Intern,Boston,2023-05-20,44952,4.2,0
+EMP00464,Employee 464,Finance,Intern,Boston,2025-11-02,33305,3.5,0
+EMP00465,Employee 465,Sales,Junior,San Francisco,2023-09-01,55099,4.4,1
+EMP00466,Employee 466,HR,Mid-Level,Austin,2025-05-09,96433,4.8,0
+EMP00467,Employee 467,Engineering,Senior,Austin,2023-11-24,101475,4.5,0
+EMP00468,Employee 468,Engineering,Intern,San Francisco,2023-12-07,49229,4.6,0
+EMP00469,Employee 469,Product,Intern,Boston,2023-12-04,47499,3.8,0
+EMP00470,Employee 470,Operations,Intern,New York,2025-12-21,43249,2.6,0
+EMP00471,Employee 471,Operations,Mid-Level,Boston,2024-01-31,81937,4.7,0
+EMP00472,Employee 472,Sales,Manager,Chicago,2025-05-02,128115,3.6,0
+EMP00473,Employee 473,HR,Mid-Level,Chicago,2025-10-08,97059,3.5,1
+EMP00474,Employee 474,Product,Manager,Austin,2023-07-15,133482,3.1,0
+EMP00475,Employee 475,Marketing,Manager,New York,2024-07-10,107747,4.4,1
+EMP00476,Employee 476,Finance,Mid-Level,Austin,2023-09-09,62958,2.9,1
+EMP00477,Employee 477,Finance,Mid-Level,New York,2025-09-22,89132,4.4,0
+EMP00478,Employee 478,Finance,Intern,San Francisco,2025-10-27,35782,4.3,0
+EMP00479,Employee 479,Marketing,Mid-Level,San Francisco,2024-07-01,89717,4.8,0
+EMP00480,Employee 480,HR,Junior,Boston,2025-02-06,69276,4.0,1
+EMP00481,Employee 481,Product,Intern,Austin,2025-04-15,36386,4.5,0
+EMP00482,Employee 482,Marketing,Mid-Level,Austin,2025-08-03,84000,3.8,0
+EMP00483,Employee 483,Operations,Senior,Austin,2023-05-03,139623,2.7,0
+EMP00484,Employee 484,Marketing,Senior,Boston,2024-12-27,128814,4.2,0
+EMP00485,Employee 485,HR,Manager,Austin,2024-10-25,164954,3.6,0
+EMP00486,Employee 486,Finance,Manager,New York,2024-04-04,162320,3.2,0
+EMP00487,Employee 487,Marketing,Manager,San Francisco,2023-05-01,145900,3.4,1
+EMP00488,Employee 488,Engineering,Senior,New York,2025-10-09,106804,4.2,0
+EMP00489,Employee 489,Sales,Junior,New York,2023-11-15,59346,2.8,0
+EMP00490,Employee 490,HR,Junior,New York,2024-10-29,59387,3.6,1
+EMP00491,Employee 491,Product,Mid-Level,San Francisco,2023-02-18,90049,2.9,0
+EMP00492,Employee 492,Sales,Intern,Boston,2025-04-13,33299,3.7,0
+EMP00493,Employee 493,Sales,Senior,Austin,2024-12-13,82270,2.9,0
+EMP00494,Employee 494,Engineering,Junior,San Francisco,2025-11-11,63826,2.7,0
+EMP00495,Employee 495,Finance,Mid-Level,Austin,2023-04-21,68264,3.3,0
+EMP00496,Employee 496,Finance,Junior,Boston,2023-04-02,50163,5.0,0
+EMP00497,Employee 497,Finance,Intern,New York,2023-08-09,42805,4.2,0
+EMP00498,Employee 498,Product,Mid-Level,New York,2023-05-13,72109,3.5,0
+EMP00499,Employee 499,Engineering,Intern,Austin,2023-10-04,37419,2.7,0
+EMP00500,Employee 500,Product,Manager,Austin,2025-04-11,150315,3.6,0
