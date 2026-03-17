@@ -10,6 +10,8 @@ def generate_executive_summary(data):
 
     elif isinstance(data, pd.DataFrame):
         df = data.copy()
+        if isinstance(df.index, pd.MultiIndex):
+            df = df.reset_index()
 
     else:
         return ["No summary available."]
@@ -33,7 +35,7 @@ def generate_executive_summary(data):
     if non_numeric_cols:
         entity_col = non_numeric_cols[0]
     else:
-        df["Entity"] = df.index.astype(str)
+        df["Entity"] = [str(x) for x in df.index]
         entity_col = "Entity"
 
     df_sorted = df.sort_values(metric, ascending=False)
