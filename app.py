@@ -554,6 +554,7 @@ with tab2:
             "result": result,
             "code": code,
             "insight": insight if insight else str(result),
+            "ai_response": ai_response,
         }
         st.session_state.analysis_history.append(history_entry)
 

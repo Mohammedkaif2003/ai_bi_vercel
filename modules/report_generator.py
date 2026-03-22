@@ -164,6 +164,28 @@ def get_custom_styles():
         alignment=TA_LEFT,
     ))
 
+    styles.add(ParagraphStyle(
+        name="AIResponse",
+        fontName="Helvetica",
+        fontSize=10,
+        textColor=BRAND_DARK,
+        spaceAfter=8,
+        leading=15,
+        borderColor=BRAND_GREEN,
+        borderWidth=2,
+        borderPadding=12,
+        backColor=colors.HexColor("#F0FDF4"),
+    ))
+
+    styles.add(ParagraphStyle(
+        name="AIResponseLabel",
+        fontName="Helvetica-Bold",
+        fontSize=10,
+        textColor=BRAND_GREEN,
+        spaceBefore=8,
+        spaceAfter=4,
+    ))
+
     return styles
 
 
@@ -303,7 +325,7 @@ def generate_recommendations(dataframe):
 #  BUILD ONE QUERY SECTION
 # ═══════════════════════════════════════════════════
 
-def _build_query_section(elements, query, summary_text, dataframe, styles, chart_files, query_num=None):
+def _build_query_section(elements, query, summary_text, dataframe, styles, chart_files, query_num=None, ai_response=None):
     """Build PDF elements for a single query analysis."""
 
     # Query number badge
@@ -311,8 +333,18 @@ def _build_query_section(elements, query, summary_text, dataframe, styles, chart
         elements.append(Paragraph(f"ANALYSIS #{query_num}", styles["QueryNum"]))
 
     # User query in a styled box
-    elements.append(Paragraph(f'"{query}"', styles["QueryText"]))
+    safe_query = str(query).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    elements.append(Paragraph(f'"{safe_query}"', styles["QueryText"]))
     elements.append(Spacer(1, 8))
+
+    # ── AI Conversational Response ──
+    if ai_response and str(ai_response).strip():
+        elements.append(Paragraph("AI RESPONSE", styles["AIResponseLabel"]))
+        clean_response = str(ai_response).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        clean_response = clean_response.replace("**", "")
+        clean_response = clean_response.replace("\n", "<br/>")
+        elements.append(Paragraph(clean_response, styles["AIResponse"]))
+        elements.append(Spacer(1, 10))
 
     # ── AI Insight ──
     elements.append(Paragraph("AI BUSINESS INSIGHT", styles["SectionHeader"]))
@@ -579,7 +611,8 @@ def generate_pdf(query=None, summary_text=None, dataframe=None, charts=None, ana
                 dataframe=entry.get("result"),
                 styles=styles,
                 chart_files=chart_files,
-                query_num=i
+                query_num=i,
+                ai_response=entry.get("ai_response", "")
             )
 
     elif query is not None:
