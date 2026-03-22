@@ -17,6 +17,7 @@ from modules.auto_visualizer import auto_visualize
 from modules.auto_insights import generate_auto_insights
 from modules.kpi_engine import generate_kpis
 from modules.forecasting import forecast_revenue
+from modules.ai_conversation import generate_conversational_response, generate_error_response
 
 # Load environment variables
 load_dotenv()
@@ -351,6 +352,11 @@ with tab2:
         # Assistant message with rich content
         with st.chat_message("assistant"):
 
+            # ── Conversational AI response (shown first) ──
+            if entry.get("ai_response"):
+                st.markdown(entry["ai_response"])
+                st.divider()
+
             # Show the AI code in a collapsible
             if entry.get("code"):
                 with st.expander("📝 View AI Generated Code", expanded=False):
@@ -407,7 +413,8 @@ with tab2:
 
             # ── Simple text / error results ──
             else:
-                st.write(str(result))
+                if not entry.get("ai_response"):
+                    st.write(str(result))
 
             # Follow-up questions
             if entry.get("suggestions"):
@@ -434,12 +441,35 @@ with tab2:
             insight = ""
             summary_list = []
             chart_figs = []
+            ai_response = ""
 
             if isinstance(result, pd.DataFrame):
                 chart_data = result
             elif isinstance(result, pd.Series):
                 chart_data = result.reset_index()
                 chart_data.columns = ["Category", "Value"]
+
+            # Check if result is an error
+            is_error = isinstance(result, str) and (
+                "error" in result.lower() or "failed" in result.lower()
+                or "traceback" in result.lower()
+            )
+
+            # ── Generate conversational AI response ──
+            if is_error:
+                with st.spinner("💭 Thinking..."):
+                    ai_response = generate_error_response(query, str(result))
+            else:
+                if chart_data is not None:
+                    insight = generate_business_insight(chart_data)
+                    st.session_state.analysis_insight = insight
+                with st.spinner("💭 Preparing response..."):
+                    ai_response = generate_conversational_response(query, result, insight)
+
+            # ── Show the conversational response first ──
+            if ai_response:
+                st.markdown(ai_response)
+                st.divider()
 
             # Show the code
             with st.expander("📝 View AI Generated Code", expanded=False):
@@ -479,9 +509,7 @@ with tab2:
                     for i, fig in enumerate(chart_figs):
                         st.plotly_chart(fig, use_container_width=True, key=f"new_chart_{i}")
 
-                # Generate insight
-                insight = generate_business_insight(chart_data)
-                st.session_state.analysis_insight = insight
+                # Business insight
                 if insight:
                     st.info(f"🧠 **Business Insight:** {insight}")
 
@@ -493,7 +521,7 @@ with tab2:
                             st.write("•", line)
 
             # ── Simple text / error results ──
-            else:
+            elif not ai_response:
                 st.write(str(result))
 
             # Follow-up questions
@@ -538,6 +566,7 @@ with tab2:
             "insight": insight,
             "summary": summary_list,
             "charts": chart_figs,
+            "ai_response": ai_response,
             "suggestions": suggestions if 'suggestions' in dir() else "",
         }
         st.session_state.chat_history.append(chat_entry)
