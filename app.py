@@ -449,6 +449,13 @@ with tab2:
                 chart_data = result.reset_index()
                 chart_data.columns = ["Category", "Value"]
 
+            # Detect matplotlib Axes objects (from .hist(), .plot(), etc.)
+            # These are non-displayable — convert to a friendly message
+            result_str = str(result)
+            is_axes_result = "<Axes:" in result_str or "<AxesSubplot" in result_str
+            if is_axes_result and chart_data is None:
+                result = "The analysis generated visual charts. Please see the AI response below for a summary of the data patterns."
+
             # Check if result is an error
             is_error = isinstance(result, str) and (
                 "error" in result.lower() or "failed" in result.lower()
@@ -477,22 +484,29 @@ with tab2:
 
             # ── Dictionary results ──
             if isinstance(result, dict):
+                # Check if dict contains displayable data (not Axes objects)
+                has_displayable = False
                 for key, value in result.items():
-                    st.markdown(f"**{key}**")
                     try:
+                        if "<Axes:" in str(value) or "<AxesSubplot" in str(value):
+                            continue  # Skip Axes objects
                         df_result = pd.DataFrame(value).reset_index()
                         if df_result.shape[1] == 2:
                             df_result.columns = ["Category", "Value"]
+                        st.markdown(f"**{key}**")
                         st.dataframe(df_result, use_container_width=True)
                         fig = px.bar(
                             df_result,
                             x=df_result.columns[0],
                             y=df_result.columns[1],
-                            title=key
+                            title=str(key)
                         )
                         st.plotly_chart(fig, use_container_width=True)
+                        has_displayable = True
                     except:
-                        st.write(value)
+                        pass
+                if not has_displayable and not ai_response:
+                    st.info("The AI analyzed the data but the result format couldn't be displayed as a table. See the AI response above for insights.")
 
             # ── DataFrame / Series results ──
             elif chart_data is not None:
@@ -549,11 +563,18 @@ with tab2:
             st.session_state.report_charts = chart_figs
 
         # Save to analysis history (for PDF report)
+        # Use ai_response as fallback insight instead of raw str(result)
+        report_insight = insight if insight else (ai_response if ai_response else "Analysis completed.")
+        # Sanitize: remove any Axes object representations
+        if "<Axes:" in str(report_insight) or "<AxesSubplot" in str(report_insight):
+            report_insight = ai_response if ai_response else "Analysis completed — see AI response for details."
+
         history_entry = {
             "query": query,
-            "result": result,
+            "result": result if not is_axes_result else None,
             "code": code,
-            "insight": insight if insight else str(result),
+            "insight": report_insight,
+            "ai_response": ai_response,
         }
         st.session_state.analysis_history.append(history_entry)
 

@@ -1,6 +1,6 @@
-# 📊 AI Business Intelligence Assistant
+# 📊 AI Company Data Analyst
 
-An AI-powered business intelligence tool that lets you **upload datasets and ask questions in plain English**. Get instant data analysis, interactive charts, automated KPIs, revenue forecasting, and professional PDF reports — all powered by **Groq's LLaMA 3.3 70B** model.
+An AI-powered business intelligence tool that lets you **upload company datasets and ask questions in plain English**. Get instant data analysis, interactive charts, automated KPIs, revenue forecasting, and professional PDF reports — all powered by **Groq's LLaMA 3.3 70B** model.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B?logo=streamlit&logoColor=white)
@@ -32,6 +32,11 @@ Ask questions about your data in plain English — the AI generates Python code,
 - **Blue accent headers, gold query boxes, page numbers, confidential footer**
 - **Strategic recommendations** auto-generated from data patterns
 
+### 💬 Conversational AI Responses
+- **Natural language explanations** — AI explains results like a colleague, not a database
+- **Friendly error handling** — When analysis fails, AI suggests how to rephrase your question
+- **Smart follow-up questions** — Context-aware suggestions using actual column names and values
+
 ### 🔒 Secure Code Execution
 AI-generated code runs in a sandboxed environment with:
 - 13 forbidden keyword patterns blocked (`import`, `os.`, `subprocess`, `exec`, etc.)
@@ -50,8 +55,8 @@ AI-generated code runs in a sandboxed environment with:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Mohammedkaif2003/Mohammedkaif2003-ai_business_intelligence_assistant.git
-cd Mohammedkaif2003-ai_business_intelligence_assistant
+git clone https://github.com/AbdulWajid0/campany_data_analyst_ai.git
+cd campany_data_analyst_ai
 
 # 2. Create and activate virtual environment
 python -m venv venv
@@ -87,6 +92,7 @@ The app opens at **http://localhost:8501** 🎉
 │
 ├── modules/
 │   ├── ai_code_generator.py      # Groq AI → Python code generation
+│   ├── ai_conversation.py        # Conversational AI responses & error handling
 │   ├── code_executor.py          # Sandboxed code execution
 │   ├── data_loader.py            # CSV loading & column normalization
 │   ├── dataset_analyzer.py       # Schema detection & analysis
@@ -132,19 +138,20 @@ User uploads CSV / selects pre-loaded dataset
   Auto-Insights (auto_insights.py)
         │
         ▼
-  ┌─────────────────────────────────┐
-  │  User asks a question in chat   │
-  │                                 │
-  │  AI Code Generator (Groq API)   │
-  │     └→ Python/Pandas code       │
-  │                                 │
-  │  Sandboxed Executor             │
-  │     └→ DataFrame result         │
-  │                                 │
-  │  Auto-Visualizer → Plotly charts│
-  │  Insight Engine  → AI insights  │
-  │  Groq AI → Follow-up questions  │
-  └─────────────────────────────────┘
+  ┌──────────────────────────────────────┐
+  │  User asks a question in chat        │
+  │                                      │
+  │  AI Code Generator (Groq API)        │
+  │     └→ Python/Pandas code            │
+  │                                      │
+  │  Sandboxed Executor                  │
+  │     └→ DataFrame result              │
+  │                                      │
+  │  AI Conversation → Natural response  │
+  │  Auto-Visualizer → Plotly charts     │
+  │  Insight Engine  → AI insights       │
+  │  Groq AI → Follow-up questions       │
+  └──────────────────────────────────────┘
         │
         ▼
   Executive Report Generator → Branded PDF
@@ -247,7 +254,7 @@ If you find this project useful, consider giving it a ⭐ on GitHub!
 |---------|----------|-------------|
 | `GROQ_API_KEY` | `.env` file | Your Groq API key ([get one free](https://console.groq.com)) |
 | Model | `ai_code_generator.py` | `llama-3.3-70b-versatile` |
-| Temperature | Code gen: `0.1` / Suggestions: `0.3` | Lower = more deterministic |
+| Temperature | Code gen: `0.1` / Conversation: `0.4` | Lower = more deterministic |
 
 ---
 
@@ -289,7 +296,12 @@ The app comes with 3 pre-loaded datasets for testing:
 
 ---
 
+## 👥 Team
 
+| Name | Role | GitHub |
+|------|------|--------|
+| **Abdul Wajid** | Developer | [@AbdulWajid0](https://github.com/AbdulWajid0) |
+| **Mohammed Kaif** | Developer | [@Mohammedkaif2003](https://github.com/Mohammedkaif2003) |
 
 ---
 
