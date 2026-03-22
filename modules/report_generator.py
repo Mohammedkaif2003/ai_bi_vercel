@@ -353,6 +353,9 @@ def _build_query_section(elements, query, summary_text, dataframe, styles, chart
     # Clean summary text for XML
     clean_summary = str(summary_text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     clean_summary = clean_summary.replace("**", "")
+    # Remove any matplotlib Axes object representations
+    if "&lt;Axes:" in clean_summary or "&lt;AxesSubplot" in clean_summary or "Axes:" in str(summary_text):
+        clean_summary = "Analysis completed. See the AI Response section above for a detailed explanation."
     elements.append(Paragraph(clean_summary, styles["InsightBox"]))
     elements.append(Spacer(1, 12))
 

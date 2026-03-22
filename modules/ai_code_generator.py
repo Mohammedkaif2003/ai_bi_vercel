@@ -38,6 +38,8 @@ RULES
 8. Ensure the code always returns a pandas result if possible
 9. IMPORTANT: If using nlargest() on a DataFrame, you MUST specify the 'columns' argument (e.g., nlargest(n=3, columns='Revenue')). If using it on a Series, just pass the n value.
 10. If the question asks for predictions or forecasts over time, use the np.polyfit function since we have numpy imported as np, rather than complex ML libraries.
+11. NEVER use .hist(), .plot(), .show(), plt, or any matplotlib/seaborn visualization code. You do NOT have access to matplotlib. If asked to explain or describe charts/graphs, use .describe(), .value_counts(), or .agg() to provide the underlying data instead.
+12. If the question is vague or asks to "explain" something, provide a statistical summary using .describe() or group-level aggregations rather than trying to create visual output.
 
 EXAMPLE FORMAT
 --------------
