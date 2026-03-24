@@ -1,6 +1,6 @@
-# 📊 AI Company Data Analyst
+# 📊 AI Business Intelligence Assistant
 
-An AI-powered business intelligence tool that lets you **upload company datasets and ask questions in plain English**. Get instant data analysis, interactive charts, automated KPIs, revenue forecasting, and professional PDF reports — all powered by **Groq's LLaMA 3.3 70B** model.
+An AI-powered business intelligence tool that lets you **upload datasets and ask questions in plain English**. Get instant data analysis, interactive charts, automated KPIs, revenue forecasting, and professional PDF reports — all powered by **Groq’s LLaMA 3.3 70B** model.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B?logo=streamlit&logoColor=white)
@@ -55,8 +55,8 @@ AI-generated code runs in a sandboxed environment with:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/AbdulWajid0/campany_data_analyst_ai.git
-cd campany_data_analyst_ai
+git clone https://github.com/Mohammedkaif2003/ai_business_intelligence_assistant.git
+cd ai_business_intelligence_assistant
 
 # 2. Create and activate virtual environment
 python -m venv venv
