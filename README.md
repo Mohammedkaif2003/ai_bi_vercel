@@ -198,7 +198,6 @@ The app comes with 3 pre-loaded datasets for testing:
 ## 📄 Documentation
 
 - **[PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)** — Full technical docs: every module, function, data flow, security model
-- **[INITIAL_VS_ENHANCED.md](INITIAL_VS_ENHANCED.md)** — Detailed changelog comparing the initial repo to the enhanced version
 
 ---
 
@@ -209,15 +208,6 @@ The app comes with 3 pre-loaded datasets for testing:
 3. Commit your changes (`git commit -m "Add my feature"`)
 4. Push to the branch (`git push origin feature/my-feature`)
 5. Open a Pull Request
-
----
-
-## 👥 Team
-
-| Name | Role | GitHub |
-|------|------|--------|
-| **Abdul Wajid** | Developer | [@AbdulWajid0](https://github.com/AbdulWajid0) |
-| **Mohammed Kaif** | Developer | [@Mohammedkaif2003](https://github.com/Mohammedkaif2003) |
 
 ---
 
