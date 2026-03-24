@@ -67,7 +67,8 @@ ai_chatbat_cam_anaylz/
 │   ├── insight_engine.py           # Business insight generation
 │   ├── kpi_engine.py               # KPI extraction engine
 │   └── report_generator.py         # Professional PDF report generator
-
+│
+└── PROJECT_DOCUMENTATION.md      # Full technical documentation
 ```
 
 ---
