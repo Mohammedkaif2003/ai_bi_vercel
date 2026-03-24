@@ -2,6 +2,7 @@
 
 An enterprise-grade, AI-powered business intelligence suite that acts as an autonomous Data Analyst. It lets you **upload datasets and ask questions in plain English**. Get instant data analysis, interactive charts, automated KPIs, revenue forecasting, and professional PDF reports — all powered by **Groq’s advanced LLaMA** models.
 
+
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B?logo=streamlit&logoColor=white)
 ![Groq](https://img.shields.io/badge/Groq-LLaMA_3.3_70B-orange?logo=meta&logoColor=white)
@@ -211,6 +212,7 @@ The app comes with 3 pre-loaded datasets for testing:
 
 ---
 
+
 <div align="center">
-  <b>Built with ❤️ using Streamlit + Groq AI</b>
+  <b>Built with using Streamlit + Groq AI</b>
 </div>
