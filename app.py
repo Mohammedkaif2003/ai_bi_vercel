@@ -48,9 +48,20 @@ inject_styles(st)
 # ---------- SIDEBAR & DATASET LOADING ----------
 
 st.sidebar.markdown(f"""
-<div class="bg-slate-800 text-slate-300 p-4 rounded-xl mb-4">
-  <div class="text-white font-semibold text-lg mb-1">{APP_ICON} {APP_TITLE}</div>
-  <div class="text-slate-400 text-xs mb-4">Powered by Groq AI</div>
+<div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); padding: 24px 20px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border: 1px solid rgba(255,255,255,0.05); position: relative; overflow: hidden;">
+    <!-- Decorative glow -->
+    <div style="position: absolute; top: -50%; right: -20%; width: 120px; height: 120px; background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);"></div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+        <div style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);">
+            {APP_ICON}
+        </div>
+        <div style="font-size: 22px; font-weight: 800; background: linear-gradient(to right, #F8FAFC, #94A3B8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px;">
+            {APP_TITLE}
+        </div>
+    </div>
+    <div style="color: #64748B; font-size: 12px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; margin-left: 48px;">
+        Enterprise Data Suite
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -106,7 +117,7 @@ if selected_key:
         st.sidebar.success(f"✅ Dataset '{selected_key}' loaded successfully")
 
 if "df" not in st.session_state or st.session_state["df"] is None:
-    st.info("👆 Please select a data source in the sidebar to get started.")
+    st.info("Please select a data source in the sidebar to get started.")
     st.stop()
 
 df = st.session_state["df"]
@@ -499,8 +510,8 @@ with tab4:
             st.markdown("</div></div>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("""
-<div style="text-align:center; color:#94A3B8; font-size:12px; margin-top:2rem; padding:1rem;">
-  AI Business Intelligence Assistant v2.0 · Powered by Groq AI
+st.markdown(f"""
+<div style="text-align:center; color:#94A3B8; font-size:12px; margin-top:2rem; padding:1rem; border-top: 1px solid #E2E8F0;">
+  {APP_TITLE} v{APP_VERSION} · Powered by Groq AI
 </div>
 """, unsafe_allow_html=True)
