@@ -40,35 +40,42 @@ scikit-learn, statsmodels, joblib, groq, python-dotenv, reportlab, kaleido
 ```
 ai_chatbat_cam_anaylz/
 │
-├── app.py                          # Main Streamlit application
-├── config.py                       # App constants, layout, & branding config
-├── styles.py                       # Tailwind frontend styling injector
-├── ui_components.py                # Reusable KPI and section header blocks
-├── .env                            # Environment variables (GROQ_API_KEY)
-├── requirements.txt                # Python package dependencies
+├── .env                              # Stores API keys (GROQ_API_KEY, GOOGLE_API_KEY)
+├── .gitignore                        # Files to ignore in version control
+├── app.py                            # Main Streamlit application
+├── config.py                         # App constants, layout, & branding config
+├── requirements.txt                  # Python package dependencies
+├── styles.py                         # Custom CSS injections for the Streamlit UI
+├── ui_components.py                  # Reusable UI elements (cards, headers, chat bubbles)
+├── calc_report.py                    # Legacy/Utility helper script
+├── README.md                         # Main generic project read-me
+├── PROJECT_DOCUMENTATION.md          # In-depth technical architecture documentation
+├── INITIAL_VS_ENHANCED.md            # Document tracking UI/UX enhancement history
 │
-├── data/
+├── data/                             # Directory for local CSV datasets
 │   └── raw/
 │       ├── sales_data.csv          # Sales dataset (464 KB)
 │       ├── hr_data.csv             # HR/Employee dataset (35 KB)
 │       └── finance_data.csv        # Finance dataset (2.7 KB)
 │
-├── modules/
-│   ├── __init__.py                 # Package initializer
-│   ├── ai_code_generator.py        # AI-powered code generation via Groq
-│   ├── auto_insights.py            # Automated business insight detection
-│   ├── auto_visualizer.py          # Automatic chart generation (bar, line, pie)
-│   ├── code_executor.py            # Sandboxed Python code execution
-│   ├── data_loader.py              # Dataset loading & column normalization
-│   ├── dataset_analyzer.py         # Dataset schema analysis
-│   ├── executive_summary.py        # Executive summary bullet points
-│   ├── forecasting.py              # Revenue/sales forecasting engine
-│   ├── groq_ai.py                  # Groq API integration for suggestions
-│   ├── insight_engine.py           # Business insight generation
-│   ├── kpi_engine.py               # KPI extraction engine
-│   └── report_generator.py         # Professional PDF report generator
+├── modules/                          # CORE BACKEND: Logic & Intelligence Engines
+│   ├── __init__.py                   # Package initializer
+│   ├── ai_code_generator.py          # AI-powered code generation via Groq
+│   ├── ai_conversation.py            # Manages conversational logic & system prompts for AI answers
+│   ├── auto_insights.py              # Automated business insight detection
+│   ├── auto_visualizer.py            # Automatic chart generation (bar, line, pie)
+│   ├── code_executor.py              # Sandboxed Python code execution
+│   ├── data_loader.py                # Loading & column normalization
+│   ├── dataset_analyzer.py           # Dataset schema analysis
+│   ├── executive_summary.py          # Executive summary bullet points
+│   ├── forecasting.py                # Revenue/sales forecasting engine
+│   ├── groq_ai.py                    # Groq API integration for suggestions
+│   ├── insight_engine.py             # Business insight generation
+│   ├── kpi_engine.py                 # KPI extraction engine
+│   └── report_generator.py           # Professional PDF report generator
 │
-└── PROJECT_DOCUMENTATION.md      # Full technical documentation
+├── improvements_and_changes_report.txt   # Detailed changelog
+└── setup_commands_explained.txt          # Setup guide with explanations
 ```
 
 ---
@@ -411,7 +418,7 @@ The app uses **Groq's LLaMA 3.3 70B Versatile** model:
 | Model         | `llama-3.3-70b-versatile`  |
 | Temperature   | 0.1 (code gen) / 0.3 (suggestions) |
 | API Key       | Stored in `.env` as `GROQ_API_KEY` |
-| Fallback      | `st.secrets["GROQ_API_KEY"]` for Streamlit Cloud |
+| Fallback      | `st.secrets.get("GROQ_API_KEY", None)` for Streamlit Cloud |
 
 ---
 
