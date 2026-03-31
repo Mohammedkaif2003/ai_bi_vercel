@@ -53,8 +53,9 @@ def auto_visualize(data):
                 y=y_col,
                 color=x_col,
                 text_auto=True,
-                title=f"{y_col} by {x_col}",
-                template="plotly_white"
+                title=f"{y_col.replace('_',' ').title()} by {x_col.replace('_',' ').title()}",
+                template="plotly_white",
+                color_discrete_sequence=["#2563EB"]
             )
 
             fig_bar.update_layout(
@@ -65,7 +66,7 @@ def auto_visualize(data):
 
             charts.append(fig_bar)
 
-        except:
+        except Exception:
             pass
 
     # -------------------------------------------------
@@ -84,8 +85,9 @@ def auto_visualize(data):
                     x=col,
                     y=numeric_cols[0],
                     markers=True,
-                    title=f"{numeric_cols[0]} Trend",
-                    template="plotly_white"
+                    title=f"{numeric_cols[0].replace('_',' ').title()} Trend Over Time",
+                    template="plotly_white",
+                    color_discrete_sequence=["#2563EB"]
                 )
 
                 fig_line.update_layout(
@@ -97,7 +99,7 @@ def auto_visualize(data):
 
                 break
 
-            except:
+            except Exception:
                 pass
 
     # -------------------------------------------------
@@ -112,12 +114,13 @@ def auto_visualize(data):
                 names=x_col,
                 values=numeric_cols[0],
                 title=f"{numeric_cols[0]} Distribution",
-                template="plotly_white"
+                template="plotly_white",
+                color_discrete_sequence=px.colors.sequential.Blues
             )
 
             charts.append(fig_pie)
 
-        except:
+        except Exception:
             pass
 
-    return charts
+    return charts[:2]  # Limit to top 2 charts

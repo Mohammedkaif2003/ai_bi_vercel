@@ -10,9 +10,9 @@ def forecast_revenue(df, periods=3):
 
     result = {
         "available": False,
-        "message": "Forecasting requires a date column and a numeric metric.",
+        "message": "Forecasting requires a date-like column (e.g. Date, Order Date) and a numeric metric (e.g. Revenue or Sales).",
         "forecast_df": None,
-        "trend": None
+        "trend": None,
     }
 
     # Detect date column
@@ -32,11 +32,18 @@ def forecast_revenue(df, periods=3):
             date_col = "Year Month" if "Year Month" in df.columns else "Year_Month"
         elif "Year" in df.columns and "Month" in df.columns:
             df["_forecast_date"] = pd.to_datetime(
-                df["Year"].astype(str) + "-" + df["Month"].astype(str).str.zfill(2) + "-01"
+                df["Year"].astype(str)
+                + "-"
+                + df["Month"].astype(str).str.zfill(2)
+                + "-01"
             )
             date_col = "_forecast_date"
 
     if date_col is None:
+        result["message"] = (
+            "No suitable date column was found. "
+            "Add a column named Date / Order Date / Transaction Date, or a Year + Month combination."
+        )
         return result
 
     # Detect revenue/numeric column
@@ -52,6 +59,10 @@ def forecast_revenue(df, periods=3):
         if numeric_cols:
             metric_col = numeric_cols[0]
         else:
+            result["message"] = (
+                "No numeric metric column found for forecasting. "
+                "Include a column such as Revenue, Sales, Amount, or another numeric field."
+            )
             return result
 
     try:
@@ -60,7 +71,7 @@ def forecast_revenue(df, periods=3):
             df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
 
         # Aggregate by month
-        monthly = df.set_index(date_col).resample("M")[metric_col].sum().reset_index()
+        monthly = df.set_index(date_col).resample("ME")[metric_col].sum().reset_index()
         monthly.columns = ["Date", "Value"]
         monthly = monthly.dropna()
 

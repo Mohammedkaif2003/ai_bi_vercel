@@ -1,25 +1,25 @@
 from groq import Groq
-import os
-import streamlit as st
 from dotenv import load_dotenv
+
+from modules.app_secrets import get_secret
 
 load_dotenv()
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", None)
+# Central Groq configuration so changes are in one place
+GROQ_API_KEY = get_secret("GROQ_API_KEY")
+GROQ_MODEL_NAME = "llama-3.3-70b-versatile"
+GROQ_SUGGESTION_TEMPERATURE = 0.4
 
 
-def suggest_business_questions(query, df, schema):
-
-    client = Groq(api_key=GROQ_API_KEY)
-
-    # Build richer context
+def _build_dataset_info(query, df, schema) -> str:
+    """Create a rich textual summary of the dataset for the LLM."""
     sample_values = ""
     for col in schema.get("categorical_columns", [])[:3]:
         try:
             unique_vals = df[col].dropna().unique()[:5]
             sample_values += f"  {col}: {', '.join(str(v) for v in unique_vals)}\n"
-        except:
-            pass
+        except Exception:
+            continue
 
     dataset_info = f"""
 Dataset Overview
@@ -38,6 +38,22 @@ Categorical Columns:
 Sample Category Values:
 {sample_values}
 """
+    return dataset_info
+
+
+def suggest_business_questions(query, df, schema):
+    """
+    Use Groq to generate follow‑up business questions.
+
+    This is intentionally kept as a separate, optional call because it can
+    add noticeable latency and token usage.
+    """
+    if not GROQ_API_KEY:
+        return "AI suggestion failed: Groq API key is not configured."
+
+    client = Groq(api_key=GROQ_API_KEY)
+
+    dataset_info = _build_dataset_info(query, df, schema)
 
     prompt = f"""You are a senior business intelligence analyst advising an executive.
 
@@ -64,16 +80,24 @@ RULES:
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=GROQ_MODEL_NAME,
             messages=[
-                {"role": "system", "content": "You are a senior business analyst. Generate specific, actionable follow-up questions using actual column names from the dataset."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a senior business analyst. Generate specific, "
+                        "actionable follow-up questions using actual column names "
+                        "from the dataset."
+                    ),
+                },
+                {"role": "user", "content": prompt},
             ],
-            temperature=0.4,
-            max_tokens=400
+            temperature=GROQ_SUGGESTION_TEMPERATURE,
+            max_tokens=400,
         )
 
         return response.choices[0].message.content
 
     except Exception as e:
         return f"AI suggestion failed: {str(e)}"
+

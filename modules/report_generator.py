@@ -1,8 +1,7 @@
 try:
     import kaleido
 except ImportError:
-    import subprocess, sys
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "kaleido"])
+    kaleido = None
 
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, Image,
@@ -467,7 +466,7 @@ def generate_recommendations(dataframe):
                     recommendations.append(
                         f"Revenue concentration risk: <b>{top}</b> accounts for {top_share:.0f}% of total. Consider diversification."
                     )
-        except:
+        except Exception:
             pass
 
     if numeric_cols:
@@ -481,7 +480,7 @@ def generate_recommendations(dataframe):
                     recommendations.append(
                         f"High variability in <b>{metric}</b> (CV={cv:.0f}%). Investigate root causes and prioritize stabilization."
                     )
-        except:
+        except Exception:
             pass
 
     if not recommendations:

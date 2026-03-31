@@ -1,218 +1,192 @@
-# ⚡ Apex Analytics — Enterprise Data Suite
+# Apex Analytics
 
-An enterprise-grade, AI-powered business intelligence suite that acts as an autonomous Data Analyst. It lets you **upload datasets and ask questions in plain English**. Get instant data analysis, interactive charts, automated KPIs, revenue forecasting, and professional PDF reports — all powered by **Groq’s advanced LLaMA** models.
+AI-powered business intelligence assistant built with Streamlit, Pandas, Plotly, and Groq. The app turns uploaded CSV data into KPI cards, quick insights, natural-language analysis, forecasts, and exportable executive reports.
 
+## What This Project Does
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B?logo=streamlit&logoColor=white)
-![Groq](https://img.shields.io/badge/Groq-LLaMA_3.3_70B-orange?logo=meta&logoColor=white)
+`Apex Analytics` is designed for analysts, founders, and business teams who want to explore tabular data without writing SQL or Python for every question.
 
+Core workflows:
 
----
+- Upload a CSV or choose a bundled sample dataset
+- Review KPIs, statistics, and auto-generated insights
+- Ask business questions in plain English
+- Get tables, charts, summaries, and follow-up suggestions
+- Run a simple revenue or sales forecast
+- Export a multi-analysis PDF report
 
-## ✨ Features
+## Why It Stands Out
 
-### 🤖 AI-Powered Natural Language Analysis
-Ask questions about your data in plain English — the AI generates Python code, executes it securely, and returns results with charts and insights.
+- Strong dark-mode dashboard UI with polished interactions
+- Plain-English data analysis powered by Groq-backed code generation
+- Built-in business insight generation, not just raw chart output
+- Forecasting and PDF reporting included in the same product flow
+- Sample datasets and tests included for quick evaluation
 
-> *"Show total revenue by region"* → Data table + bar chart + business insight + follow-up suggestions
+## Feature Overview
 
-### 📊 Interactive Dashboard
-- **Data Overview** — Dataset preview, column details, descriptive statistics
-- **KPI Cards** — Auto-extracted Key Performance Indicators (Total, Average, Max, Min)
-- **Auto-Insights** — Trend detection, top/bottom performers, quarter-over-quarter comparisons
+### Dashboard
 
-### 🔮 Revenue Forecasting
-- Linear trend projection with confidence intervals
-- Configurable forecast periods (1–12 months)
-- Combined historical + forecast visualization
+- KPI cards with trend treatment and dataset-aware quick insights
+- Dataset preview, column details, descriptive statistics
+- Hero chart for the loaded dataset when suitable dimensions are available
+- Search, sort, and filter controls for table views
 
-### 📑 Professional PDF Reports
-- **Multi-query reports** — All your analysis queries compiled into one document
-- **Branded design** — Cover page, table of contents, styled data tables, charts
-- **Blue accent headers, gold query boxes, page numbers, confidential footer**
-- **Strategic recommendations** auto-generated from data patterns
+### AI Analyst
 
-### 💬 Conversational AI Responses
-- **Natural language explanations** — AI explains results like a colleague, not a database
-- **Friendly error handling** — When analysis fails, AI suggests how to rephrase your question
-- **Smart follow-up questions** — Context-aware suggestions using actual column names and values
+- Chat-style interface for dataset questions
+- Structured AI responses, summaries, and follow-up prompts
+- Auto-generated charts when the result shape supports visualization
+- Guardrails to reject irrelevant questions and handle failures cleanly
 
-### 🔒 Secure Code Execution
-AI-generated code runs in a sandboxed environment with:
-- 13 forbidden keyword patterns blocked (`import`, `os.`, `subprocess`, `exec`, etc.)
-- Import statements auto-stripped before execution
-- Only `pandas` and `numpy` available in scope
+### Forecasting
 
----
+- Trend projection from date-like and numeric columns
+- Forecast table, confidence bounds, and chart output
+- Works best with monthly or date-driven revenue and sales data
 
-## 🚀 Quick Start
+### Reports
 
-### Prerequisites
-- Python 3.10+
-- A free [Groq API Key](https://console.groq.com)
+- Export multiple saved analyses into a single PDF
+- Includes insights, tables, and charts from prior AI sessions
 
-### Installation
+## Tech Stack
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/Mohammedkaif2003/ai_business_intelligence_assistant.git
-cd ai_business_intelligence_assistant
+- Python
+- Streamlit
+- Pandas
+- Plotly
+- Groq API
+- ReportLab
+- NumPy
+- scikit-learn
+- statsmodels
 
-# 2. Create and activate virtual environment
+## Project Structure
+
+```text
+.
+|-- app.py
+|-- config.py
+|-- requirements.txt
+|-- styles.py
+|-- ui_components.py
+|-- PROJECT_DOCUMENTATION.md
+|-- data/
+|   `-- raw/
+|       |-- finance_data.csv
+|       |-- hr_data.csv
+|       `-- sales_data.csv
+|-- modules/
+|   |-- ai_code_generator.py
+|   |-- ai_conversation.py
+|   |-- app_secrets.py
+|   |-- auto_insights.py
+|   |-- auto_visualizer.py
+|   |-- code_executor.py
+|   |-- data_loader.py
+|   |-- dataset_analyzer.py
+|   |-- executive_summary.py
+|   |-- forecasting.py
+|   |-- groq_ai.py
+|   |-- insight_engine.py
+|   |-- kpi_engine.py
+|   |-- query_utils.py
+|   |-- report_generator.py
+|   `-- text_utils.py
+`-- tests/
+    |-- test_auto_insights.py
+    |-- test_forecasting.py
+    |-- test_kpi_engine.py
+    `-- test_query_utils.py
+```
+
+## Quick Start
+
+### 1. Create a virtual environment
+
+```powershell
 python -m venv venv
-venv\Scripts\Activate.ps1          # Windows PowerShell
-# source venv/bin/activate          # Mac/Linux
+venv\Scripts\Activate.ps1
+```
 
-# 3. Install dependencies
+### 2. Install dependencies
+
+```powershell
 pip install -r requirements.txt
+```
 
-# 4. Set up your API key
-# Create a .env file in the project root:
-echo GROQ_API_KEY=your_key_here > .env
+### 3. Add your Groq API key
 
-# 5. Run the application
+Create a `.env` file in the project root:
+
+```env
+GROQ_API_KEY=your_groq_key_here
+```
+
+### 4. Run the app
+
+```powershell
 streamlit run app.py
 ```
 
-The app opens at **http://localhost:8501** 🎉
+Open `http://localhost:8501`.
 
----
+## Demo Flow
 
-## 📁 Project Structure
+Recommended walkthrough for a recruiter, teammate, or portfolio review:
 
-```
-├── app.py                        # Main Streamlit application route
-├── config.py                     # App constants, layout, & branding config
-├── styles.py                     # Tailwind frontend styling injector
-├── ui_components.py              # Reusable KPI and section header blocks
-├── requirements.txt              # Python dependencies
-├── .env                          # API key (not committed)
-│
-├── data/raw/                     # Pre-loaded sample datasets
-│   ├── sales_data.csv            # Sales transactions
-│   ├── hr_data.csv               # HR employee data
-│   └── finance_data.csv          # Financial records
-│
-├── modules/
-│   ├── ai_code_generator.py      # Groq AI → Python code generation
-│   ├── ai_conversation.py        # Conversational AI responses & error handling
-│   ├── code_executor.py          # Sandboxed code execution
-│   ├── data_loader.py            # CSV loading & column normalization
-│   ├── dataset_analyzer.py       # Schema detection & analysis
-│   ├── auto_visualizer.py        # Auto chart generation (bar, line, pie)
-│   ├── auto_insights.py          # Automated business insights
-│   ├── insight_engine.py         # Query-specific business insights
-│   ├── executive_summary.py      # Executive summary bullets
-│   ├── kpi_engine.py             # KPI extraction (with HR/Sales specials)
-│   ├── forecasting.py            # Linear trend forecasting
-│   ├── groq_ai.py                # Follow-up question suggestions
-│   └── report_generator.py       # Professional PDF report generator
-│
-└── PROJECT_DOCUMENTATION.md      # Full technical documentation
+1. Load `Sales Data` from the sidebar.
+2. Show the KPI row, quick insights panel, and hero chart.
+3. Open `AI Analyst` and ask:
+   - `Top 5 regions by revenue`
+   - `Revenue trend`
+   - `Profit by category`
+4. Open `Forecasting` and generate a 6-month forecast.
+5. Open `Reports` and generate the PDF.
+
+## Sample Datasets
+
+- `sales_data.csv`: revenue-style business analytics
+- `hr_data.csv`: workforce and attrition analytics
+- `finance_data.csv`: budget and variance analysis
+
+## Testing
+
+Run the automated tests from the project root:
+
+```powershell
+python -m pytest -q
 ```
 
----
+Current coverage focuses on:
 
-## 🛠️ How It Works
+- KPI generation
+- auto-insight generation
+- forecasting behavior
+- dataset query routing helpers
 
-```
-User uploads CSV / selects pre-loaded dataset
-        │
-        ▼
-  Column Normalization (data_loader.py)
-  Schema Analysis (dataset_analyzer.py)
-  Auto-KPIs (kpi_engine.py)
-  Auto-Insights (auto_insights.py)
-        │
-        ▼
-  ┌──────────────────────────────────────┐
-  │  User asks a question in chat        │
-  │                                      │
-  │  AI Code Generator (Groq API)        │
-  │     └→ Python/Pandas code            │
-  │                                      │
-  │  Sandboxed Executor                  │
-  │     └→ DataFrame result              │
-  │                                      │
-  │  AI Conversation → Natural response  │
-  │  Auto-Visualizer → Plotly charts     │
-  │  Insight Engine  → AI insights       │
-  │  Groq AI → Follow-up questions       │
-  └──────────────────────────────────────┘
-        │
-        ▼
-  Executive Report Generator → Branded PDF
-```
+## Security and Guardrails
 
----
+- API keys are read from environment variables or `.env`
+- AI-generated code is filtered before execution
+- Irrelevant questions are rejected before code generation
+- Result rendering falls back safely for unsupported outputs
 
-## 📦 Dependencies
+## Known Limitations
 
-| Package | Purpose |
-|---------|---------|
-| `streamlit` | Web application framework |
-| `pandas` | Data manipulation & analysis |
-| `numpy` | Numerical computing |
-| `plotly` | Interactive visualizations |
-| `kaleido` | High-quality Plotly to PNG exporting for PDFs |
-| `groq` | Groq API client (LLaMA Models) |
-| `reportlab` | Professional PDF generation |
-| `python-dotenv` | Environment variable management |
-| `scikit-learn` | Machine learning utilities |
-| `statsmodels` | Statistical models |
-| `seaborn` | Statistical visualization |
+- Forecasting is intentionally simple and trend-based, not a full forecasting pipeline
+- AI quality depends on dataset cleanliness and question phrasing
+- PDF output is optimized for summary reporting, not raw data export
+- Code execution is guarded, but this is still a local prototype application
 
----
+## Recommended Next Improvements
 
-## 🔧 Configuration
+- Split `app.py` into page-level feature modules
+- Expand tests around report generation and data loading
+- Add screenshots or a GIF demo to the repository
+- Add deployment instructions for Streamlit Community Cloud or Render
 
-| Setting | Location | Description |
-|---------|----------|-------------|
-| `GROQ_API_KEY` | `.env` file | Your Groq API key ([get one free](https://console.groq.com)) |
-| Model | `ai_code_generator.py` | `llama-3.3-70b-versatile` |
-| Temperature | Code gen: `0.1` / Conversation: `0.4` | Lower = more deterministic |
+## Documentation
 
----
-
-## 📋 Sample Datasets
-
-The app comes with 3 pre-loaded datasets for testing:
-
-| Dataset | Records | Use Case |
-|---------|---------|----------|
-| **Sales Data** | ~5,000+ rows | Revenue analysis, product performance, regional trends |
-| **HR Data** | ~1,470 rows | Employee attrition, department analytics, satisfaction |
-| **Finance Data** | ~50 rows | Financial metrics, budget analysis |
-
----
-
-## 🔐 Security
-
-- **No arbitrary code execution** — AI output is filtered through 13 forbidden patterns
-- **Import stripping** — `import` and `from` lines removed before execution
-- **Sandboxed scope** — Only `pandas` and `numpy` available
-- **API keys** stored in `.env` (never committed via `.gitignore`)
-
----
-
-## 📄 Documentation
-
-- **[PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)** — Full technical docs: every module, function, data flow, security model
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Commit your changes (`git commit -m "Add my feature"`)
-4. Push to the branch (`git push origin feature/my-feature`)
-5. Open a Pull Request
-
----
-
-
-<div align="center">
-  <b>Built with using Streamlit + Groq AI</b>
-</div>
+See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) for the full technical walkthrough.

@@ -1,32 +1,73 @@
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import ast
+
+FORBIDDEN_PATTERNS = [
+    "import ",
+    "os.",
+    "sys.",
+    "subprocess",
+    "open(",
+    "__",
+    "eval(",
+    "exec(",
+    "write(",
+    "read(",
+    "shutil",
+    "pathlib",
+    "socket",
+    "requests",
+    "http",
+]
+
+
+class SafeCodeValidator(ast.NodeVisitor):
+    BLOCKED_NAMES = {
+        "__import__", "eval", "exec", "open", "compile", "globals", "locals",
+        "vars", "input", "help", "dir", "getattr", "setattr", "delattr"
+    }
+    BLOCKED_ATTRS = {
+        "__class__", "__dict__", "__bases__", "__subclasses__", "__globals__",
+        "__code__", "__closure__", "__func__", "__self__", "__module__"
+    }
+    ALLOWED_NODES = (
+        ast.Module, ast.Assign, ast.Expr, ast.Load, ast.Store, ast.Name, ast.Constant,
+        ast.List, ast.Tuple, ast.Set, ast.Dict, ast.Subscript, ast.Slice,
+        ast.BinOp, ast.UnaryOp, ast.BoolOp, ast.Compare, ast.Call, ast.Attribute,
+        ast.keyword, ast.IfExp, ast.ListComp, ast.DictComp, ast.SetComp,
+        ast.GeneratorExp, ast.comprehension, ast.For, ast.If, ast.Pass,
+        ast.And, ast.Or, ast.Not, ast.Eq, ast.NotEq, ast.Lt, ast.LtE,
+        ast.Gt, ast.GtE, ast.In, ast.NotIn, ast.Is, ast.IsNot, ast.Add,
+        ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow,
+        ast.USub, ast.UAdd
+    )
+
+    def generic_visit(self, node):
+        if not isinstance(node, self.ALLOWED_NODES):
+            raise ValueError(f"Unsupported code pattern: {type(node).__name__}")
+        super().generic_visit(node)
+
+    def visit_Name(self, node):
+        if node.id in self.BLOCKED_NAMES:
+            raise ValueError(f"Unsafe name detected: {node.id}")
+        super().generic_visit(node)
+
+    def visit_Attribute(self, node):
+        if node.attr in self.BLOCKED_ATTRS or node.attr.startswith("__"):
+            raise ValueError(f"Unsafe attribute detected: {node.attr}")
+        super().generic_visit(node)
+
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name) and node.func.id in self.BLOCKED_NAMES:
+            raise ValueError(f"Unsafe call detected: {node.func.id}")
+        super().generic_visit(node)
 
 
 def execute_code(code, df):
-
-    # Block unsafe operations
-    forbidden = [
-        "import ",
-        "os.",
-        "sys.",
-        "subprocess",
-        "open(",
-        "__",
-        "eval(",
-        "exec(",
-        "write(",
-        "read(",
-        "shutil",
-        "pathlib",
-        "socket",
-        "requests",
-        "http",
-    ]
-
-    for word in forbidden:
-        if word in code:
-            return f"Unsafe code detected: {word}"
+    validation_result = validate_generated_code(code)
+    if isinstance(validation_result, str):
+        return validation_result
 
     # Provide pandas and numpy in the execution scope
     # so AI-generated code like df.groupby().agg() works correctly
@@ -39,9 +80,14 @@ def execute_code(code, df):
     local_vars = {"df": df}
 
     try:
+        tree = validation_result
 
         # Execute generated code
-        exec(code, global_vars, local_vars)
+        exec(
+            compile(tree, "<analysis>", "exec"),
+            {"__builtins__": {}, **global_vars},
+            local_vars
+        )
 
         # Extract result safely
         result = local_vars.get("result", None)
@@ -57,3 +103,16 @@ def execute_code(code, df):
 
     except Exception as e:
         return f"Code execution error: {str(e)}"
+
+
+def validate_generated_code(code):
+    for word in FORBIDDEN_PATTERNS:
+        if word in code:
+            return f"Unsafe code detected: {word}"
+
+    try:
+        tree = ast.parse(code, mode="exec")
+        SafeCodeValidator().visit(tree)
+        return tree
+    except Exception as e:
+        return f"Unsafe code detected: {str(e)}"

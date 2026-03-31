@@ -36,7 +36,7 @@ def normalize_columns(df):
     if "Date" in df.columns:
         try:
             df["Date"] = pd.to_datetime(df["Date"])
-        except:
+        except (TypeError, ValueError):
             pass
 
     return df

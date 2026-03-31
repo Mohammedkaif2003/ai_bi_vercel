@@ -2,77 +2,76 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 import pandas as pd
+from modules.app_secrets import get_secret
 
 load_dotenv()
+import re
+from html import unescape
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", None)
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY", None)
+def sanitize_ai_output(text: str) -> str:
+    if not text:
+        return ""
+
+    # Convert HTML entities
+    text = unescape(str(text))
+
+    # Remove ALL HTML tags
+    text = re.sub(r'</?[^>]+>', '', text)
+
+    # Remove weird leftover formatting
+    text = text.replace("```", "")
+
+    return text.strip()
+GROQ_API_KEY = get_secret("GROQ_API_KEY")
+GOOGLE_API_KEY = get_secret("GOOGLE_API_KEY")
 
 # ═══════════════════════════════════════════════════
 #  SENIOR DATA ANALYST SYSTEM PROMPT
 # ═══════════════════════════════════════════════════
 
-ANALYST_SYSTEM_PROMPT = """You are a senior Data Analyst and BI Engineer.
+ANALYST_SYSTEM_PROMPT = """You are a Senior Business Intelligence Analyst.
 
-Your task is to generate a HIGH-QUALITY, INDUSTRY-LEVEL analytics report from a CSV dataset.
-DO NOT produce generic AI summaries. Your output must be precise, critical, and data-driven.
-
-----------------------------------------
-🔍 1. DATA VALIDATION (MANDATORY)
-----------------------------------------
-- Inspect dataset structure
-- Identify missing values, ambiguous columns (e.g., 'Amount'), and data inconsistencies
-- Clearly state if an 'Amount' column indicates Revenue, Profit, or is Unknown
-- If the column's meaning is unclear → DO NOT assume
-- If dataset is incomplete → explicitly say so
+You MUST strictly follow the output format below.
 
 ----------------------------------------
-📊 2. CORRECT ANALYSIS REQUIREMENTS
+OUTPUT FORMAT (MANDATORY)
 ----------------------------------------
-A. Category Analysis
-- Aggregate by category
-- Rank categories correctly
-- Calculate % contribution
-- Identify concentration risk
 
-B. Top 10% Products (STRICT)
-- Compute actual percentile (90th percentile)
-- Define threshold clearly
-- Filter products ABOVE threshold
-- Do NOT just list top rows
+EXECUTIVE INSIGHT:
+- Point 1
+- Point 2
 
-----------------------------------------
-📈 3. VISUALIZATION RULES
-----------------------------------------
-- Specify meaningful axes when referencing charts (e.g., "Category vs Revenue")
-- NO "index vs index"
-- Ensure proper labels, correct scaling, and clean alignment are recommended
+KEY FINDINGS:
+- Point 1
+- Point 2
 
-----------------------------------------
-🧠 4. ANALYTICAL THINKING
-----------------------------------------
-For each analysis, include:
-A. Data Validation
-B. Key Findings
-C. What Cannot Be Concluded
-D. Business Interpretation
-E. Risks (e.g., concentration risk)
-F. Recommendations (ONLY if justified)
+BUSINESS IMPACT:
+- Point 1
+- Point 2
+
+LIMITATIONS:
+- Only if necessary (1–2 points)
+
+RECOMMENDATIONS:
+- Only if supported by data
 
 ----------------------------------------
-⚠️ 5. STRICT RULES
+STRICT RULES
 ----------------------------------------
-- DO NOT confuse revenue and profit
-- DO NOT assume missing data
-- DO NOT generate fake insights
-- DO NOT recommend discontinuation without margin/context
 
-----------------------------------------
-📦 6. OUTPUT FORMAT
-----------------------------------------
-Respond in a clean, executive style structure. Use highly professional language avoiding redundant filler such as "Based on the data..."
+- ALWAYS include ALL sections
+- NEVER skip any section
+- Use ONLY bullet points
+- DO NOT write paragraphs
+- DO NOT change section names
+- DO NOT add extra sections
+- Keep it concise and data-driven
+
+IMPORTANT:
+- Do NOT return HTML tags (no <div>, <span>, etc.)
+- Return only clean plain text or markdown
+- Use bullet points instead of HTML formatting
 """
-
 
 def _build_data_context(result, insight=""):
     """Build a rich data summary for the AI to analyze."""
@@ -106,13 +105,22 @@ Name: {result.name}
     return data_summary
 
 
-def generate_conversational_response(query, result, insight=""):
+def generate_conversational_response(query, result, insight="", df=None):
     """
     Generate a professional, rigorous AI response using Google Gemini
     (primary) with Groq LLaMA as fallback.
     """
 
+    # 🔹 Build data summary (with optional dataset context)
     data_summary = _build_data_context(result, insight)
+
+    # 🔹 Add dataset preview if available (FIX)
+    if df is not None:
+        try:
+            df_preview = df.head(10).to_string()
+            data_summary += f"\n\nFull Dataset Preview:\n{df_preview}"
+        except Exception:
+            pass
 
     prompt = f"""The user asked: "{query}"
 
@@ -121,7 +129,7 @@ Here is the analysis result:
 
 Analyze this data using your senior analyst framework. Be specific to THIS data — no generic responses."""
 
-    # Try Google Gemini first (deeper analysis capability)
+    # 🔹 Try Google Gemini first
     if GOOGLE_API_KEY:
         try:
             import google.generativeai as genai
@@ -134,15 +142,15 @@ Analyze this data using your senior analyst framework. Be specific to THIS data 
                 prompt,
                 generation_config=genai.types.GenerationConfig(
                     temperature=0.3,
-                    max_output_tokens=600
+                    max_output_tokens=350
                 )
             )
             if response and response.text:
-                return response.text.strip()
-        except Exception as e:
-            pass  # Fall through to Groq
+                return sanitize_ai_output(response.text)
+        except Exception:
+            pass  # fallback
 
-    # Fallback: Groq LLaMA
+    # 🔹 Fallback: Groq
     if GROQ_API_KEY:
         try:
             from groq import Groq
@@ -156,13 +164,24 @@ Analyze this data using your senior analyst framework. Be specific to THIS data 
                 temperature=0.3,
                 max_tokens=600
             )
-            return response.choices[0].message.content.strip()
+            return sanitize_ai_output(response.choices[0].message.content)
         except Exception:
             pass
 
-    return ""
+    return """EXECUTIVE INSIGHT
+    - Unable to generate AI response for this query.
 
+    KEY FINDINGS
+    - The system could not process the result properly.
 
+    BUSINESS IMPACT
+    - No actionable insights available.
+
+    LIMITATIONS
+    - This may be due to insufficient data or unclear query.
+
+    RECOMMENDATIONS
+    - Try rephrasing your question or selecting specific columns."""
 def generate_greeting(dataset_name="", row_count=0, col_count=0):
     """Generate a professional greeting when the user first loads a dataset."""
 
@@ -215,7 +234,6 @@ Keep it helpful and direct. Under 60 words."""
             return response.choices[0].message.content.strip()
         except Exception:
             pass
-
     return (
         f"I had some trouble analyzing that. Could you try "
         f"rephrasing your question? For example, try asking about "
