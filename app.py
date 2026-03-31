@@ -52,7 +52,7 @@ from modules.app_views import (
     render_chat_history_entry,
     render_dataframe_result,
     render_dict_result,
-    render_follow_up_buttons,
+    render_follow_up_section,
     render_quick_prompt_buttons,
 )
 # Load environment variables
@@ -690,6 +690,10 @@ with tab2:
                 with st.expander("Executive Summary", expanded=False):
                     for line in summary_list:
                         st.write("-", line)
+                if not query_rejected:
+                    with st.spinner("Generating follow-up questions..."):
+                        suggestions = suggest_business_questions(query, df, schema)
+                    render_follow_up_section(suggestions, f"live_suggestion_{hash(query)}")
             # 🚨 REMOVE ANY HTML COMPLETELY
             import re
             clean_response = re.sub(r'<[^>]+>', '', clean_response)
@@ -744,14 +748,6 @@ with tab2:
                 st.markdown('<div class="glass-card" style="margin-bottom: 16px; padding: 16px;">', unsafe_allow_html=True)
                 st.write(str(result))
                 st.markdown('</div>', unsafe_allow_html=True)
-
-        if not query_rejected:
-            with st.expander("Suggested Follow-Up Questions", expanded=False):
-                if st.button("Generate follow-up ideas", key=f"suggest_btn_{hash(query)}", use_container_width=True):
-                    with st.spinner("Generating follow-up questions..."):
-                        suggestions = suggest_business_questions(query, df, schema)
-                if suggestions:
-                    render_follow_up_buttons(suggestions, f"live_suggestion_{hash(query)}")
 
         st.session_state.messages.append({"role": "user", "content": query})
         if isinstance(result, pd.DataFrame):

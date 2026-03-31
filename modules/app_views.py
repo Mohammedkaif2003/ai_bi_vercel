@@ -138,6 +138,14 @@ def render_follow_up_buttons(raw_suggestions: str, key_prefix: str):
         st.caption("No follow-up questions available.")
 
 
+def render_follow_up_section(raw_suggestions: str, key_prefix: str):
+    if not raw_suggestions:
+        return
+
+    with st.expander("Suggested Follow-Up Questions", expanded=False):
+        render_follow_up_buttons(raw_suggestions, key_prefix)
+
+
 def render_chat_history_entry(entry: dict):
     render_user_bubble(entry["query"])
 
@@ -184,5 +192,4 @@ def render_chat_history_entry(entry: dict):
                 st.write("-", line)
 
     if entry.get("suggestions"):
-        with st.expander("Suggested Follow-Up Questions", expanded=False):
-            render_follow_up_buttons(entry["suggestions"], f"suggest_{id(entry)}")
+        render_follow_up_section(entry["suggestions"], f"suggest_{id(entry)}")
