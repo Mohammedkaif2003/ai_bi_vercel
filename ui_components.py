@@ -6,11 +6,10 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-def build_graph_follow_up_suggestions(payload):
-    return []
-
-def chart_download_bytes(payload):
-    return b""
+from modules.auto_visualizer import (
+    build_graph_follow_up_suggestions,
+    chart_download_bytes,
+)
 
 
 def clean_text(text: str) -> str:

@@ -875,42 +875,6 @@ code span {
         grid-template-columns: 1fr;
     }
 }
-
-/* User-requested Awesome Animations */
-@keyframes floatLoop {
-    0% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-    100% { transform: translateY(0); }
-}
-
-@keyframes pulseGlow {
-    0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
-    70% { box-shadow: 0 0 0 12px rgba(79, 70, 229, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
-}
-
-@keyframes slideInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-float {
-    animation: floatLoop 6s ease-in-out infinite;
-}
-
-.animate-pulse-glow {
-    animation: pulseGlow 2s infinite;
-}
-
-.animate-slide {
-    animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
 </style>
 """
 

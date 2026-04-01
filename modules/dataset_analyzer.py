@@ -26,7 +26,7 @@ def analyze_dataset(df):
         try:
             value = df[col].dropna().iloc[0]
             examples[col] = str(value)
-        except:
+        except (IndexError, KeyError, TypeError, ValueError):
             examples[col] = "N/A"
 
     info["examples"] = examples

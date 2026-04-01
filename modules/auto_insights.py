@@ -23,14 +23,14 @@ def generate_auto_insights(df):
         share = (grouped.iloc[0] / grouped.sum()) * 100
 
         insights.append(
-            f"🏆 {top} contributes {share:.1f}% of total {metric}."
+            f"{top} contributes {share:.1f}% of total {metric}."
         )
 
         # Bottom performer
         if len(grouped) > 1:
             bottom = grouped.index[-1]
             insights.append(
-                f"📉 {bottom} is the lowest performer in {metric}."
+                f"{bottom} has the lowest contribution in {metric}."
             )
 
     # ---------- MAX / MIN VALUE ----------
@@ -43,11 +43,11 @@ def generate_auto_insights(df):
         avg_value = df[metric].mean()
 
         insights.append(
-            f"📈 Highest {metric} observed is {max_value:,.0f}."
+            f"Highest {metric} observed is {max_value:,.0f}."
         )
 
         insights.append(
-            f"📊 Average {metric} is {avg_value:,.0f} (range: {min_value:,.0f} to {max_value:,.0f})."
+            f"{metric} averages {avg_value:,.0f}, ranging from {min_value:,.0f} to {max_value:,.0f}."
         )
 
     # ---------- MISSING DATA CHECK ----------
@@ -81,9 +81,9 @@ def generate_auto_insights(df):
                     change_pct = ((last_q - prev_q) / prev_q) * 100
                     direction = "increased" if change_pct > 0 else "decreased"
                     insights.append(
-                        f"📊 {revenue_col} {direction} by {abs(change_pct):.1f}% compared to the previous quarter."
+                        f"{revenue_col} {direction} by {abs(change_pct):.1f}% compared to the previous quarter."
                     )
-        except:
+        except Exception:
             pass
 
     # ---------- TREND DETECTION ----------
@@ -100,10 +100,10 @@ def generate_auto_insights(df):
                 trend = df.sort_values(col)[metric].diff().mean()
 
                 if trend > 0:
-                    insights.append("📈 Overall trend appears to be increasing.")
+                    insights.append("📈 Overall trend shows an increasing trend.")
                 elif trend < 0:
-                    insights.append("📉 Overall trend appears to be declining.")
-            except:
+                    insights.append("📉 Overall trend shows the decreasing trend.")
+            except Exception:
                 pass
 
             break
@@ -113,7 +113,7 @@ def generate_auto_insights(df):
         for cat in cat_cols[:2]:
             count = df[cat].nunique()
             insights.append(
-                f"🏷 Dataset contains {count} unique {cat} values."
+                f"The dataset includes {count} unique {cat} values."
             )
 
     return insights

@@ -47,12 +47,12 @@ def generate_business_insight(data):
 
     # ---------------- TOP PERFORMER ----------------
     insights.append(
-        f"🏆 Top performer: **{top_row[entity_col]}** with {top_row[metric]:,.0f}."
+        f"Highest contributor: **{top_row[entity_col]} leads with {top_row[metric]:,.0f}."
     )
 
     # ---------------- LOWEST PERFORMER ----------------
     insights.append(
-        f"📉 Lowest performer: **{bottom_row[entity_col]}** with {bottom_row[metric]:,.0f}."
+        f"Lowest contributor: **{bottom_row[entity_col]}** with {bottom_row[metric]:,.0f}."
     )
 
     # ---------------- CONTRIBUTION ANALYSIS ----------------
@@ -63,12 +63,12 @@ def generate_business_insight(data):
 
         if share > 50:
             insights.append(
-                f"⚠ High concentration risk: top entity contributes {share:.1f}% of total."
+                f" High concentration risk: top entity contributes {share:.1f}% of total."
             )
 
         elif share > 35:
             insights.append(
-                f"⚠ Moderate dependency detected: top entity contributes {share:.1f}%."
+                f" Moderate dependency detected: top entity contributes {share:.1f}%."
             )
 
     # ---------------- PERFORMANCE GAP ----------------
@@ -92,13 +92,13 @@ def generate_business_insight(data):
                 trend = df.sort_values(col)[metric].diff().mean()
 
                 if trend > 0:
-                    insights.append("📈 Overall trend appears to be increasing.")
+                    insights.append("Overall trend shows an increase.")
 
                 elif trend < 0:
-                    insights.append("📉 Overall trend appears to be declining.")
-            except:
+                    insights.append("Overall trend shows a decline.")
+            except Exception:
                 pass
 
             break
 
-    return " ".join(insights)
+    return "\n• " + "\n• ".join(insights)

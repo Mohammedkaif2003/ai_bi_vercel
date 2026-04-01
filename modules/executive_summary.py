@@ -44,11 +44,11 @@ def generate_executive_summary(data):
     bottom = df_sorted.iloc[-1]
 
     summary.append(
-        f"Top performer is {top[entity_col]} with value {top[metric]:,.0f}."
+        f"Highest contributor {top[entity_col]} with  {top[metric]:,.0f}."
     )
 
     summary.append(
-        f"Lowest performer is {bottom[entity_col]} with value {bottom[metric]:,.0f}."
+        f"Lowest contributor {bottom[entity_col]} with  {bottom[metric]:,.0f}."
     )
 
     total = df[metric].sum()
@@ -58,11 +58,11 @@ def generate_executive_summary(data):
         contribution = (top[metric] / total) * 100
 
         summary.append(
-            f"{top[entity_col]} contributes {contribution:.1f}% of total."
+            f"{top[entity_col]} accounts for {contribution:.1f}% of total {metric}."
         )
 
     summary.append(
-        f"Total {metric} across all categories is {total:,.0f}."
+        f"Total {metric} across all categories amounts to {total:,.0f}."
     )
 
     return summary
