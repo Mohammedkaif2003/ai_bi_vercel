@@ -1,14 +1,62 @@
-.env
+# ── Python ───────────────────────────────────────────────────────────────
 __pycache__/
 _pycache_/
 *.pyc
-venv/
-AI_Executive_Report.pdf
-~$*
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Excluded personal files
+# ── Virtual environments ─────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Secrets / local config ───────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.secret
+*.key
+
+# ── App-generated artifacts ──────────────────────────────────────────────
+AI_Executive_Report.pdf
+*.pdf
+!docs/**/*.pdf
+
+# ── Auth state (local per-machine, contains password hashes) ─────────────
+users.json
+auth/users.json
+
+# ── Logs / temporary files ───────────────────────────────────────────────
+*.log
+logs/
+tmp/
+.tmp/
+~$*
+.DS_Store
+Thumbs.db
+
+# ── IDE / editor ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Streamlit local cache ────────────────────────────────────────────────
+.streamlit/secrets.toml
+.streamlit/cache/
+
+# ── Excluded personal / draft files ──────────────────────────────────────
 setup_commands_explained.txt
 improvements_and_changes_report.txt
 AI Chatbot with Company Data Analysis Capability.docx
 session_walkthrough.txt
 INITIAL_VS_ENHANCED.md
+
+# ── OneDrive / cloud-sync clutter ────────────────────────────────────────
+*.tmp
+*.lnk

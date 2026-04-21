@@ -107,9 +107,13 @@ def classify_query_intent(query: str, df: pd.DataFrame, schema: dict | None = No
 
     if is_memory_query(query):
         intent = "comparison"
-    elif any(token in q for token in ("forecast", "predict", "projection")):
+    elif any(token in q for token in ("forecast", "predict", "projection", "extrapolat")):
         intent = "forecast"
-    elif any(token in q for token in ("chart", "plot", "graph", "visualize", "trend", "distribution")):
+    elif any(token in q for token in (
+        "chart", "plot", "graph", "visualize", "visualise", "trend", "distribution",
+        "boxplot", "box plot", "scatter", "heatmap", "heat map", "histogram",
+        "outlier", "anomaly", "correlation", "line chart", "bar chart",
+    )):
         intent = "chart"
     elif any(token in q for token in ("compare", "difference", "versus", "vs")):
         intent = "comparison"
@@ -212,97 +216,58 @@ def build_rephrase_suggestions(query: str, df: pd.DataFrame, schema: dict | None
 def is_dataset_related_query(query: str, df: pd.DataFrame, schema: dict | None = None) -> bool:
     """
     Decide if a user query is about the active dataset vs. general chit‑chat.
+
+    Errs on the side of acceptance — it is better to run an analysis that
+    returns a gentle "I couldn't find that column" than to reject a
+    legitimate question with "not related to this dataset."
     """
     q = str(query).strip().lower()
     if not q:
         return False
 
+    # ── Vocabulary of terms that signal an analytical intent ──────────
     analytics_keywords = {
-        "sum",
-        "total",
-        "average",
-        "avg",
-        "mean",
-        "max",
-        "min",
-        "highest",
-        "lowest",
-        "top",
-        "bottom",
-        "count",
-        "trend",
-        "compare",
-        "difference",
-        "distribution",
-        "forecast",
-        "predict",
-        "growth",
-        "decline",
-        "increase",
-        "decrease",
-        "revenue",
-        "sales",
-        "profit",
-        "cost",
-        "region",
-        "date",
-        "month",
-        "year",
-        "department",
-        "employee",
-        "category",
-        "product",
-        "segment",
-        "kpi",
-        "metric",
-        "show",
-        "list",
-        "group",
-        "filter",
-        "by",
-        "across",
-        "over",
-        "outlier",
+        # aggregation / statistics
+        "sum", "total", "average", "avg", "mean", "median", "max", "min",
+        "highest", "lowest", "top", "bottom", "count", "aggregate",
+        # visualisation
+        "chart", "plot", "graph", "visualize", "visualise", "visualization",
+        "line", "bar", "heatmap", "scatter", "boxplot", "histogram", "pie",
+        "series", "time",
+        # analysis
+        "trend", "analyze", "analyse", "analysis", "compare", "comparison",
+        "difference", "distribution", "forecast", "predict", "projection",
+        "growth", "decline", "increase", "decrease", "change", "changes",
+        "pattern", "anomaly", "outlier", "correlation", "relationship",
+        # common business dimensions
+        "revenue", "sales", "profit", "cost", "price", "amount", "income",
+        "region", "date", "month", "year", "day", "week", "quarter",
+        "department", "employee", "category", "product", "segment",
+        "route", "ridership", "rides",
+        # meta
+        "kpi", "metric", "insight", "summary", "summarize", "overview",
+        "show", "list", "group", "filter", "sort", "rank",
+        "by", "across", "over", "per",
     }
 
+    # Stopwords should NOT include terms that are also analytics keywords.
+    # "over", "by", "show", etc. must survive so they can be matched.
     stopwords = {
-        "the",
-        "a",
-        "an",
-        "is",
-        "are",
-        "was",
-        "were",
-        "to",
-        "of",
-        "for",
-        "in",
-        "on",
-        "and",
-        "or",
-        "with",
-        "me",
-        "my",
-        "please",
-        "what",
-        "which",
-        "who",
-        "when",
-        "where",
-        "why",
-        "how",
-        "tell",
-        "give",
-        "about",
-        "from",
-        "into",
-        "than",
+        "the", "a", "an", "is", "are", "was", "were",
+        "to", "of", "for", "in", "on", "and", "or",
+        "with", "me", "my", "please", "what", "which",
+        "who", "when", "where", "why", "how", "tell",
+        "give", "about", "from", "into", "than", "it",
+        "this", "that", "do", "does", "did", "can", "could",
+        "would", "should", "i", "we", "you",
     }
+    # Guarantee no analytics keyword is accidentally removed as a stopword
+    stopwords -= analytics_keywords
 
     query_tokens = _tokenize_query_text(q)
     meaningful_tokens = query_tokens - stopwords
 
-    # Memory / comparison queries are considered dataset‑related
+    # Memory / comparison queries are always dataset‑related
     if is_memory_query(q):
         return True
 
@@ -312,6 +277,7 @@ def is_dataset_related_query(query: str, df: pd.DataFrame, schema: dict | None =
     matched_dataset_terms = meaningful_tokens & dataset_tokens
     matched_analytics_terms = meaningful_tokens & analytics_keywords
 
+    # ── Direct hit on any dataset token (column name, sample value) ───
     if matched_dataset_terms:
         return True
 
@@ -321,7 +287,26 @@ def is_dataset_related_query(query: str, df: pd.DataFrame, schema: dict | None =
     if "top" in q and len(df.columns) > 0:
         return True
 
-    return len(matched_analytics_terms) >= 2 and len(meaningful_tokens) <= 8
+    # ── Substring / stem matching ────────────────────────────────────
+    # Catches paraphrases like "ridership" when a column has "rides",
+    # or "monthly" when a column has "month".
+    col_tokens = set()
+    for col in df.columns:
+        col_tokens.update(_tokenize_query_text(col))
+    for qt in meaningful_tokens:
+        for ct in col_tokens:
+            if len(qt) >= 4 and len(ct) >= 3 and (qt in ct or ct in qt):
+                return True
+
+    # ── Analytics intent alone is enough when it's strong ────────────
+    if len(matched_analytics_terms) >= 2:
+        return True
+
+    # Even a single analytics term + a reasonably short query is accepted
+    if len(matched_analytics_terms) >= 1 and len(meaningful_tokens) <= 10:
+        return True
+
+    return False
 
 
 def get_irrelevant_query_message(schema: dict) -> str:
@@ -409,13 +394,23 @@ def extract_follow_up_questions(raw_suggestions: str) -> list[str]:
     return questions
 
 
-def generate_follow_up_fallbacks(query: str, df: pd.DataFrame, schema: dict) -> list[str]:
+def _format_dataset_label(dataset_name: str | None) -> str:
+    if not dataset_name:
+        return "this dataset"
+
+    label = re.sub(r"\.[^.]+$", "", str(dataset_name))
+    label = re.sub(r"[_-]+", " ", label).strip()
+    return label.title() if label else "this dataset"
+
+
+def generate_follow_up_fallbacks(query: str, df: pd.DataFrame, schema: dict, dataset_name: str | None = None) -> list[str]:
     """Build deterministic follow-up questions when the LLM output is empty or malformed."""
     follow_ups: list[str] = []
 
     numeric_cols = schema.get("numeric_columns", []) or df.select_dtypes(include="number").columns.tolist()
     categorical_cols = schema.get("categorical_columns", []) or df.select_dtypes(exclude="number").columns.tolist()
     datetime_cols = schema.get("datetime_columns", [])
+    dataset_label = _format_dataset_label(dataset_name)
 
     primary_metric = numeric_cols[0] if numeric_cols else None
     primary_category = categorical_cols[0] if categorical_cols else None
@@ -423,21 +418,21 @@ def generate_follow_up_fallbacks(query: str, df: pd.DataFrame, schema: dict) -> 
     primary_time = datetime_cols[0] if datetime_cols else ("Date" if "Date" in df.columns else None)
 
     if primary_metric and primary_category:
-        follow_ups.append(f"What is the total {primary_metric} by {primary_category}?")
-        follow_ups.append(f"Which {primary_category} has the highest {primary_metric}?")
+        follow_ups.append(f"In {dataset_label}, what is the total {primary_metric} by {primary_category}?")
+        follow_ups.append(f"In {dataset_label}, which {primary_category} has the highest {primary_metric}?")
 
     if primary_metric and primary_time:
-        follow_ups.append(f"What is the trend of {primary_metric} over {primary_time}?")
+        follow_ups.append(f"In {dataset_label}, what is the trend of {primary_metric} over {primary_time}?")
 
     if primary_metric and secondary_category:
-        follow_ups.append(f"How does {primary_metric} compare across {secondary_category}?")
+        follow_ups.append(f"In {dataset_label}, how does {primary_metric} compare across {secondary_category}?")
 
     if primary_metric:
-        follow_ups.append(f"Are there any outliers in {primary_metric}?")
-        follow_ups.append(f"What is the forecast for {primary_metric} based on recent patterns?")
+        follow_ups.append(f"In {dataset_label}, are there any outliers in {primary_metric}?")
+        follow_ups.append(f"In {dataset_label}, what is the forecast for {primary_metric} based on recent patterns?")
 
     if not follow_ups:
-        follow_ups = generate_sidebar_question_ideas(df, schema)
+        follow_ups = [f"In {dataset_label}, {question}" for question in generate_sidebar_question_ideas(df, schema)]
 
     deduped: list[str] = []
     seen: set[str] = set()

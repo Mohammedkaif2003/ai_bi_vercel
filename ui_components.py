@@ -1,3 +1,4 @@
+import copy
 import html
 import re
 from html import unescape
@@ -42,14 +43,14 @@ def render_user_bubble(message: str):
         f"""
     <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
         <div style="
-            background: linear-gradient(135deg,#6366F1,#7C3AED);
+            background: linear-gradient(135deg,#4F46E5,#7C3AED);
             color:#FFFFFF;
             padding:10px 14px;
             border-radius:18px 18px 4px 18px;
             max-width:70%;
             font-size:14px;
             line-height:1.45;
-            box-shadow: 0 10px 24px rgba(99,102,241,0.24);
+            box-shadow: 0 10px 24px rgba(79,70,229,0.28);
         ">
             {clean_msg}
         </div>
@@ -168,43 +169,67 @@ def render_chart_card(chart, st_instance, key_prefix: str | None = None):
     if not payload:
         return
 
-    fig = payload["figure"]
-    fig.update_layout(
+    # Render a cloned figure so dark-theme tweaks don't follow the chart into
+    # session_state / the PDF generator (which needs a clean light figure).
+    source_fig = payload["figure"]
+    display_fig = copy.deepcopy(source_fig)
+    display_fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="rgba(15, 23, 42, 0)",
         plot_bgcolor="rgba(15, 23, 42, 0)",
-        font=dict(color="#e6eefc", family="Segoe UI, sans-serif"),
-        title=dict(font=dict(color="#f8fbff", size=18)),
+        font=dict(color="#e6eefc", family="Manrope, Segoe UI, sans-serif", size=12),
+        title=dict(font=dict(color="#f8fbff", size=18, family="Sora, Manrope, sans-serif")),
         legend=dict(
-            bgcolor="rgba(15, 23, 42, 0.75)",
-            bordercolor="rgba(148, 163, 184, 0.12)",
+            bgcolor="rgba(15, 23, 42, 0.55)",
+            bordercolor="rgba(148, 163, 184, 0.18)",
             borderwidth=1,
+            font=dict(color="#e6eefc"),
         ),
-        margin=dict(l=20, r=20, t=48, b=20),
+        margin=dict(l=30, r=30, t=56, b=40),
         xaxis=dict(
-            gridcolor="rgba(148, 163, 184, 0.10)",
-            zerolinecolor="rgba(148, 163, 184, 0.12)",
+            gridcolor="rgba(148, 163, 184, 0.08)",
+            zerolinecolor="rgba(148, 163, 184, 0.14)",
+            linecolor="rgba(148, 163, 184, 0.25)",
+            tickfont=dict(color="#cbd5e1"),
         ),
         yaxis=dict(
-            gridcolor="rgba(148, 163, 184, 0.10)",
-            zerolinecolor="rgba(148, 163, 184, 0.12)",
+            gridcolor="rgba(148, 163, 184, 0.08)",
+            zerolinecolor="rgba(148, 163, 184, 0.14)",
+            tickfont=dict(color="#cbd5e1"),
+        ),
+        hoverlabel=dict(
+            bgcolor="#0F172A",
+            bordercolor="rgba(129, 140, 248, 0.6)",
+            font=dict(color="#F8FAFC"),
         ),
     )
+    # Pull in-chart text labels into the dark theme so outside bar labels read
+    for trace in display_fig.data:
+        trace_type = (getattr(trace, "type", "") or "").lower()
+        if trace_type == "bar":
+            try:
+                trace.update(textfont=dict(color="#E2E8F0", family="Manrope, Segoe UI, sans-serif", size=11))
+            except Exception:
+                pass
+    fig = display_fig
     chart_key = key_prefix or re.sub(r"[^a-zA-Z0-9_]+", "_", payload.get("title", "chart"))
     st_instance.plotly_chart(fig, use_container_width=True, key=f"{chart_key}_plot")
 
     rationale = clean_text(payload.get("rationale", ""))
-    if rationale:
-        st_instance.caption(f"Why this chart: {rationale}")
-
-    for warning in payload.get("warnings", []):
-        st_instance.caption(clean_text(warning))
-
     summary = payload.get("summary", []) or []
-    if summary:
-        st_instance.markdown("**Chart Summary**")
-        for item in summary:
-            st_instance.write(f"- {clean_text(item)}")
+    warnings = [clean_text(w) for w in payload.get("warnings", []) if w]
+
+    has_details = bool(rationale or summary or warnings)
+    if has_details:
+        with st_instance.expander("Chart details", expanded=False):
+            if rationale:
+                st_instance.markdown(f"**Why this chart**  &nbsp; {rationale}")
+            if summary:
+                st_instance.markdown("**Quick read**")
+                for item in summary:
+                    st_instance.write(f"• {clean_text(item)}")
+            for warning in warnings:
+                st_instance.caption(warning)
 
     data = payload.get("data")
     download_key = chart_key
@@ -212,7 +237,7 @@ def render_chart_card(chart, st_instance, key_prefix: str | None = None):
         left, right = st_instance.columns(2)
         with left:
             st.download_button(
-                "Download Plot Data",
+                "Download CSV",
                 data=chart_download_bytes(payload),
                 file_name=f"{download_key}_plot_data.csv",
                 mime="text/csv",
@@ -223,7 +248,7 @@ def render_chart_card(chart, st_instance, key_prefix: str | None = None):
             try:
                 image_bytes = fig.to_image(format="png", width=1200, height=700, scale=2)
                 st.download_button(
-                    "Download Chart PNG",
+                    "Download PNG",
                     data=image_bytes,
                     file_name=f"{download_key}.png",
                     mime="image/png",
@@ -235,13 +260,12 @@ def render_chart_card(chart, st_instance, key_prefix: str | None = None):
 
     suggestion_items = build_graph_follow_up_suggestions(payload)
     if suggestion_items:
-        st_instance.markdown("**Suggested Graphs**")
-        st_instance.caption("These prompts are the most likely to return chart-friendly results.")
-        for idx, item in enumerate(suggestion_items):
-            clean_q = clean_text(item["question"])
-            if st_instance.button(clean_q, key=f"{download_key}_graph_followup_chart_{idx}", use_container_width=True):
-                st.session_state.auto_query = clean_q
-                st.rerun()
+        with st_instance.expander("Suggested follow-up charts", expanded=False):
+            for idx, item in enumerate(suggestion_items):
+                clean_q = clean_text(item["question"])
+                if st_instance.button(clean_q, key=f"{download_key}_graph_followup_chart_{idx}", use_container_width=True):
+                    st.session_state.auto_query = clean_q
+                    st.rerun()
 
 
 def render_sidebar_dataset_badge(name, rows, cols):
@@ -260,13 +284,27 @@ def render_sidebar_dataset_badge(name, rows, cols):
         unsafe_allow_html=True,
     )
 
-    col1, col2 = st.sidebar.columns(2)
 
-    with col1:
-        st.metric("Rows", rows)
-
-    with col2:
-        st.metric("Columns", cols)
+def render_sidebar_branding(app_title: str, app_icon: str, subtitle: str = "AI Intelligence Suite"):
+    st.sidebar.markdown(
+        f"""
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); padding: 24px 20px; border-radius: 16px; margin-bottom: 24px; backdrop-filter: blur(10px); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -50%; right: -20%; width: 120px; height: 120px; background: radial-gradient(circle, #6366F1 0%, transparent 70%); opacity: 0.45;"></div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px; position: relative; z-index: 1;">
+            <div style="background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.32);">
+                {html.escape(str(app_icon))}
+            </div>
+            <div style="font-size: 22px; font-weight: 800; color: white; letter-spacing: -0.5px;">
+                {html.escape(str(app_title))}
+            </div>
+        </div>
+        <div style="color: #94A3B8; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-left: 48px; position: relative; z-index: 1;">
+            {html.escape(str(subtitle))}
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_sidebar_question_inspiration(questions):
@@ -364,11 +402,24 @@ def render_table_panel(title: str, dataframe: pd.DataFrame, key: str, max_rows: 
         working_df = working_df[mask.any(axis=1)]
 
     if filter_column != "All columns":
-        raw_values = [str(value) for value in working_df[filter_column].dropna().unique().tolist()]
-        options = ["All"] + sorted(raw_values)[:100]
-        selected_value = st.selectbox("Filter value", options, key=f"{safe_key}_filter_val")
-        if selected_value != "All":
-            working_df = working_df[working_df[filter_column].astype(str) == selected_value]
+        filter_series = working_df[filter_column].dropna()
+        unique_values = filter_series.unique().tolist()
+
+        if pd.api.types.is_numeric_dtype(filter_series):
+            sorted_values = sorted(unique_values)
+        else:
+            sorted_values = sorted(unique_values, key=lambda value: str(value).lower())
+
+        value_options = [None] + sorted_values[:100]
+        selected_value = st.selectbox(
+            "Filter value",
+            value_options,
+            format_func=lambda value: "All" if value is None else str(value),
+            key=f"{safe_key}_filter_val",
+        )
+
+        if selected_value is not None:
+            working_df = working_df[working_df[filter_column] == selected_value]
 
     if sort_column != "Original order":
         ascending = st.toggle("Ascending", value=False, key=f"{safe_key}_ascending")

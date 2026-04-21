@@ -3,12 +3,12 @@ import pandas as pd
 
 def normalize_columns(df):
 
-    # Clean column names
+    # Clean column names (regex=False avoids FutureWarning in pandas 2.x)
     df.columns = (
         df.columns
         .str.strip()
-        .str.replace("_", " ")
-        .str.replace("-", " ")
+        .str.replace("_", " ", regex=False)
+        .str.replace("-", " ", regex=False)
         .str.title()
     )
 
