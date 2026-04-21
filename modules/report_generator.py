@@ -50,11 +50,15 @@ C_BODY     = colors.HexColor("#1F2937")
 C_MUTED    = colors.HexColor("#64748B")
 C_ACCENT   = colors.HexColor("#2563EB")
 C_ACCENT2  = colors.HexColor("#4F46E5")
+C_ACCENT3  = colors.HexColor("#7C3AED")
 C_GOLD     = colors.HexColor("#B45309")
 C_HAIRLINE = colors.HexColor("#E2E8F0")
 C_QUOTE_BG = colors.HexColor("#F8FAFC")
 C_TH_BG    = colors.HexColor("#1E3A5F")
 C_ROW_ALT  = colors.HexColor("#F1F5F9")
+C_ROW_BORDER = colors.HexColor("#CBD5E1")
+C_COVER_BAND = colors.HexColor("#0B1B3A")
+C_FOOTER_BG  = colors.HexColor("#0F172A")
 
 HX_ACCENT = "#2563EB"
 HX_MUTED  = "#64748B"
@@ -78,12 +82,12 @@ def _build_styles():
     def add(**kw):
         base.add(ParagraphStyle(**kw))
 
-    add(name="CoverEyebrow", fontName="Helvetica-Bold", fontSize=9,  textColor=C_ACCENT,
-        leading=12, spaceAfter=6, alignment=TA_CENTER)
-    add(name="CoverTitle",   fontName="Helvetica-Bold", fontSize=34, textColor=C_INK,
-        leading=40, spaceAfter=8, alignment=TA_CENTER)
-    add(name="CoverSub",     fontName="Helvetica",      fontSize=12, textColor=C_MUTED,
-        leading=16, spaceAfter=24, alignment=TA_CENTER)
+    add(name="CoverEyebrow", fontName="Helvetica-Bold", fontSize=10, textColor=C_ACCENT,
+        leading=13, spaceAfter=8, alignment=TA_CENTER)
+    add(name="CoverTitle",   fontName="Helvetica-Bold", fontSize=36, textColor=C_INK,
+        leading=42, spaceAfter=10, alignment=TA_CENTER)
+    add(name="CoverSub",     fontName="Helvetica-Oblique", fontSize=12, textColor=C_MUTED,
+        leading=17, spaceAfter=24, alignment=TA_CENTER)
     add(name="CoverLabel",   fontName="Helvetica-Bold", fontSize=8,  textColor=C_MUTED,
         leading=11, alignment=TA_LEFT)
     add(name="CoverValue",   fontName="Helvetica",      fontSize=11, textColor=C_INK,
@@ -121,36 +125,85 @@ def _build_styles():
 # ─────────────────────────────────────────────────────────────────────────────
 def _decorate_cover(canvas, doc):
     canvas.saveState()
-    # Thin top accent
-    canvas.setFillColor(C_ACCENT)
-    canvas.rect(0, PAGE_H - 6, PAGE_W, 6, fill=True, stroke=False)
-    # Footer line + label
+    # Full-bleed top band in deep brand navy
+    canvas.setFillColor(C_COVER_BAND)
+    canvas.rect(0, PAGE_H - 1.2 * inch, PAGE_W, 1.2 * inch, fill=True, stroke=False)
+    # Accent bar along the top edge (indigo → violet)
+    canvas.setFillColor(C_ACCENT2)
+    canvas.rect(0, PAGE_H - 0.10 * inch, PAGE_W * 0.62, 0.10 * inch, fill=True, stroke=False)
+    canvas.setFillColor(C_ACCENT3)
+    canvas.rect(PAGE_W * 0.62, PAGE_H - 0.10 * inch, PAGE_W * 0.38, 0.10 * inch,
+                fill=True, stroke=False)
+
+    # Company/project wordmark inside the band
+    canvas.setFillColor(colors.white)
+    canvas.setFont("Helvetica-Bold", 18)
+    canvas.drawString(LEFT_MARGIN, PAGE_H - 0.70 * inch, "APEX ANALYTICS")
+    canvas.setFont("Helvetica", 9)
+    canvas.setFillColor(colors.HexColor("#C7D2FE"))
+    canvas.drawString(LEFT_MARGIN, PAGE_H - 0.92 * inch,
+                      "AI INTELLIGENCE SUITE  ·  EXECUTIVE REPORT")
+    # Document classification on the right
+    canvas.setFillColor(colors.HexColor("#FDE68A"))
+    canvas.setFont("Helvetica-Bold", 9)
+    canvas.drawRightString(PAGE_W - RIGHT_MARGIN, PAGE_H - 0.70 * inch,
+                           "CONFIDENTIAL")
+
+    # Footer tagline
     canvas.setFillColor(C_MUTED)
     canvas.setFont("Helvetica", 8)
-    canvas.drawCentredString(PAGE_W / 2, 32, "APEX ANALYTICS  ·  EXECUTIVE REPORT  ·  CONFIDENTIAL")
+    canvas.drawCentredString(PAGE_W / 2, 32,
+                             "APEX ANALYTICS  ·  EXECUTIVE REPORT  ·  CONFIDENTIAL")
     canvas.restoreState()
 
 
 def _decorate_page(canvas, doc):
     canvas.saveState()
-    # Header rule
+
+    # ── Header band ────────────────────────────────────────────────────
+    header_h = 0.50 * inch
+    header_y = PAGE_H - header_h
+    # Subtle ink background band
+    canvas.setFillColor(C_COVER_BAND)
+    canvas.rect(0, header_y, PAGE_W, header_h, fill=True, stroke=False)
+    # Thin accent strip under the band
+    canvas.setFillColor(C_ACCENT2)
+    canvas.rect(0, header_y - 3, PAGE_W, 3, fill=True, stroke=False)
+
+    # Left: brand wordmark
+    canvas.setFillColor(colors.white)
+    canvas.setFont("Helvetica-Bold", 10)
+    canvas.drawString(LEFT_MARGIN, header_y + 0.18 * inch, "APEX ANALYTICS")
+    canvas.setFont("Helvetica", 8)
+    canvas.setFillColor(colors.HexColor("#C7D2FE"))
+    canvas.drawString(LEFT_MARGIN, header_y + 0.06 * inch,
+                      "AI INTELLIGENCE SUITE")
+    # Right: document type
+    canvas.setFillColor(colors.white)
+    canvas.setFont("Helvetica", 9)
+    canvas.drawRightString(PAGE_W - RIGHT_MARGIN, header_y + 0.18 * inch,
+                           "Executive Report")
+    canvas.setFont("Helvetica", 8)
+    canvas.setFillColor(colors.HexColor("#C7D2FE"))
+    canvas.drawRightString(PAGE_W - RIGHT_MARGIN, header_y + 0.06 * inch,
+                           "Confidential")
+
+    # ── Footer ─────────────────────────────────────────────────────────
+    # Hairline above the footer
     canvas.setStrokeColor(C_HAIRLINE)
     canvas.setLineWidth(0.5)
-    canvas.line(LEFT_MARGIN, PAGE_H - 0.55 * inch, PAGE_W - RIGHT_MARGIN, PAGE_H - 0.55 * inch)
-    # Header label
-    canvas.setFillColor(C_MUTED)
-    canvas.setFont("Helvetica-Bold", 8)
-    canvas.drawString(LEFT_MARGIN, PAGE_H - 0.40 * inch, "APEX ANALYTICS")
-    canvas.setFont("Helvetica", 8)
-    canvas.drawRightString(PAGE_W - RIGHT_MARGIN, PAGE_H - 0.40 * inch, "Executive Report")
+    canvas.line(LEFT_MARGIN, 0.58 * inch, PAGE_W - RIGHT_MARGIN, 0.58 * inch)
 
-    # Footer
-    canvas.setStrokeColor(C_HAIRLINE)
-    canvas.line(LEFT_MARGIN, 0.55 * inch, PAGE_W - RIGHT_MARGIN, 0.55 * inch)
     canvas.setFillColor(C_MUTED)
     canvas.setFont("Helvetica", 8)
-    canvas.drawString(LEFT_MARGIN, 0.38 * inch, "Confidential · AI-generated analysis")
-    canvas.drawRightString(PAGE_W - RIGHT_MARGIN, 0.38 * inch, f"Page {doc.page}")
+    canvas.drawString(LEFT_MARGIN, 0.38 * inch,
+                      "Confidential · AI-generated analysis")
+
+    # Page number on the right, emphasized in ink
+    canvas.setFillColor(C_INK)
+    canvas.setFont("Helvetica-Bold", 8)
+    canvas.drawRightString(PAGE_W - RIGHT_MARGIN, 0.38 * inch,
+                           f"Page {doc.page}")
     canvas.restoreState()
 
 
@@ -292,8 +345,25 @@ def _hr(color=C_HAIRLINE, thickness=0.5, space=6) -> HRFlowable:
 
 
 def _accent_rule() -> HRFlowable:
-    return HRFlowable(width=50, thickness=2, color=C_ACCENT,
-                      spaceBefore=0, spaceAfter=14, hAlign="LEFT")
+    return HRFlowable(width=64, thickness=3, color=C_ACCENT,
+                      spaceBefore=2, spaceAfter=14, hAlign="LEFT")
+
+
+def _section_divider() -> Table:
+    """
+    A strong section divider: a full-width 1pt hairline with an indigo
+    left-accent block, used between major report sections.
+    """
+    tbl = Table([[""]], colWidths=[BODY_W], rowHeights=[6])
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, 0), C_HAIRLINE),
+        ("LINEBEFORE", (0, 0), (0, 0), 4, C_ACCENT2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    return tbl
 
 
 def _quote_box(text: str, styles) -> Table:
@@ -375,6 +445,17 @@ def _reset_trace_colors_for_light_bg(export_fig):
                 textfont=dict(color="#1F2937", family="Helvetica", size=11),
             )
 
+        elif trace_type == "heatmap":
+            # Heatmaps need readable annotation text on light backgrounds
+            # and a diverging colorscale that prints well.
+            try:
+                trace.update(
+                    colorscale="RdBu_r",
+                    textfont=dict(color="#1F2937", size=11),
+                )
+            except Exception:
+                pass
+
         else:
             # Generic fallback — box, violin, funnel, etc.
             try:
@@ -388,8 +469,15 @@ def _plotly_to_bytes(fig, width: int = 780, height: int = 360) -> Optional[bytes
         # Deep-copy so we never mutate the figure the user is viewing in Streamlit
         export_fig = copy.deepcopy(fig)
 
+        # Detect if figure has a heatmap trace — heatmaps need their
+        # coloraxis preserved; the blanket showscale=False kills them.
+        has_heatmap = any(
+            (getattr(t, "type", "") or "").lower() == "heatmap"
+            for t in export_fig.data
+        )
+
         # Flatten to export-friendly light theme and strip dark-mode residue
-        export_fig.update_layout(
+        layout_updates = dict(
             template="plotly_white",
             paper_bgcolor="#FFFFFF",
             plot_bgcolor="#FFFFFF",
@@ -402,8 +490,19 @@ def _plotly_to_bytes(fig, width: int = 780, height: int = 360) -> Optional[bytes
                 font=dict(color="#1F2937", family="Helvetica", size=10),
             ),
             margin=dict(l=60, r=30, t=50, b=60),
-            coloraxis=dict(showscale=False),
         )
+        if not has_heatmap:
+            layout_updates["coloraxis"] = dict(showscale=False)
+        else:
+            # Ensure heatmap colorbar text is dark and readable
+            layout_updates["coloraxis"] = dict(
+                colorscale=[[0, "#2563EB"], [0.5, "#FFFFFF"], [1, "#DC2626"]],
+                colorbar=dict(
+                    tickfont=dict(color="#475569", family="Helvetica", size=10),
+                    title_font=dict(color="#475569", family="Helvetica", size=11),
+                ),
+            )
+        export_fig.update_layout(**layout_updates)
         export_fig.update_xaxes(
             gridcolor="#E5E7EB",
             zerolinecolor="#CBD5E1",
@@ -522,24 +621,39 @@ def _compact_table(df, max_rows: int = 6) -> Optional[Table]:
 
         tbl = Table(data, colWidths=[cw] * n, repeatRows=1)
         cmds = [
+            # Header row
             ("BACKGROUND",    (0, 0), (-1, 0),  C_TH_BG),
             ("TEXTCOLOR",     (0, 0), (-1, 0),  colors.white),
             ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
-            ("FONTSIZE",      (0, 0), (-1, 0),  8.5),
-            ("BOTTOMPADDING", (0, 0), (-1, 0),  7),
-            ("TOPPADDING",    (0, 0), (-1, 0),  7),
+            ("FONTSIZE",      (0, 0), (-1, 0),  9),
+            ("BOTTOMPADDING", (0, 0), (-1, 0),  9),
+            ("TOPPADDING",    (0, 0), (-1, 0),  9),
+            ("LEFTPADDING",   (0, 0), (-1, 0),  9),
+            ("RIGHTPADDING",  (0, 0), (-1, 0),  9),
+
+            # Body rows
             ("FONTNAME",      (0, 1), (-1, -1), "Helvetica"),
             ("FONTSIZE",      (0, 1), (-1, -1), 9),
             ("TEXTCOLOR",     (0, 1), (-1, -1), C_BODY),
-            ("BOTTOMPADDING", (0, 1), (-1, -1), 5),
-            ("TOPPADDING",    (0, 1), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 1), (-1, -1), 7),
+            ("TOPPADDING",    (0, 1), (-1, -1), 7),
+            ("LEFTPADDING",   (0, 1), (-1, -1), 9),
+            ("RIGHTPADDING",  (0, 1), (-1, -1), 9),
             ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-            ("LINEBELOW",     (0, 0), (-1, 0),  1, C_ACCENT),
-            ("LINEBELOW",     (0, -1), (-1, -1), 0.25, C_HAIRLINE),
+
+            # Outer border + accent under header
+            ("BOX",           (0, 0), (-1, -1), 1.0, C_ROW_BORDER),
+            ("LINEBELOW",     (0, 0), (-1, 0),  2, C_ACCENT),
+
+            # Inner grid for body rows only (header bottom is the accent)
+            ("INNERGRID",     (0, 1), (-1, -1), 0.25, C_ROW_BORDER),
         ]
+        # Alternating row background — every other body row tinted
         for i in range(1, len(data)):
             if i % 2 == 0:
                 cmds.append(("BACKGROUND", (0, i), (-1, i), C_ROW_ALT))
+            else:
+                cmds.append(("BACKGROUND", (0, i), (-1, i), colors.white))
         for j, col in enumerate(df.columns):
             align = "RIGHT" if pd.api.types.is_numeric_dtype(df[col]) else "LEFT"
             cmds.append(("ALIGN", (j, 0), (j, -1), align))
@@ -556,7 +670,9 @@ def _compact_table(df, max_rows: int = 6) -> Optional[Table]:
 def _build_cover(elements, styles, timestamp: str, n_analyses: int,
                  dataset_name: str, user_name: str, overview_text: str,
                  toc_entries: list[str]):
-    elements.append(_gap(1.0 * inch))
+    # The cover's decorative navy band is drawn by _decorate_cover. The
+    # first page content begins below the band.
+    elements.append(_gap(1.4 * inch))
     elements.append(Paragraph("APEX ANALYTICS", styles["CoverEyebrow"]))
     elements.append(Paragraph("AI-Assisted Executive Report", styles["CoverTitle"]))
     elements.append(Paragraph(
@@ -566,27 +682,54 @@ def _build_cover(elements, styles, timestamp: str, n_analyses: int,
     elements.append(HRFlowable(width="30%", thickness=2, color=C_ACCENT,
                                spaceBefore=0, spaceAfter=22, hAlign="CENTER"))
 
-    # Metadata card
+    # Metadata card — rendered as a bordered two-column table with a left
+    # label column, alternating row shading, and an accent header bar.
     meta_rows = [
-        ["Prepared for",  user_name or "—"],
-        ["Dataset",       dataset_name or "—"],
-        ["Generated",     timestamp],
-        ["Analyses",      str(n_analyses)],
-        ["Classification","Confidential"],
+        ["Prepared for",   user_name or "—"],
+        ["Dataset",        dataset_name or "—"],
+        ["Generated",      timestamp],
+        ["Analyses",       str(n_analyses)],
+        ["Classification", "Confidential"],
     ]
-    labels = [Paragraph(r[0], styles["CoverLabel"]) for r in meta_rows]
-    values = [Paragraph(_safe_xml(r[1], max_len=100), styles["CoverValue"]) for r in meta_rows]
+    label_style = styles["CoverLabel"]
+    value_style = styles["CoverValue"]
+    meta_data = [
+        [Paragraph("<b>REPORT DETAILS</b>", label_style), ""],
+    ] + [
+        [Paragraph(r[0], label_style),
+         Paragraph(_safe_xml(r[1], max_len=100), value_style)]
+        for r in meta_rows
+    ]
     meta_tbl = Table(
-        [[labels[i], values[i]] for i in range(len(meta_rows))],
-        colWidths=[1.6 * inch, BODY_W - 1.6 * inch],
+        meta_data,
+        colWidths=[1.8 * inch, BODY_W - 1.8 * inch],
     )
-    meta_tbl.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("LINEBELOW", (0, 0), (-1, -2), 0.25, C_HAIRLINE),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-    ]))
+    meta_style = [
+        # Header strip
+        ("BACKGROUND", (0, 0), (-1, 0), C_COVER_BAND),
+        ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
+        ("SPAN",       (0, 0), (-1, 0)),
+        ("LEFTPADDING",(0, 0), (-1, 0), 12),
+        ("TOPPADDING", (0, 0), (-1, 0), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+
+        # Body
+        ("VALIGN",        (0, 1), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0, 1), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 8),
+        ("LEFTPADDING",   (0, 1), (-1, -1), 12),
+        ("RIGHTPADDING",  (0, 1), (-1, -1), 12),
+
+        # Borders + grid
+        ("BOX",       (0, 0), (-1, -1), 1.0, C_ROW_BORDER),
+        ("LINEAFTER", (0, 1), (0, -1),  0.5, C_ROW_BORDER),
+        ("INNERGRID", (0, 1), (-1, -1), 0.25, C_HAIRLINE),
+    ]
+    # Alternating shading on body rows
+    for i in range(1, len(meta_data)):
+        if (i - 1) % 2 == 1:
+            meta_style.append(("BACKGROUND", (0, i), (-1, i), C_ROW_ALT))
+    meta_tbl.setStyle(TableStyle(meta_style))
     elements.append(meta_tbl)
     elements.append(_gap(28))
 
@@ -612,6 +755,8 @@ def _build_executive_summary(elements, history: list, styles):
     elements.append(PageBreak())
     elements.append(Paragraph("Executive Summary", styles["H1"]))
     elements.append(_accent_rule())
+    elements.append(_section_divider())
+    elements.append(_gap(10))
 
     n = len(history)
     label = "analyses" if n != 1 else "analysis"
@@ -681,11 +826,15 @@ def _build_analysis_section(elements, entry: dict, num: int, styles):
     charts    = entry.get("charts") or []
     dataframe = entry.get("result")
 
-    # Section title + rule
+    # Section title + divider — the divider is a full-width hairline with a
+    # thick indigo left-accent block so each analysis visibly breaks from
+    # the previous one.
     elements.append(Paragraph(f"Analysis {num:02d}", styles["Eyebrow"]))
     short_q = re.sub(r"\s+", " ", query).strip()[:90]
     elements.append(Paragraph(_safe_xml(short_q, max_len=160), styles["H1"]))
     elements.append(_accent_rule())
+    elements.append(_section_divider())
+    elements.append(_gap(10))
 
     # Question quote
     elements.append(_quote_box(query, styles))
@@ -753,6 +902,8 @@ def _build_disclaimer(elements, styles, timestamp: str):
     elements.append(_gap(0.5 * inch))
     elements.append(Paragraph("Disclaimer", styles["H1"]))
     elements.append(_accent_rule())
+    elements.append(_section_divider())
+    elements.append(_gap(10))
     elements.append(Paragraph(
         "This document was produced by the Apex Analytics AI assistant. All narrative "
         "content, findings, and supporting visualizations were generated from automated "

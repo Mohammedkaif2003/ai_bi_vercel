@@ -510,17 +510,24 @@ def _build_heatmap(df: pd.DataFrame, numeric_cols: list[str], warnings: list[str
     fig = px.imshow(
         corr_matrix,
         text_auto=".2f",
-        color_continuous_scale=["#312E81", "#4F46E5", "#818CF8", "#C7D2FE",
-                                "#FDE68A", "#F59E0B", "#DC2626"],
+        color_continuous_scale="RdBu_r",
+        zmin=-1, zmax=1,
         aspect="auto",
         template="plotly_white",
         title="Correlation Heatmap",
+    )
+    fig.update_traces(
+        textfont=dict(color="#1F2937", size=12),
     )
     fig.update_layout(
         title=dict(font=dict(size=18, family="Manrope, Segoe UI, sans-serif")),
         height=520,
         margin=dict(l=70, r=30, t=60, b=70),
         font=dict(family="Manrope, Segoe UI, sans-serif", size=12),
+        coloraxis_colorbar=dict(
+            title="Correlation",
+            tickvals=[-1, -0.5, 0, 0.5, 1],
+        ),
     )
 
     # Find strongest correlation (excluding self-correlations)

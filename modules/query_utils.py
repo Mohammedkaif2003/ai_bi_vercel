@@ -107,9 +107,13 @@ def classify_query_intent(query: str, df: pd.DataFrame, schema: dict | None = No
 
     if is_memory_query(query):
         intent = "comparison"
-    elif any(token in q for token in ("forecast", "predict", "projection")):
+    elif any(token in q for token in ("forecast", "predict", "projection", "extrapolat")):
         intent = "forecast"
-    elif any(token in q for token in ("chart", "plot", "graph", "visualize", "trend", "distribution")):
+    elif any(token in q for token in (
+        "chart", "plot", "graph", "visualize", "visualise", "trend", "distribution",
+        "boxplot", "box plot", "scatter", "heatmap", "heat map", "histogram",
+        "outlier", "anomaly", "correlation", "line chart", "bar chart",
+    )):
         intent = "chart"
     elif any(token in q for token in ("compare", "difference", "versus", "vs")):
         intent = "comparison"

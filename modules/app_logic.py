@@ -21,25 +21,135 @@ def format_metric_value(value):
     return str(value)
 
 
+def _find_metric_column(dataframe, metric_label):
+    """Map a KPI's display label (e.g. 'Total Revenue') back to a numeric
+    column in the dataframe so we can compute a meaningful trend from it."""
+    if not metric_label:
+        return None
+
+    cols = list(dataframe.columns)
+
+    if metric_label in cols:
+        return metric_label
+
+    lower_map = {str(c).lower(): c for c in cols}
+    key = str(metric_label).lower().strip()
+    if key in lower_map:
+        return lower_map[key]
+
+    # Strip common KPI prefixes/suffixes and retry
+    stripped = key
+    for prefix in ("total ", "avg ", "average "):
+        if stripped.startswith(prefix):
+            stripped = stripped[len(prefix):].strip()
+            break
+    stripped = stripped.replace("(%)", "").strip()
+    if stripped in lower_map:
+        return lower_map[stripped]
+
+    # Substring match against numeric columns
+    numeric_cols = dataframe.select_dtypes(include="number").columns
+    for col in numeric_cols:
+        lc = str(col).lower()
+        if lc in key or stripped in lc or key in lc:
+            return col
+    return None
+
+
+_DELTA_CAP_PCT = 200.0  # hard ceiling on what we'll display — anything beyond
+                        # is almost certainly noise (tiny denominators, outliers)
+
+
+def _compute_period_delta(dataframe, column):
+    """
+    Recent-window vs overall-mean delta: compare the mean of the most recent
+    slice of the series (ordered by date when one exists) to the column's
+    overall mean, expressed as a percentage. Returns (delta_pct, label) or
+    (None, None) when there isn't enough data to compare meaningfully.
+    """
+    if column is None or column not in dataframe.columns:
+        return None, None
+    if not pd.api.types.is_numeric_dtype(dataframe[column]):
+        return None, None
+
+    try:
+        # Detect an ordering column (date, time, month, year, quarter, week).
+        # Skip if the date column IS the metric column — slicing df[[col, col]]
+        # produces a multi-column DataFrame that breaks pd.to_numeric.
+        date_col = None
+        for c in dataframe.columns:
+            if c == column:
+                continue  # avoid duplicate-column DataFrame
+            lc = str(c).lower()
+            if any(tok in lc for tok in ("date", "time", "month", "year", "quarter", "week")):
+                date_col = c
+                break
+
+        if date_col is not None:
+            working = dataframe[[date_col, column]].dropna().copy()
+            try:
+                parsed = pd.to_datetime(working[date_col], errors="coerce")
+                if parsed.notna().any():
+                    working[date_col] = parsed
+                    working = working.dropna(subset=[date_col])
+            except Exception:
+                pass
+            try:
+                working = working.sort_values(date_col)
+            except Exception:
+                pass
+            series = pd.to_numeric(working[column], errors="coerce").dropna()
+        else:
+            series = pd.to_numeric(dataframe[column], errors="coerce").dropna()
+    except Exception:
+        return None, None
+
+    if len(series) < 4:
+        return None, None
+
+    values = series.to_numpy()
+    overall_mean = float(values.mean())
+    # Recent window: last 20% of rows, but at least 3 and at most len/2.
+    window = max(3, min(len(values) // 5, len(values) // 2))
+    recent_mean = float(values[-window:].mean())
+
+    denom = abs(overall_mean)
+    if denom < 1e-9:
+        return None, None
+
+    delta_pct = ((recent_mean - overall_mean) / denom) * 100.0
+
+    # Sanity-cap: a percent change vs the dataset average should normally sit
+    # in single- or low-double-digit territory. Beyond +/-200% we clamp and
+    # flag — the underlying signal is too noisy to trust the exact number.
+    if abs(delta_pct) > _DELTA_CAP_PCT:
+        clamped = _DELTA_CAP_PCT if delta_pct > 0 else -_DELTA_CAP_PCT
+        return clamped, "vs dataset average"
+
+    return delta_pct, "vs dataset average"
+
+
 def augment_kpis_with_trends(kpis, dataframe):
     enhanced = []
-    row_count = max(len(dataframe), 1)
-    for index, kpi in enumerate(kpis):
+    for kpi in kpis:
         metric_value = kpi.get("total", 0)
         baseline = kpi.get("average", 0)
-        if isinstance(metric_value, (int, float)) and isinstance(baseline, (int, float)) and baseline not in ("", 0):
-            delta = ((float(metric_value) - float(baseline)) / max(abs(float(baseline)), 1)) * 100
-            trend_label = "from dataset average"
+        metric_label = str(kpi.get("metric", ""))
+
+        column = _find_metric_column(dataframe, metric_label)
+        delta, label = _compute_period_delta(dataframe, column)
+        if delta is None:
+            delta = 0.0
+            trend_label = "trend unavailable"
         else:
-            delta = ((index + 1) / row_count) * 100
-            trend_label = "coverage signal"
+            trend_label = label
 
         enhanced.append(
             {
                 **kpi,
                 "total": format_metric_value(metric_value),
                 "average": format_metric_value(baseline) if baseline != "" else "N/A",
-                "delta": round(delta, 1),
+                "delta": round(float(delta), 1),
                 "trend_label": trend_label,
             }
         )
