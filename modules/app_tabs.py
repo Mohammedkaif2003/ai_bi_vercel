@@ -521,7 +521,37 @@ def render_ai_analyst_tab(df: pd.DataFrame, schema: dict, api_key: str, logger):
 
             if not ai_response:
                 try:
-                    ai_response = generate_conversational_response(query=query, result=result, insight=insight, df=df, concise=True)
+                    ai_result = generate_conversational_response(query=query, result=result, insight=insight, df=df, concise=True)
+                    if isinstance(ai_result, dict):
+                        ai_response = ai_result.get("text", "")
+                        # Execute any chart code the model produced
+                        ai_chart_code = ai_result.get("chart_code", "")
+                        if ai_chart_code:
+                            try:
+                                # Strip import lines — the executor blocks them
+                                clean_lines = [
+                                    ln for ln in ai_chart_code.split("\n")
+                                    if not ln.strip().startswith(("import ", "from "))
+                                ]
+                                safe_code = "\n".join(clean_lines)
+                                # Ensure required variables exist
+                                if "charts" not in safe_code:
+                                    safe_code = "charts = []\n" + safe_code
+                                if "result" not in safe_code:
+                                    safe_code += "\nresult = df.head(1)"
+                                code_output = execute_code(safe_code, df)
+                                if isinstance(code_output, tuple):
+                                    _code_result, _code_charts = code_output
+                                    if _code_charts:
+                                        ai_charts.extend(_code_charts)
+                                # If it returned a figure-like object directly, try to use it
+                                elif hasattr(code_output, "data"):
+                                    ai_charts.append(code_output)
+                            except Exception:
+                                pass  # chart code failed — still show the text insight
+                    else:
+                        # Backward-compat: plain string return
+                        ai_response = ai_result
                 except Exception:
                     ai_response = build_failure_message(query, intent_info, schema, rephrase_suggestions)
 
