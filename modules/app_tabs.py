@@ -7,7 +7,8 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from modules.ai_code_generator import generate_analysis_code
-from modules.ai_conversation import generate_conversational_response
+from modules.ai_conversation import generate_conversational_response, narrate_result
+from modules.smart_analysis import run_smart_analysis
 from modules.auto_insights import generate_auto_insights
 from modules.auto_visualizer import auto_visualize, build_chart_from_query, validate_chart_data
 from modules.code_executor import execute_code
@@ -399,16 +400,33 @@ def render_ai_analyst_tab(df: pd.DataFrame, schema: dict, api_key: str, logger):
                         code = "# Only one result available"
                         execution_output = result
                 else:
-                    if simple_code:
+                    # ── Try deterministic analysis first ───────────────
+                    smart_result = run_smart_analysis(query, df)
+                    if smart_result is not None:
+                        logger.info("chat_query_smart_analysis_path", extra={"intent": intent_info.get("intent"), "query_type": smart_result.get("query_type")})
+                        code = f"# Smart analysis: {smart_result.get('query_type')}"
+                        result_val = smart_result.get("result")
+                        execution_output = result_val
+                        ai_charts = []
+                        smart_chart = smart_result.get("chart")
+                        if smart_chart is not None:
+                            ai_charts = [smart_chart]
+                        # Use narration-only mode for the AI response
+                        computed_summary = smart_result.get("summary", "")
+                        try:
+                            ai_response = narrate_result(query, computed_summary)
+                        except Exception:
+                            ai_response = computed_summary
+                    elif simple_code:
                         logger.info("chat_query_simple_code_path", extra={"intent": intent_info.get("intent")})
                         code = simple_code
                         execution_output = execute_code(f"charts = []\nresult = {simple_code}", df)
+                        ai_charts = []
                     else:
                         logger.info("chat_query_ai_code_path", extra={"intent": intent_info.get("intent")})
                         code = generate_analysis_code(api_key, enhanced_query, df, schema)
                         execution_output = execute_code(code, df)
-
-                ai_charts = []
+                        ai_charts = []
 
         except Exception as _exec_err:
             logger.error("chat_execution_error", extra={"error": str(_exec_err)[:300]})
