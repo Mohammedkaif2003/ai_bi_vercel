@@ -1,14 +1,6 @@
 import os
 
-import streamlit as st
-
 
 def get_secret(name: str, default=None):
-    value = os.getenv(name)
-    if value:
-        return value
-
-    try:
-        return st.secrets.get(name, default)
-    except Exception:
-        return default
+    """Read a secret from environment variables (populated by .env via load_dotenv)."""
+    return os.getenv(name, default)

@@ -9,6 +9,14 @@ from modules.app_logging import get_logger
 MAX_CATEGORY_POINTS = 12
 logger = get_logger("auto_visualizer")
 
+# Unified palette — one primary accent + supporting shades for multi-series
+PRIMARY       = "#4F46E5"
+PRIMARY_SOFT  = "#818CF8"
+SECONDARY     = "#10B981"
+TERTIARY      = "#F59E0B"
+SERIES_PALETTE = [PRIMARY, SECONDARY, TERTIARY, "#EC4899", "#06B6D4", "#8B5CF6"]
+SEQUENTIAL    = ["#EEF2FF", "#C7D2FE", "#818CF8", "#4F46E5", "#3730A3"]
+
 
 def _copy_as_dataframe(data: Any) -> pd.DataFrame | None:
     if data is None:
@@ -163,13 +171,31 @@ def _trim_for_categories(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[pd.D
 
 def _apply_common_layout(fig, x_col: str, y_cols: list[str]):
     fig.update_layout(
-        title_font_size=22,
+        title=dict(font=dict(size=18, family="Manrope, Segoe UI, sans-serif")),
         height=460,
         xaxis_title=_format_axis_name(x_col),
         yaxis_title=_format_axis_name(y_cols[0]) if len(y_cols) == 1 else "Value",
         showlegend=len(y_cols) > 1,
+        margin=dict(l=70, r=30, t=60, b=70),
+        font=dict(family="Manrope, Segoe UI, sans-serif", size=12),
+        hoverlabel=dict(
+            bgcolor="#0F172A",
+            bordercolor=PRIMARY_SOFT,
+            font=dict(color="#F8FAFC", family="Manrope, Segoe UI, sans-serif"),
+        ),
     )
-    fig.update_xaxes(tickangle=-30 if x_col else 0)
+    fig.update_xaxes(
+        tickangle=-30 if x_col else 0,
+        showgrid=False,
+        showline=True,
+        linecolor="rgba(148, 163, 184, 0.25)",
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor="rgba(148, 163, 184, 0.12)",
+        gridwidth=1,
+        zerolinecolor="rgba(148, 163, 184, 0.18)",
+    )
 
 
 def _build_line_chart(df: pd.DataFrame, x_col: str, y_col: str, warnings: list[str]) -> dict:
@@ -180,8 +206,13 @@ def _build_line_chart(df: pd.DataFrame, x_col: str, y_col: str, warnings: list[s
         y=y_col,
         markers=True,
         template="plotly_white",
-        color_discrete_sequence=["#38bdf8"],
+        color_discrete_sequence=[PRIMARY],
         title=f"{_format_axis_name(y_col)} Trend Over {_format_axis_name(x_col)}",
+    )
+    fig.update_traces(
+        line=dict(width=3),
+        marker=dict(size=8, line=dict(width=2, color="#FFFFFF")),
+        hovertemplate=f"<b>%{{x}}</b><br>{_format_axis_name(y_col)}: %{{y:,.2f}}<extra></extra>",
     )
     _apply_common_layout(fig, x_col, [y_col])
     return _base_chart_payload(
@@ -198,18 +229,28 @@ def _build_line_chart(df: pd.DataFrame, x_col: str, y_col: str, warnings: list[s
 
 def _build_bar_chart(df: pd.DataFrame, x_col: str, y_col: str, warnings: list[str]) -> dict:
     plot_df, trim_warnings = _trim_for_categories(df[[x_col, y_col]].dropna().copy(), x_col, y_col)
+    plot_df = plot_df.sort_values(y_col, ascending=False)
+    # Distinct color per bar by treating x as categorical — much more vibrant than
+    # a continuous scale, which collapses to a single color when values are equal.
     fig = px.bar(
         plot_df,
         x=x_col,
         y=y_col,
-        color=y_col,
-        text_auto=True,
+        color=x_col,
         template="plotly_white",
-        color_continuous_scale=["#2563eb", "#60a5fa", "#93c5fd"],
+        color_discrete_sequence=SERIES_PALETTE,
         title=f"{_format_axis_name(y_col)} by {_format_axis_name(x_col)}",
     )
+    fig.update_traces(
+        texttemplate="%{y:,.0f}",
+        textposition="outside",
+        textfont=dict(size=11, color="#E2E8F0"),
+        cliponaxis=False,
+        marker=dict(line=dict(color="#FFFFFF", width=1)),
+        hovertemplate=f"<b>%{{x}}</b><br>{_format_axis_name(y_col)}: %{{y:,.2f}}<extra></extra>",
+    )
     _apply_common_layout(fig, x_col, [y_col])
-    fig.update_layout(coloraxis_showscale=False)
+    fig.update_layout(showlegend=False, bargap=0.28)
     return _base_chart_payload(
         fig,
         "bar",
@@ -230,9 +271,22 @@ def _build_pie_chart(df: pd.DataFrame, x_col: str, y_col: str, warnings: list[st
         plot_df,
         names=x_col,
         values=y_col,
+        hole=0.45,
         template="plotly_white",
-        color_discrete_sequence=px.colors.sequential.Blues_r,
+        color_discrete_sequence=SERIES_PALETTE,
         title=f"{_format_axis_name(y_col)} Share by {_format_axis_name(x_col)}",
+    )
+    fig.update_traces(
+        textinfo="percent+label",
+        textposition="outside",
+        marker=dict(line=dict(color="#FFFFFF", width=2)),
+        hovertemplate=f"<b>%{{label}}</b><br>{_format_axis_name(y_col)}: %{{value:,.2f}}<br>Share: %{{percent}}<extra></extra>",
+    )
+    fig.update_layout(
+        title=dict(font=dict(size=18, family="Manrope, Segoe UI, sans-serif")),
+        font=dict(family="Manrope, Segoe UI, sans-serif", size=12),
+        margin=dict(l=30, r=30, t=60, b=30),
+        showlegend=True,
     )
     return _base_chart_payload(
         fig,
@@ -257,8 +311,12 @@ def _build_scatter_chart(df: pd.DataFrame, x_col: str, y_cols: list[str], warnin
         x=y_cols[0],
         y=y_cols[1],
         template="plotly_white",
-        color_discrete_sequence=["#22c55e"],
+        color_discrete_sequence=[SECONDARY],
         title=f"{_format_axis_name(y_cols[0])} vs {_format_axis_name(y_cols[1])}",
+    )
+    fig.update_traces(
+        marker=dict(size=10, opacity=0.78, line=dict(width=1, color="#FFFFFF")),
+        hovertemplate=f"{_format_axis_name(y_cols[0])}: %{{x:,.2f}}<br>{_format_axis_name(y_cols[1])}: %{{y:,.2f}}<extra></extra>",
     )
     _apply_common_layout(fig, y_cols[0], [y_cols[1]])
     payload = _base_chart_payload(
@@ -285,10 +343,18 @@ def _build_histogram(df: pd.DataFrame, y_col: str, warnings: list[str]) -> dict:
         x=y_col,
         nbins=min(max(len(plot_df) // 2, 5), 20),
         template="plotly_white",
-        color_discrete_sequence=["#f59e0b"],
+        color_discrete_sequence=[PRIMARY],
         title=f"Distribution of {_format_axis_name(y_col)}",
     )
+    fig.update_traces(
+        marker=dict(
+            color=PRIMARY,
+            line=dict(width=1.5, color="#FFFFFF"),
+        ),
+        hovertemplate=f"Range: %{{x}}<br>Count: %{{y}}<extra></extra>",
+    )
     _apply_common_layout(fig, y_col, [y_col])
+    fig.update_layout(bargap=0.08, yaxis_title="Count", showlegend=False)
     payload = _base_chart_payload(
         fig,
         "histogram",
@@ -321,9 +387,12 @@ def _build_grouped_bar_chart(df: pd.DataFrame, x_col: str, y_cols: list[str], wa
         color="Metric",
         barmode="group",
         template="plotly_white",
+        color_discrete_sequence=[PRIMARY, SECONDARY],
         title=f"{_format_axis_name(y_cols[0])} vs {_format_axis_name(y_cols[1])} by {_format_axis_name(x_col)}",
     )
+    fig.update_traces(hovertemplate="<b>%{x}</b><br>%{fullData.name}: %{y:,.2f}<extra></extra>")
     _apply_common_layout(fig, x_col, y_cols[:2])
+    fig.update_layout(bargap=0.22)
     payload = _base_chart_payload(
         fig,
         "grouped_bar",
@@ -356,9 +425,12 @@ def _build_stacked_bar_chart(df: pd.DataFrame, x_col: str, y_cols: list[str], wa
         color="Metric",
         barmode="stack",
         template="plotly_white",
+        color_discrete_sequence=[PRIMARY, SECONDARY],
         title=f"Stacked {_format_axis_name(y_cols[0])} and {_format_axis_name(y_cols[1])} by {_format_axis_name(x_col)}",
     )
+    fig.update_traces(hovertemplate="<b>%{x}</b><br>%{fullData.name}: %{y:,.2f}<extra></extra>")
     _apply_common_layout(fig, x_col, y_cols[:2])
+    fig.update_layout(bargap=0.22)
     payload = _base_chart_payload(
         fig,
         "stacked_bar",

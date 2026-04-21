@@ -1,6 +1,6 @@
 # Apex Analytics
 
-AI-powered business intelligence assistant built with Streamlit, Pandas, Plotly, and Groq. The app turns uploaded CSV data into KPI cards, quick insights, natural-language analysis, forecasts, and exportable executive reports.
+AI-powered business intelligence assistant built with Streamlit, Pandas, Plotly, and Groq. The app turns uploaded CSV data into KPI cards, quick insights, natural-language analysis, forecasts, and a narrative executive PDF — all behind a session login.
 
 ## What This Project Does
 
@@ -8,17 +8,20 @@ AI-powered business intelligence assistant built with Streamlit, Pandas, Plotly,
 
 Core workflows:
 
+- Sign in (hashed-credential demo auth, per-user sidebar badge)
 - Upload a CSV or choose a bundled sample dataset
 - Review KPIs, statistics, and auto-generated insights
 - Ask business questions in plain English
 - Get tables, charts, summaries, and follow-up suggestions
 - Run a simple revenue or sales forecast
-- Export a multi-analysis PDF report
+- Export a narrative-style executive PDF report written from the AI's replies
 
 ## Why It Stands Out
 
-- Strong dark-mode dashboard UI with polished interactions
+- Strong dark-mode dashboard UI with polished interactions and a session-persistent tab nav (buttons no longer kick you back to Data Overview)
 - Plain-English data analysis powered by Groq-backed code generation
+- Vibrant, multi-color auto-generated charts with readable data labels
+- Narrative executive PDF — cover page, exec summary, per-question prose, supporting visuals — not a dashboard dump
 - Built-in business insight generation, not just raw chart output
 - Forecasting and PDF reporting included in the same product flow
 - Sample datasets and tests included for quick evaluation
@@ -47,8 +50,19 @@ Core workflows:
 
 ### Reports
 
-- Export multiple saved analyses into a single PDF
-- Includes insights, tables, and charts from prior AI sessions
+- Narrative executive briefing exported as PDF (not a dashboard printout)
+- Cover page with dataset, analyst, and timestamp metadata
+- Executive summary drafted from the AI's own replies
+- Per-question sections: original question quote, AI analyst prose, supporting chart, compact reference table
+- Bright, print-safe chart palette so bars read clearly on white paper
+- Page numbers, proper typography, and confidentiality disclaimer
+
+### Login & Session
+
+- Hashed-credential login gate (SHA-256)
+- Default demo users: `admin / admin123` and `analyst / analyst123`
+- Sidebar user badge with sign-out
+- `users.json` is local-only and git-ignored
 
 ## Tech Stack
 
@@ -67,11 +81,13 @@ Core workflows:
 ```text
 .
 |-- app.py
+|-- auth.py
 |-- config.py
 |-- requirements.txt
 |-- styles.py
 |-- ui_components.py
 |-- PROJECT_DOCUMENTATION.md
+|-- CHANGELOG.md
 |-- data/
 |   `-- raw/
 |       |-- finance_data.csv
@@ -81,6 +97,8 @@ Core workflows:
 |   |-- ai_code_generator.py
 |   |-- ai_conversation.py
 |   |-- app_secrets.py
+|   |-- app_tabs.py
+|   |-- app_views.py
 |   |-- auto_insights.py
 |   |-- auto_visualizer.py
 |   |-- code_executor.py
@@ -130,20 +148,25 @@ GROQ_API_KEY=your_groq_key_here
 streamlit run app.py
 ```
 
-Open `http://localhost:8501`.
+Open `http://localhost:8501` and sign in with one of the demo users:
+
+- `admin / admin123`
+- `analyst / analyst123`
 
 ## Demo Flow
 
 Recommended walkthrough for a recruiter, teammate, or portfolio review:
 
-1. Load `Sales Data` from the sidebar.
-2. Show the KPI row, quick insights panel, and hero chart.
-3. Open `AI Analyst` and ask:
+1. Sign in (demo credentials above).
+2. Load `Sales Data` from the sidebar.
+3. Show the KPI row, quick insights panel, and hero chart.
+4. Open `AI Analyst` and ask:
    - `Top 5 regions by revenue`
    - `Revenue trend`
    - `Profit by category`
-4. Open `Forecasting` and generate a 6-month forecast.
-5. Open `Reports` and generate the PDF.
+   Click a follow-up suggestion — the nav stays on AI Analyst (session-persistent).
+5. Open `Forecasting` and generate a 6-month forecast.
+6. Open `Reports` and generate the narrative PDF — download and open it to show the cover page, executive summary, and per-question prose sections.
 
 ## Sample Datasets
 

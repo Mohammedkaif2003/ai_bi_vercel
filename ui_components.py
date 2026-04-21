@@ -1,3 +1,4 @@
+import copy
 import html
 import re
 from html import unescape
@@ -168,43 +169,67 @@ def render_chart_card(chart, st_instance, key_prefix: str | None = None):
     if not payload:
         return
 
-    fig = payload["figure"]
-    fig.update_layout(
+    # Render a cloned figure so dark-theme tweaks don't follow the chart into
+    # session_state / the PDF generator (which needs a clean light figure).
+    source_fig = payload["figure"]
+    display_fig = copy.deepcopy(source_fig)
+    display_fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="rgba(15, 23, 42, 0)",
         plot_bgcolor="rgba(15, 23, 42, 0)",
-        font=dict(color="#e6eefc", family="Segoe UI, sans-serif"),
-        title=dict(font=dict(color="#f8fbff", size=18)),
+        font=dict(color="#e6eefc", family="Manrope, Segoe UI, sans-serif", size=12),
+        title=dict(font=dict(color="#f8fbff", size=18, family="Sora, Manrope, sans-serif")),
         legend=dict(
-            bgcolor="rgba(15, 23, 42, 0.75)",
-            bordercolor="rgba(148, 163, 184, 0.12)",
+            bgcolor="rgba(15, 23, 42, 0.55)",
+            bordercolor="rgba(148, 163, 184, 0.18)",
             borderwidth=1,
+            font=dict(color="#e6eefc"),
         ),
-        margin=dict(l=20, r=20, t=48, b=20),
+        margin=dict(l=30, r=30, t=56, b=40),
         xaxis=dict(
-            gridcolor="rgba(148, 163, 184, 0.10)",
-            zerolinecolor="rgba(148, 163, 184, 0.12)",
+            gridcolor="rgba(148, 163, 184, 0.08)",
+            zerolinecolor="rgba(148, 163, 184, 0.14)",
+            linecolor="rgba(148, 163, 184, 0.25)",
+            tickfont=dict(color="#cbd5e1"),
         ),
         yaxis=dict(
-            gridcolor="rgba(148, 163, 184, 0.10)",
-            zerolinecolor="rgba(148, 163, 184, 0.12)",
+            gridcolor="rgba(148, 163, 184, 0.08)",
+            zerolinecolor="rgba(148, 163, 184, 0.14)",
+            tickfont=dict(color="#cbd5e1"),
+        ),
+        hoverlabel=dict(
+            bgcolor="#0F172A",
+            bordercolor="rgba(129, 140, 248, 0.6)",
+            font=dict(color="#F8FAFC"),
         ),
     )
+    # Pull in-chart text labels into the dark theme so outside bar labels read
+    for trace in display_fig.data:
+        trace_type = (getattr(trace, "type", "") or "").lower()
+        if trace_type == "bar":
+            try:
+                trace.update(textfont=dict(color="#E2E8F0", family="Manrope, Segoe UI, sans-serif", size=11))
+            except Exception:
+                pass
+    fig = display_fig
     chart_key = key_prefix or re.sub(r"[^a-zA-Z0-9_]+", "_", payload.get("title", "chart"))
     st_instance.plotly_chart(fig, use_container_width=True, key=f"{chart_key}_plot")
 
     rationale = clean_text(payload.get("rationale", ""))
-    if rationale:
-        st_instance.caption(f"Why this chart: {rationale}")
-
-    for warning in payload.get("warnings", []):
-        st_instance.caption(clean_text(warning))
-
     summary = payload.get("summary", []) or []
-    if summary:
-        st_instance.markdown("**Chart Summary**")
-        for item in summary:
-            st_instance.write(f"- {clean_text(item)}")
+    warnings = [clean_text(w) for w in payload.get("warnings", []) if w]
+
+    has_details = bool(rationale or summary or warnings)
+    if has_details:
+        with st_instance.expander("Chart details", expanded=False):
+            if rationale:
+                st_instance.markdown(f"**Why this chart**  &nbsp; {rationale}")
+            if summary:
+                st_instance.markdown("**Quick read**")
+                for item in summary:
+                    st_instance.write(f"• {clean_text(item)}")
+            for warning in warnings:
+                st_instance.caption(warning)
 
     data = payload.get("data")
     download_key = chart_key
@@ -212,7 +237,7 @@ def render_chart_card(chart, st_instance, key_prefix: str | None = None):
         left, right = st_instance.columns(2)
         with left:
             st.download_button(
-                "Download Plot Data",
+                "Download CSV",
                 data=chart_download_bytes(payload),
                 file_name=f"{download_key}_plot_data.csv",
                 mime="text/csv",
@@ -223,7 +248,7 @@ def render_chart_card(chart, st_instance, key_prefix: str | None = None):
             try:
                 image_bytes = fig.to_image(format="png", width=1200, height=700, scale=2)
                 st.download_button(
-                    "Download Chart PNG",
+                    "Download PNG",
                     data=image_bytes,
                     file_name=f"{download_key}.png",
                     mime="image/png",
@@ -235,13 +260,12 @@ def render_chart_card(chart, st_instance, key_prefix: str | None = None):
 
     suggestion_items = build_graph_follow_up_suggestions(payload)
     if suggestion_items:
-        st_instance.markdown("**Suggested Graphs**")
-        st_instance.caption("These prompts are the most likely to return chart-friendly results.")
-        for idx, item in enumerate(suggestion_items):
-            clean_q = clean_text(item["question"])
-            if st_instance.button(clean_q, key=f"{download_key}_graph_followup_chart_{idx}", use_container_width=True):
-                st.session_state.auto_query = clean_q
-                st.rerun()
+        with st_instance.expander("Suggested follow-up charts", expanded=False):
+            for idx, item in enumerate(suggestion_items):
+                clean_q = clean_text(item["question"])
+                if st_instance.button(clean_q, key=f"{download_key}_graph_followup_chart_{idx}", use_container_width=True):
+                    st.session_state.auto_query = clean_q
+                    st.rerun()
 
 
 def render_sidebar_dataset_badge(name, rows, cols):

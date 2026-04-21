@@ -105,7 +105,19 @@ Name: {result.name}
     return data_summary
 
 
-def generate_conversational_response(query, result, insight="", df=None):
+ANALYST_CONCISE_PROMPT = """You are a Senior Business Intelligence Analyst.
+
+Reply in a concise, point-by-point style. For typical user questions return 1-3 short bullet points or numbered items that directly answer the query.
+
+RULES (CONCISE MODE)
+- Be short and on-point — no extra context unless requested.
+- Use plain text or short bullets only.
+- Avoid full paragraphs and long introductions.
+- Do not include the large multi-section report format when concise mode is enabled.
+"""
+
+
+def generate_conversational_response(query, result, insight="", df=None, concise: bool = False):
     """
     Generate a professional, rigorous AI response using Google Gemini
     (primary) with Groq LLaMA as fallback.
@@ -129,6 +141,9 @@ Here is the analysis result:
 
 Analyze this data using your senior analyst framework. Be specific to THIS data — no generic responses."""
 
+    # choose the system prompt depending on concise flag
+    system_prompt = ANALYST_CONCISE_PROMPT if concise else ANALYST_SYSTEM_PROMPT
+
     # 🔹 Try Google Gemini first
     if GOOGLE_API_KEY:
         try:
@@ -136,7 +151,7 @@ Analyze this data using your senior analyst framework. Be specific to THIS data 
             genai.configure(api_key=GOOGLE_API_KEY)
             model = genai.GenerativeModel(
                 "gemini-2.0-flash",
-                system_instruction=ANALYST_SYSTEM_PROMPT
+                system_instruction=system_prompt
             )
             response = model.generate_content(
                 prompt,
@@ -158,7 +173,7 @@ Analyze this data using your senior analyst framework. Be specific to THIS data 
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": ANALYST_SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3,

@@ -95,9 +95,12 @@ def render_quick_prompt_buttons(df: pd.DataFrame, schema: dict | None = None, da
                 st.rerun()
 
 
-def render_chart_collection(charts):
+def render_chart_collection(charts, key_prefix: str = ""):
     if not charts:
         return
+
+    # Build a stable unique suffix from the key_prefix or fall back to object id
+    uid = key_prefix or str(id(charts))
 
     if len(charts) > 1:
         chart_titles = []
@@ -106,14 +109,14 @@ def render_chart_collection(charts):
                 chart_titles.append(chart.get("title") or f"Chart Option {idx + 1}")
             else:
                 chart_titles.append(f"Chart Option {idx + 1}")
-        selected_title = st.selectbox("Chart view", chart_titles, key=f"chart_selector_{len(charts)}")
+        selected_title = st.selectbox("Chart view", chart_titles, key=f"chart_selector_{uid}")
         selected_index = chart_titles.index(selected_title)
-        render_chart_card(charts[selected_index], st, key_prefix=f"chart_selected_{selected_index}")
+        render_chart_card(charts[selected_index], st, key_prefix=f"chart_sel_{uid}_{selected_index}")
         with st.expander("Show all chart options", expanded=False):
             for idx, chart in enumerate(charts):
-                render_chart_card(chart, st, key_prefix=f"chart_all_{idx}")
+                render_chart_card(chart, st, key_prefix=f"chart_all_{uid}_{idx}")
     else:
-        render_chart_card(charts[0], st, key_prefix="chart_single")
+        render_chart_card(charts[0], st, key_prefix=f"chart_single_{uid}")
 
 
 def render_dataframe_result(dataframe: pd.DataFrame, key_prefix: str, title: str = "Data Table", max_rows: int = 500):
@@ -150,7 +153,8 @@ def render_follow_up_buttons(raw_suggestions: str, key_prefix: str):
         clean_q = clean_text(q).replace("`", "")
         if st.button(clean_q, key=f"{key_prefix}_{clean_q}", use_container_width=True):
             st.session_state.auto_query = clean_q
-            st.rerun()
+            # No st.rerun() — the button click already triggers a rerun and
+            # auto_query will be picked up in the same pass, keeping the user on this tab.
     if not parsed_questions:
         st.caption("No follow-up questions available.")
 
@@ -159,10 +163,8 @@ def render_follow_up_section(raw_suggestions: str, key_prefix: str):
     if not raw_suggestions:
         return
 
-    st.markdown('<div class="ai-theme-box">', unsafe_allow_html=True)
     with st.expander("Suggested Follow-Up Questions", expanded=False):
         render_follow_up_buttons(raw_suggestions, key_prefix)
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_chat_history_entry(entry: dict):
@@ -186,7 +188,7 @@ def render_chat_history_entry(entry: dict):
     chart_data = entry.get("chart_data")
     if chart_data is not None:
         render_dataframe_result(chart_data, f"history_table_{id(entry)}")
-        render_chart_collection(entry.get("charts", []))
+        render_chart_collection(entry.get("charts", []), key_prefix=f"hist_{id(entry)}")
     else:
         result = entry.get("result")
         if isinstance(result, dict):

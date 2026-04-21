@@ -1,13 +1,24 @@
 import streamlit as st
-import pandas as pd
+
+# ── set_page_config MUST be the very first Streamlit call ──
+# Import only the constants needed for it before any other module
+# (other imports like app_tabs pull in @st.cache_data decorators at module level,
+#  which would count as a Streamlit command and crash this call)
+from config import APP_ICON, APP_TITLE, APP_VERSION, DATA_DIR, FRIENDLY_DATASET_NAMES
+
+st.set_page_config(
+    page_title=APP_TITLE,
+    page_icon=APP_ICON,
+    layout="wide",
+)
+
+# ── Remaining imports (safe to do after set_page_config) ──────────────────
 import os
 import time
+import pandas as pd
 from io import BytesIO
 from dotenv import load_dotenv
 from modules.app_secrets import get_secret
-
-# New separate files
-from config import APP_ICON, APP_TITLE, APP_VERSION, DATA_DIR, FRIENDLY_DATASET_NAMES
 from styles import inject_styles
 from ui_components import (
     render_sidebar_dataset_badge,
@@ -28,6 +39,7 @@ from modules.app_tabs import (
     render_reports_tab,
 )
 from modules.upload_cache import compute_file_fingerprint, should_reuse_uploaded_dataframe
+
 # Load environment variables
 load_dotenv()
 api_key = get_secret("GROQ_API_KEY")
@@ -35,19 +47,23 @@ api_key = get_secret("GROQ_API_KEY")
 if not api_key:
     st.error("Groq API key not found. Please check your .env file.")
     st.stop()
-
-st.set_page_config(
-    page_title=APP_TITLE,
-    page_icon=APP_ICON,
-    layout="wide"
-)
 inject_styles(st)
+
+# ── Auth gate ────────────────────────────────────────────────────────────
+from auth import require_login, render_sidebar_user_badge
+require_login(APP_TITLE, APP_ICON)
+
 logger = get_logger("app")
 ensure_analysis_state()
+
+render_sidebar_user_badge()
 
 
 # ---------- SIDEBAR & DATASET LOADING ----------
 st.sidebar.subheader("📂 Select Data Source")
+# App branding in the sidebar
+from ui_components import render_sidebar_branding
+render_sidebar_branding(APP_TITLE, APP_ICON)
 data_source = st.sidebar.radio(
     "Choose how to load data:",
     ["Upload CSV", "Use Pre-loaded Dataset"]
@@ -60,9 +76,11 @@ def load_dataset(file_bytes: bytes):
     df = normalize_columns(df)
     return df
 
-@st.cache_data
 def load_local_dataset(path):
-    df = pd.read_csv(path)
+    try:
+        df = pd.read_csv(path, encoding="utf-8")
+    except UnicodeDecodeError:
+        df = pd.read_csv(path, encoding="latin-1")
     df = normalize_columns(df)
     return df
 
@@ -99,8 +117,9 @@ def render_empty_state_hero():
 def load_csv_with_friendly_error(loader_fn, source_label: str, *args):
     try:
         return loader_fn(*args), None
-    except Exception:
-        return None, f"Invalid CSV format. Please check delimiters, encoding, or missing headers while loading {source_label}."
+    except Exception as e:
+        logger.error("CSV load failed for %s: %s", source_label, e)
+        return None, f"Could not load '{source_label}'. Check that the file is a valid CSV. ({e})"
 
 selected_key = None
 df_to_load = None
@@ -138,7 +157,8 @@ if data_source == "Upload CSV":
         df_to_load = st.session_state["uploaded_df"]
         selected_key = st.session_state["uploaded_name"]
 elif data_source == "Use Pre-loaded Dataset":
-    data_dir = os.path.join(os.path.dirname(__file__), DATA_DIR)
+    _base = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(_base, DATA_DIR)
     if os.path.exists(data_dir):
         csv_files = [f for f in os.listdir(data_dir) if f.endswith(".csv")]
         if csv_files:
@@ -200,26 +220,37 @@ tab_labels = [
     "🔮 Forecasting",
     "📑 Reports",
 ]
-default_main_tab = "🤖 AI Analyst" if "auto_query" in st.session_state else st.session_state.get("main_tab", tab_labels[0])
-if default_main_tab not in tab_labels:
-    default_main_tab = tab_labels[0]
 
-tab1, tab2, tab3, tab4 = st.tabs(
+# Session-state-backed tab navigation. Native st.tabs resets to the first tab
+# on any rerun triggered by an internal button, which was kicking users back
+# to Data Overview whenever they clicked a suggestion or generated a PDF.
+if "active_tab" not in st.session_state:
+    st.session_state["active_tab"] = tab_labels[0]
+
+# If an auto_query was queued from another tab (e.g. "try asking"), snap to
+# the AI Analyst so the question is visibly processed.
+if "auto_query" in st.session_state:
+    st.session_state["active_tab"] = tab_labels[1]
+
+st.markdown('<div class="apex-tabs">', unsafe_allow_html=True)
+st.radio(
+    "Main navigation",
     tab_labels,
-    default=default_main_tab,
-    key="main_tab",
+    horizontal=True,
+    label_visibility="collapsed",
+    key="active_tab",
 )
-st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-with tab1:
+st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+
+active_tab = st.session_state["active_tab"]
+if active_tab == tab_labels[0]:
     render_data_overview_tab(df)
-
-with tab2:
+elif active_tab == tab_labels[1]:
     render_ai_analyst_tab(df, schema, api_key, logger)
-
-with tab3:
+elif active_tab == tab_labels[2]:
     render_forecasting_tab(df)
-
-with tab4:
+elif active_tab == tab_labels[3]:
     render_reports_tab()
 
 st.markdown(f"""

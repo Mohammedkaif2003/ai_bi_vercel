@@ -143,6 +143,70 @@ section[data-testid="stSidebar"],
     box-shadow: 0 10px 22px rgba(79, 70, 229, 0.26);
 }
 
+/* Radio-as-tabs navigation (replaces st.tabs for persistence across reruns) */
+.apex-tabs + div[data-testid="stRadio"] > label {
+    display: none !important;
+}
+
+.apex-tabs + div[data-testid="stRadio"] > div[role="radiogroup"] {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 8px;
+    margin: 4px 0 0 0;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.2);
+}
+
+.apex-tabs + div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+    flex: 1 1 0;
+    min-width: 160px;
+    min-height: 46px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(255,255,255,0.02);
+    color: var(--text-muted) !important;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.22s ease;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.apex-tabs + div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
+    background: rgba(99, 102, 241, 0.10);
+    border-color: rgba(99, 102, 241, 0.35);
+    color: #ffffff !important;
+    transform: translateY(-1px);
+}
+
+.apex-tabs + div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
+    display: none !important;
+}
+
+.apex-tabs + div[data-testid="stRadio"] > div[role="radiogroup"] > label > div {
+    color: inherit !important;
+    font-weight: inherit !important;
+}
+
+.apex-tabs + div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {
+    background: linear-gradient(135deg, var(--accent-a), var(--accent-b)) !important;
+    color: white !important;
+    border-color: rgba(129, 140, 248, 0.55) !important;
+    box-shadow: 0 10px 22px rgba(79, 70, 229, 0.32);
+    transform: translateY(-1px);
+}
+
+.apex-tabs + div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) > div {
+    color: white !important;
+}
+
 button, .stButton > button, .stDownloadButton > button {
     border-radius: 12px !important;
     border: 1px solid rgba(148, 163, 184, 0.18) !important;
@@ -343,6 +407,29 @@ div[aria-selected="true"][role="option"] > div {
 [data-testid="stChatInput"] textarea::placeholder {
     color: #9cb4cb !important;
     opacity: 1;
+}
+
+/* Compact theme box used around answer summaries and follow-ups */
+.ai-theme-box {
+    margin: 8px 0 !important;
+    padding: 6px 0 !important;
+}
+
+/* Make expanders more compact and avoid large visual gaps */
+[data-testid="stExpander"] summary {
+    padding: 8px 14px !important;
+    min-height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+[data-testid="stExpander"] details > div:last-child {
+    padding: 10px 14px !important;
+}
+
+/* Reduce extra vertical spacing inside glass cards to tighten layout */
+.glass-card {
+    padding: 14px !important;
 }
 
 [data-testid="stChatInput"]:focus-within {
@@ -678,6 +765,27 @@ div[aria-selected="true"][role="option"] > div {
         linear-gradient(180deg, rgba(7, 23, 40, 0.96), rgba(9, 30, 48, 0.88));
 }
 
+.chat-hero-card {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 20px;
+    padding: 22px 24px;
+    margin-bottom: 14px;
+    background:
+        radial-gradient(circle at 6% 0%, rgba(99, 102, 241, 0.18), transparent 36%),
+        radial-gradient(circle at 94% 100%, rgba(20, 184, 166, 0.16), transparent 40%),
+        linear-gradient(180deg, rgba(7, 23, 40, 0.96), rgba(9, 30, 48, 0.88));
+    box-shadow: 0 18px 40px rgba(2, 6, 23, 0.32);
+    animation: fadeSlideIn 0.45s ease;
+}
+
+.chat-hero-block {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 .ai-theme-box {
     margin-top: 10px;
     margin-bottom: 10px;
@@ -715,27 +823,50 @@ div[aria-selected="true"][role="option"] > div {
 }
 
 .chat-status {
-    padding: 10px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
     color: #e0e7ff;
-    background: rgba(99, 102, 241, 0.12);
-    border: 1px solid rgba(99, 102, 241, 0.24);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(20, 184, 166, 0.16));
+    border: 1px solid rgba(129, 140, 248, 0.3);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.18);
+    white-space: nowrap;
+}
+
+.chat-status__pulse {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: livePulse 1.8s infinite ease-out;
+    flex-shrink: 0;
+}
+
+.chat-status__label {
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #eef2ff;
 }
 
 .typing-dots {
     display: inline-flex;
-    gap: 6px;
+    gap: 5px;
     align-items: center;
+    line-height: 0;
 }
 
 .typing-dots span {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 999px;
-    background: #6366f1;
+    background: linear-gradient(135deg, #818cf8, #6366f1);
     animation: pulseDots 1.2s infinite ease-in-out;
+    display: inline-block;
 }
 
 .typing-dots span:nth-child(2) {
@@ -744,6 +875,21 @@ div[aria-selected="true"][role="option"] > div {
 
 .typing-dots span:nth-child(3) {
     animation-delay: 0.3s;
+}
+
+@keyframes livePulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+        transform: scale(0.92);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+        transform: scale(1);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        transform: scale(0.92);
+    }
 }
 
 .landing-hero {
@@ -1299,6 +1445,98 @@ textarea::placeholder {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* ─────────────────── Login page ─────────────────── */
+.login-hero {
+    margin-bottom: 26px;
+    padding: 34px 28px 28px 28px;
+    border-radius: 22px;
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    background:
+        radial-gradient(circle at 12% 10%, rgba(99, 102, 241, 0.28), transparent 36%),
+        radial-gradient(circle at 88% 14%, rgba(255, 138, 61, 0.22), transparent 32%),
+        linear-gradient(165deg, rgba(8, 36, 56, 0.96) 0%, rgba(7, 23, 40, 0.98) 68%);
+    box-shadow: 0 24px 48px rgba(2, 10, 20, 0.35);
+    text-align: center;
+    animation: fadeSlideIn 0.5s ease;
+}
+.login-hero__badge {
+    display: inline-flex;
+    width: 58px;
+    height: 58px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white;
+    font-size: 28px;
+    box-shadow: 0 10px 22px rgba(79, 70, 229, 0.36);
+    margin-bottom: 14px;
+}
+.login-hero__title {
+    font-family: 'Sora', 'Segoe UI', sans-serif;
+    font-size: 30px;
+    font-weight: 800;
+    color: #f8fbff;
+    letter-spacing: -0.02em;
+}
+.login-hero__subtitle {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #c7d8e8;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+.login-hero__divider {
+    margin: 18px auto 16px auto;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(129, 140, 248, 0.7), transparent);
+    border-radius: 2px;
+}
+.login-hero__tag {
+    font-size: 14px;
+    color: #e2e8f0;
+    font-weight: 500;
+}
+
+/* Sidebar user card + logout */
+.sidebar-user-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.12), rgba(9, 30, 48, 0.52));
+}
+.sidebar-user-card__avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 14px rgba(79, 70, 229, 0.32);
+}
+.sidebar-user-card__name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f8fbff;
+}
+.sidebar-user-card__role {
+    font-size: 11px;
+    color: #a8bad8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 2px;
 }
 </style>
 """
