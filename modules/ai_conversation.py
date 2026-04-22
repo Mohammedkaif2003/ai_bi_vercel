@@ -1,5 +1,4 @@
 import os
-import streamlit as st
 from dotenv import load_dotenv
 import pandas as pd
 from modules.app_secrets import get_secret

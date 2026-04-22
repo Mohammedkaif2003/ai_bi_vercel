@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg:          #0F172A;
+    --surface:     #1E293B;
+    --border:      #334155;
+    --brand:       #4F46E5;
+    --brand-soft:  #818CF8;
+    --text:        #F1F5F9;
+    --muted:       #94A3B8;
+    --success:     #10B981;
+    --warning:     #F59E0B;
+    --danger:      #EF4444;
+  }
+
+  html, body {
+    @apply bg-[#0F172A] text-[#F1F5F9] font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Thin scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #1E293B; }
+  ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+}
+
+@layer components {
+  .card {
+    @apply bg-[#1E293B] rounded-xl border border-[#334155] p-5;
+  }
+
+  .btn-primary {
+    @apply bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold
+           px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50
+           disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-[#334155] hover:bg-[#475569] text-[#F1F5F9] font-medium
+           px-4 py-2 rounded-lg transition-colors;
+  }
+
+  .tab-button {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-colors
+           text-[#94A3B8] hover:text-[#F1F5F9] hover:bg-[#1E293B];
+  }
+
+  .tab-button.active {
+    @apply bg-[#4F46E5] text-white;
+  }
+
+  .input {
+    @apply bg-[#0F172A] border border-[#334155] rounded-lg px-3 py-2
+           text-[#F1F5F9] placeholder-[#475569] focus:outline-none
+           focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]
+           w-full transition-colors;
+  }
+
+  .kpi-card {
+    @apply card border-l-4;
+  }
+
+  .chat-bubble-user {
+    @apply bg-[#4F46E5] text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[75%]
+           ml-auto text-sm leading-relaxed;
+  }
+
+  .chat-bubble-ai {
+    @apply bg-[#1E293B] border border-[#334155] text-[#E2E8F0] rounded-2xl
+           rounded-tl-sm px-4 py-3 max-w-[85%] text-sm leading-relaxed;
+  }
+
+  .section-title {
+    @apply text-lg font-semibold text-[#F1F5F9] mb-3;
+  }
+}

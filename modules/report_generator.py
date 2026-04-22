@@ -932,15 +932,20 @@ def generate_pdf(
     analysis_history=None,
     dataset_name: str | None = None,
     user_name: str | None = None,
+    file_path: str | None = None,
 ) -> str:
     """
     Generate a narrative-first PDF report.
 
     - Pass `analysis_history` (list of dicts) for a multi-analysis document.
     - Or pass `query` + `summary_text` + `dataframe` for a single-query report.
+    - Pass ``file_path`` to control where the PDF is written (defaults to
+      ``AI_Executive_Report.pdf`` in the current directory; use ``/tmp/...``
+      for serverless environments where the working directory is read-only).
     Returns the path of the written PDF.
     """
-    file_path = "AI_Executive_Report.pdf"
+    if file_path is None:
+        file_path = "AI_Executive_Report.pdf"
     timestamp = datetime.now().strftime("%B %d, %Y · %H:%M")
 
     # Resolve defaults from session state if available
