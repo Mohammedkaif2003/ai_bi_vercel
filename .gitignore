@@ -62,3 +62,5 @@ INITIAL_VS_ENHANCED.md
 *.lnk
 node_modules
 .next
+
+.vercel

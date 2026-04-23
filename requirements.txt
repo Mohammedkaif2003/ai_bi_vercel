@@ -1,8 +1,6 @@
 pandas
 numpy
 plotly
-scikit-learn
-statsmodels
 groq
 python-dotenv
 reportlab
