@@ -1,7 +1,13 @@
 import os
 import re
 
-import streamlit as st
+try:
+    import streamlit as st
+    st_cache = st.cache_data(show_spinner=False)
+except ImportError:
+    def st_cache(func):
+        return func
+
 from groq import Groq
 
 from modules.app_secrets import get_secret
@@ -10,7 +16,7 @@ from modules.code_executor import validate_generated_code
 api_key = get_secret("GROQ_API_KEY")
 
 
-@st.cache_data(show_spinner=False)
+@st_cache
 def generate_analysis_code(api_key, query, df, dataset_context):
     client = Groq(api_key=api_key)
 

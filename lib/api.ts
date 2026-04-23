@@ -16,10 +16,13 @@ import type {
   AnalysisHistoryEntry,
 } from "./types";
 
+import { supabase } from "./supabase";
+
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const token = typeof window !== "undefined" ? sessionStorage.getItem("nexlytics_token") : null;
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: {
@@ -34,7 +37,8 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const token = typeof window !== "undefined" ? sessionStorage.getItem("nexlytics_token") : null;
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
   const res = await fetch(`${BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });

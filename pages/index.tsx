@@ -1,27 +1,53 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import { login } from "@/lib/api";
+import { motion, AnimatePresence } from "framer-motion";
+import { Lock, User, LogIn, Info, UserPlus } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import LogoMark from "@/components/LogoMark";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Check if already logged in
+  useEffect(() => {
+    async function checkUser() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push("/dashboard");
+      }
+    }
+    checkUser();
+  }, [router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
-      const user = await login(username, password);
-      sessionStorage.setItem("nexlytics_token", user.token);
-      sessionStorage.setItem("nexlytics_user", JSON.stringify(user));
-      router.push("/dashboard");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed.");
+      if (isSignUp) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (signUpError) throw signUpError;
+        setError("Check your email for the confirmation link!");
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) throw signInError;
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred.");
     } finally {
       setLoading(false);
     }
@@ -30,73 +56,115 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Nexlytics - Sign In</title>
+        <title>Nexlytics | {isSignUp ? "Create Account" : "Sign In"}</title>
       </Head>
-      <div className="min-h-screen flex items-center justify-center bg-[#0F172A] px-4">
-        <div className="w-full max-w-md">
-          <div className="card mb-6 text-center py-8">
-            <LogoMark size={56} className="mx-auto mb-3" />
-            <h1 className="text-3xl font-bold text-white mb-1">Nexlytics</h1>
-            <p className="text-[#94A3B8] text-sm">AI-Powered Business Intelligence</p>
-            <hr className="border-[#334155] my-5" />
+      <div className="min-h-screen flex items-center justify-center bg-mesh px-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md"
+        >
+          <div className="glass-card p-8 md:p-10 shadow-2xl relative overflow-hidden">
+            {/* Background Glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50" />
+            
+            <div className="text-center mb-8">
+              <motion.div 
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                className="mb-4 inline-block"
+              >
+                <LogoMark size={64} className="mx-auto" />
+              </motion.div>
+              <h1 className="text-4xl font-bold text-white tracking-tight mb-2">Nexlytics</h1>
+              <p className="text-slate-400 font-medium">Enterprise Intelligence Platform</p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-left">
-              <div>
-                <label className="block text-sm text-[#94A3B8] mb-1" htmlFor="username">
-                  Username
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="email">
+                  Email Address
                 </label>
-                <input
-                  id="username"
-                  className="input"
-                  placeholder="e.g. admin"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoComplete="username"
-                  required
-                />
+                <div className="relative group">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
+                  <input
+                    id="email"
+                    type="email"
+                    className="input pl-12"
+                    placeholder="name@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm text-[#94A3B8] mb-1" htmlFor="password">
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="password">
                   Password
                 </label>
-                <input
-                  id="password"
-                  type="password"
-                  className="input"
-                  placeholder="Your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                />
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
+                  <input
+                    id="password"
+                    type="password"
+                    className="input pl-12"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
               </div>
+
               {error && (
-                <p className="text-[#EF4444] text-sm bg-[#450a0a] border border-[#7f1d1d] rounded-lg px-3 py-2">
-                  {error}
-                </p>
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`flex items-center gap-3 text-sm rounded-xl px-4 py-3 ${
+                    error.includes("confirm") 
+                      ? "text-emerald-400 bg-emerald-500/5 border border-emerald-500/10" 
+                      : "text-rose-400 bg-rose-500/5 border border-rose-500/10"
+                  }`}
+                >
+                  <Info size={16} />
+                  <span>{error}</span>
+                </motion.div>
               )}
+
               <button
                 type="submit"
-                className="btn-primary w-full mt-2"
+                className="btn-primary w-full py-4 flex items-center justify-center gap-2 group"
                 disabled={loading}
               >
-                {loading ? "Signing in..." : "Sign In"}
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    {isSignUp ? <UserPlus size={20} /> : <LogIn size={20} />}
+                    <span>{isSignUp ? "Create Account" : "Access Dashboard"}</span>
+                  </>
+                )}
               </button>
             </form>
 
-            {process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS !== "false" && (
-              <details className="mt-5 text-left text-sm">
-                <summary className="cursor-pointer text-[#64748B] hover:text-[#94A3B8] transition-colors">
-                  Demo credentials
-                </summary>
-                <div className="mt-2 bg-[#0F172A] rounded-lg p-3 text-[#94A3B8] space-y-1 border border-[#334155]">
-                  <p><span className="text-white font-medium">Administrator:</span> admin / admin123</p>
-                  <p><span className="text-white font-medium">Business Analyst:</span> analyst / analyst123</p>
-                </div>
-              </details>
-            )}
+            <div className="mt-8 text-center">
+              <button 
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-xs text-slate-500 hover:text-indigo-400 transition-colors"
+              >
+                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+              </button>
+            </div>
           </div>
-        </div>
+          
+          <p className="mt-8 text-center text-slate-600 text-xs">
+            &copy; 2026 Nexlytics AI. All rights reserved.
+          </p>
+        </motion.div>
       </div>
     </>
   );

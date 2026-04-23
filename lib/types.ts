@@ -1,6 +1,7 @@
 // Shared TypeScript types for the Nexlytics Vercel app
 
 export interface User {
+  id: string;
   token: string;
   username: string;
   display_name: string;

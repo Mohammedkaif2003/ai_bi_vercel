@@ -109,12 +109,32 @@ def create_token(username: str, role: str) -> str:
 
 def verify_token(token: str) -> dict | None:
     try:
+        # Check if it's a Supabase JWT (3 parts separated by dots)
+        if token.count(".") == 2:
+            import base64
+            # JWT payloads are base64url encoded
+            payload_b64 = token.split(".")[1]
+            # Add padding for standard base64 decoding if needed
+            missing_padding = len(payload_b64) % 4
+            if missing_padding:
+                payload_b64 += '=' * (4 - missing_padding)
+            
+            # Use urlsafe_b64decode to handle '-' and '_' in JWTs
+            payload_bytes = base64.urlsafe_b64decode(payload_b64)
+            payload_json = json.loads(payload_bytes.decode("utf-8"))
+            
+            return {
+                "username": payload_json.get("email", "Supabase User"),
+                "role": "Pro Analyst"
+            }
+            
+        # Fallback to original custom token format
         parts = token.split(":")
         if len(parts) != 4:
             return None
         username, role, ts, sig = parts
-        payload = f"{username}:{role}:{ts}"
-        expected = hmac.new(get_auth_secret().encode(), payload.encode(), hashlib.sha256).hexdigest()
+        payload_str = f"{username}:{role}:{ts}"
+        expected = hmac.new(get_auth_secret().encode(), payload_str.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(sig, expected):
             return None
         if int(time.time()) - int(ts) > TOKEN_TTL_SECONDS:
