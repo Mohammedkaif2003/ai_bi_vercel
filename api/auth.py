@@ -1,33 +1,16 @@
-"""Authentication endpoint — POST /api/auth
-
-Request body:
-    { "username": "admin", "password": "admin123" }
-
-Response (200):
-    { "token": "...", "username": "admin", "display_name": "Administrator", "role": "admin" }
-
-Response (401):
-    { "error": "Invalid credentials." }
-"""
+"""Authentication endpoint - POST /api/auth."""
 from __future__ import annotations
 
 import hashlib
-import hmac
 import json
 import os
 import sys
-import time
 from http.server import BaseHTTPRequestHandler
 
-# Resolve project root so _utils can be imported
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from _utils import handle_options, read_json_body, send_error, send_json  # noqa: E402
-
-# ---------------------------------------------------------------------------
-# User store
-# ---------------------------------------------------------------------------
+from _utils import create_token, handle_options, read_json_body, send_error, send_json, verify_token  # noqa: E402,F401
 
 _DEFAULT_USERS: dict[str, dict] = {
     "admin": {
@@ -42,10 +25,25 @@ _DEFAULT_USERS: dict[str, dict] = {
     },
 }
 
-_SECRET = os.getenv("AUTH_SECRET", "apex-analytics-secret-key-change-in-production")
-
 
 def _load_users() -> dict:
+    env_users = os.getenv("AUTH_USERS_JSON")
+    if env_users:
+        try:
+            return json.loads(env_users)
+        except json.JSONDecodeError:
+            return {}
+
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    if admin_password:
+        return {
+            os.getenv("ADMIN_USERNAME", "admin").strip().lower(): {
+                "password_hash": _hash_pw(admin_password),
+                "display_name": os.getenv("ADMIN_DISPLAY_NAME", "Administrator"),
+                "role": "admin",
+            }
+        }
+
     users_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "users.json",
@@ -56,45 +54,16 @@ def _load_users() -> dict:
                 return json.load(f)
         except Exception:
             pass
-    return _DEFAULT_USERS
+
+    demo_default = "false" if os.getenv("VERCEL_ENV") == "production" else "true"
+    if os.getenv("ALLOW_DEMO_USERS", demo_default).lower() == "true":
+        return _DEFAULT_USERS
+    return {}
 
 
 def _hash_pw(password: str) -> str:
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
-
-# ---------------------------------------------------------------------------
-# Token helpers (simple HMAC — no external JWT library required)
-# ---------------------------------------------------------------------------
-
-def _create_token(username: str, role: str) -> str:
-    payload = f"{username}:{role}:{int(time.time())}"
-    sig = hmac.new(_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
-    return f"{payload}:{sig}"
-
-
-def verify_token(token: str) -> dict | None:
-    """Validate token and return ``{"username": ..., "role": ...}`` or None."""
-    try:
-        parts = token.split(":")
-        if len(parts) != 4:
-            return None
-        username, role, ts, sig = parts
-        payload = f"{username}:{role}:{ts}"
-        expected = hmac.new(_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(sig, expected):
-            return None
-        # 24-hour expiry
-        if int(time.time()) - int(ts) > 86_400:
-            return None
-        return {"username": username, "role": role}
-    except Exception:
-        return None
-
-
-# ---------------------------------------------------------------------------
-# Vercel handler
-# ---------------------------------------------------------------------------
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -115,7 +84,12 @@ class handler(BaseHTTPRequestHandler):
             send_error(self, "Invalid credentials.", 401)
             return
 
-        token = _create_token(username, record.get("role", "user"))
+        try:
+            token = create_token(username, record.get("role", "user"))
+        except RuntimeError as exc:
+            send_error(self, str(exc), 500)
+            return
+
         send_json(self, {
             "token": token,
             "username": username,
@@ -123,5 +97,5 @@ class handler(BaseHTTPRequestHandler):
             "role": record.get("role", "user"),
         })
 
-    def log_message(self, format, *args):  # suppress access logs
+    def log_message(self, format, *args):
         pass

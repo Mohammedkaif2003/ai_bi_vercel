@@ -73,6 +73,7 @@ class NotFoundHandler(DispatchHandler):
 
 
 if __name__ == "__main__":
-    server = HTTPServer(("localhost", 8000), DispatchHandler)
-    print("Local Python API listening on http://localhost:8000")
+    port = int(os.getenv("PORT", "8000"))
+    server = HTTPServer(("localhost", port), DispatchHandler)
+    print(f"Local Python API listening on http://localhost:{port}")
     server.serve_forever()

@@ -32,6 +32,7 @@ from _utils import (  # noqa: E402
     fig_to_json,
     handle_options,
     read_json_body,
+    require_auth,
     send_error,
     send_json,
 )
@@ -84,6 +85,9 @@ class handler(BaseHTTPRequestHandler):
         handle_options(self)
 
     def do_POST(self):
+        if require_auth(self) is None:
+            return
+
         data = read_json_body(self)
         csv_b64 = data.get("csv_b64", "")
         try:

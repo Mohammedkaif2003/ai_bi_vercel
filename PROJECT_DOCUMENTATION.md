@@ -1,418 +1,233 @@
-# ⚡ Apex Analytics — Enterprise Data Suite Documentation
+# Nexlytics Project Documentation
 
----
+## 1. Overview
 
-## 1. Project Overview
+Nexlytics is a CSV-based business intelligence application. Users can sign in, load a sample dataset or upload their own CSV, inspect KPIs and automated insights, ask plain-English analysis questions, create forecasts, and export executive PDF reports.
 
-**Apex Analytics** is an enterprise-grade, Streamlit-based Business Intelligence application. It allows users to upload business datasets (CSV files) and interact with them using natural language queries. The application uses a **compute-first architecture** where pandas handles all computation deterministically, and Groq's LLaMA models are used only for narrating pre-computed results.
+The current production path is a Next.js application backed by Python API routes for Vercel. The older Streamlit app remains in the repository for local Python development.
 
-The application transforms raw data into actionable business intelligence by providing:
+## 2. Runtime Architecture
 
-- **Deterministic Smart Analysis** — 9 analytical patterns computed with pandas, charts selected by Python
-- **Natural Language Narration** — Groq explains pre-computed results in conversational prose
-- **10+ Chart Types** — bar, grouped bar, stacked bar, pie, line, scatter, boxplot, heatmap, outlier detection, forecast overlay
-- **Automated KPI Generation** — Key Performance Indicators extracted automatically from any dataset
-- **Revenue/Sales Forecasting** — Linear trend projection with confidence intervals
-- **Professional PDF Reports** — Multi-query executive reports with branded styling and print-safe charts
-- **Auto-Insights** — Automatic detection of trends, anomalies, and performance patterns
-
-### Technology Stack
-
-| Component        | Technology                          |
-|------------------|-------------------------------------|
-| Frontend / UI    | Streamlit, Custom CSS               |
-| AI Engine        | Groq API (LLaMA 3.3 70B Versatile) |
-| Smart Analysis   | Pandas, NumPy (deterministic)       |
-| Visualizations   | Plotly Express, Plotly Graph Objects |
-| Static Charting  | Kaleido (Plotly → PNG Export)        |
-| PDF Generation   | ReportLab                           |
-| Forecasting      | NumPy polyfit, scikit-learn         |
-| Environment      | Python 3.10+, python-dotenv         |
-
-### Runtime Requirements
-
-```
-streamlit, pandas, numpy, plotly, scikit-learn, statsmodels,
-groq, python-dotenv, reportlab, kaleido
+```text
+Browser
+  |
+  | Next.js pages and React components
+  v
+pages/index.tsx              Sign-in screen
+pages/dashboard.tsx          Main BI workspace
+  |
+  | lib/api.ts fetch calls
+  v
+api/*.py                     Python serverless endpoints
+  |
+  | shared analytics/reporting modules
+  v
+modules/*.py                 pandas, Plotly, AI narration, forecasting, PDF generation
 ```
 
----
+The application follows a compute-first model:
 
-## 2. Project Structure
+1. Python/pandas computes the analytical result.
+2. Python/Plotly selects and builds charts.
+3. AI providers narrate already-computed results where useful.
+4. Guarded fallback paths handle novel or ambiguous analysis requests.
 
-```
-ai_business_intelligence_assistant/
-│
-├── .env                              # Stores API keys (GROQ_API_KEY)
-├── .gitignore                        # Files to ignore in version control
-├── app.py                            # Main Streamlit application
-├── auth.py                           # Login gate (SHA-256 hashed credentials)
-├── config.py                         # App constants, layout, & branding config
-├── requirements.txt                  # Python package dependencies
-├── styles.py                         # Custom CSS injections for the Streamlit UI
-├── ui_components.py                  # Reusable UI elements (cards, headers, chat bubbles)
-├── README.md                         # Main project readme
-├── PROJECT_DOCUMENTATION.md          # In-depth technical architecture documentation
-├── CHANGELOG.md                      # Version history
-│
-├── data/                             # Directory for local CSV datasets
-│   └── raw/
-│       ├── sales_data.csv            # Sales dataset (464 KB)
-│       ├── hr_data.csv               # HR/Employee dataset (35 KB)
-│       └── finance_data.csv          # Finance dataset (2.7 KB)
-│
-├── modules/                          # CORE BACKEND: Logic & Intelligence Engines
-│   ├── __init__.py                   # Package initializer
-│   ├── smart_analysis.py             # ★ Deterministic pandas analysis engine
-│   ├── ai_code_generator.py          # AI-powered code generation (fallback path)
-│   ├── ai_conversation.py            # Conversational AI + narrate_result()
-│   ├── app_tabs.py                   # Tab rendering & orchestration
-│   ├── app_views.py                  # UI view components
-│   ├── app_state.py                  # Session state management
-│   ├── app_perf.py                   # Performance timing
-│   ├── app_logging.py                # Structured logging
-│   ├── app_secrets.py                # API key management
-│   ├── auto_insights.py              # Automated business insight detection
-│   ├── auto_visualizer.py            # Chart builders (10+ types)
-│   ├── code_executor.py              # Sandboxed Python code execution
-│   ├── data_loader.py                # Loading & column normalization
-│   ├── dataset_analyzer.py           # Dataset schema analysis
-│   ├── executive_summary.py          # Executive summary bullet points
-│   ├── forecasting.py                # Revenue/sales forecasting engine
-│   ├── groq_ai.py                    # Groq API integration for suggestions
-│   ├── insight_engine.py             # Business insight generation
-│   ├── kpi_engine.py                 # KPI extraction engine
-│   ├── query_utils.py                # Query classification, relevance, intent detection
-│   ├── report_generator.py           # Professional PDF report generator
-│   └── text_utils.py                 # Text cleaning & structuring
-│
-└── tests/
-    ├── test_auto_insights.py
-    ├── test_forecasting.py
-    ├── test_kpi_engine.py
-    └── test_query_utils.py
-```
+## 3. Main User Flow
 
----
+1. User signs in through `pages/index.tsx`.
+2. The front end stores the returned token in `sessionStorage`.
+3. User opens `pages/dashboard.tsx`.
+4. User loads a sample dataset through `/api/datasets` or uploads a CSV through `/api/upload`.
+5. The API returns schema, preview rows, KPI cards, insights, and a base64 CSV payload for later analysis.
+6. User works through the dashboard tabs:
+   - Data Overview
+   - AI Analyst
+   - Forecasting
+   - Reports
 
-## 3. Core Architecture — Compute First, Narrate Second
+## 4. Front End
 
-The central design principle: **pandas computes, Python picks the chart, the LLM only narrates.**
-
-### Query Execution Pipeline
-
-```
-User Query
-    │
-    ▼
-classify_query_intent()           ← Intent detection (chart, ranking, forecast, etc.)
-    │
-    ▼
-is_dataset_related_query()        ← Relevance filter (rejects unrelated questions)
-    │
-    ├─① run_smart_analysis()      ← DETERMINISTIC pandas computation
-    │   ├─ _detect_query_type()     Classify: ranking / comparison / trend / etc.
-    │   ├─ _find_metrics()          Match user words → numeric columns
-    │   ├─ _find_group_col()        Match user words → categorical columns
-    │   ├─ _analyze_ranking()       groupby → mean → sort (+ horizontal bar chart)
-    │   ├─ _analyze_comparison()    Compare column averages (+ grouped bar chart)
-    │   ├─ _analyze_trend()         groupby(date) → mean (+ line chart with markers)
-    │   ├─ _analyze_distribution()  describe() (+ boxplot with mean+SD)
-    │   ├─ _analyze_correlation()   .corr() (+ RdBu_r heatmap)
-    │   ├─ _analyze_outlier()       IQR method (+ scatter with highlights)
-    │   ├─ _analyze_forecast()      Linear extrapolation (+ solid + dashed overlay)
-    │   └─ _analyze_aggregate()     sum/mean/count (+ bar chart)
-    │   Then: narrate_result()      Groq explains pre-computed numbers (narration only)
-    │
-    ├─② detect_simple_query()     ← Pattern-matched pandas one-liners
-    │   Then: generate_conversational_response()
-    │
-    └─③ generate_analysis_code()  ← LLM code generation (LAST RESORT)
-        code_executor.py          ← Sandboxed execution
-        Then: generate_conversational_response()
-    │
-    ▼
-Chart rendering                   ← ai_charts (from smart/AI) or auto_visualize(result)
-    │
-    ▼
-build_chart_from_query()          ← Fallback: deterministic chart from query + full df
-    │
-    ▼
-Chat bubble + Plotly chart + follow-up suggestions
-```
-
-### Why This Works
-
-| Old Architecture | New Architecture |
-|---|---|
-| Groq generates Python code | Pandas runs deterministic computation |
-| Groq decides chart type | Python picks chart based on query pattern |
-| Groq narrates raw data | Groq narrates pre-computed results |
-| Both steps can fail → fallback message | Computation never fails; narration has graceful fallback |
-| "I couldn't generate an AI response" | Always shows a useful answer |
-
----
-
-## 4. File-by-File Documentation
-
-### 4.1 `modules/smart_analysis.py` — ★ Deterministic Analysis Engine
-
-**Purpose:** Handles ~90% of analytical queries without any LLM involvement. Pandas does all computation, Python selects the chart.
-
-**Main Function:** `run_smart_analysis(query, df) → dict | None`
-
-**Returns:**
-```python
-{
-    "result": DataFrame | Series | scalar,  # The computed answer
-    "chart": plotly.graph_objects.Figure,    # Ready-to-render chart
-    "summary": str,                          # Human-readable computation summary
-    "query_type": str,                       # ranking, comparison, trend, etc.
-}
-```
-
-**9 Analytical Patterns:**
-
-| Pattern | Trigger Words | Computation | Chart Type |
-|---|---|---|---|
-| ranking | highest, lowest, top, bottom, best, worst | `groupby → mean → sort` | Horizontal bar |
-| comparison | vary, compare, vs, day type, weekday | Compare column averages | Grouped bar |
-| trend | over time, trend, monthly, time series | `groupby(date) → mean` | Line with markers |
-| distribution | distribution, boxplot, histogram, quartile | `describe()` | Boxplot w/ mean+SD |
-| correlation | correlation, heatmap, relationship | `.corr()` | RdBu_r heatmap |
-| outlier | outlier, anomaly, unusual, extreme | IQR: Q1-1.5×IQR, Q3+1.5×IQR | Scatter with highlights |
-| forecast | forecast, predict, projection, future | `np.polyfit` + extrapolation | Line + dashed overlay |
-| aggregate | total, sum, average, count, how many | `groupby → agg` | Bar |
-| general | (catch-all) | Best-fit groupby or trend | Auto-selected |
-
-**Column Matching:** Three-stage resolution:
-1. Exact column name match
-2. Substring match (column tokens in query)
-3. Stem match ("ridership" ↔ "rides", "revenue" ↔ "rev")
-
----
-
-### 4.2 `modules/ai_conversation.py` — Conversational AI
-
-**Purpose:** Manages system prompts and LLM communication. Two modes:
-
-**Mode 1 — `generate_conversational_response()`:**
-Full analysis + optional code generation. Used when smart analysis doesn't apply.
-- Dual-purpose prompt (prose + code blocks)
-- Extracts insight text and chart code separately
-- Sanitizes output to flowing prose
-
-**Mode 2 — `narrate_result(query, computed_summary)`:** ★ NEW
-Narration-only mode. Receives pre-computed numbers from `smart_analysis.py` and asks Groq to explain them in 3-5 sentences.
-- Groq-first with Google Gemini fallback
-- If both LLMs fail, returns the computed summary as-is (already human-readable)
-- Never produces the "I couldn't generate" fallback message
-
-**Key Functions:**
-- `sanitize_ai_output(text)` — Strips HTML, code fences, markdown, section labels; flattens to prose
-- `_split_insight_and_code(raw)` — Separates AI text from Python code blocks
-- `narrate_result(query, summary)` — Narration-only LLM call
-
----
-
-### 4.3 `modules/auto_visualizer.py` — Chart Builders (10+ Types)
-
-**Purpose:** Generates charts both automatically and from query intent.
-
-**Chart Builders:**
-
-| Function | Chart Type | When Used |
+| Area | Files | Purpose |
 |---|---|---|
-| `_build_bar_chart()` | Vertical bar | Category aggregation |
-| `_build_grouped_bar_chart()` | Grouped bar | Multi-metric comparison |
-| `_build_stacked_bar_chart()` | Stacked bar | Composition analysis |
-| `_build_line_chart()` | Line with markers | Time series |
-| `_build_scatter_chart()` | Scatter plot | Relationships |
-| `_build_histogram()` | Histogram | Frequency distribution |
-| `_build_pie_chart()` | Pie / donut | Small-category breakdown |
-| `_build_boxplot()` | Boxplot | Distribution with outlier whiskers |
-| `_build_heatmap()` | Correlation heatmap | RdBu_r diverging scale |
-| `_build_outlier_chart()` | Scatter + highlights | IQR-based outlier detection |
+| Auth page | `pages/index.tsx` | Login form, demo credential disclosure, session setup |
+| Dashboard shell | `pages/dashboard.tsx` | Dataset loading, tab navigation, sign-out, high-level state |
+| API client | `lib/api.ts` | Typed wrappers around `/api/*` endpoints |
+| Types | `lib/types.ts` | Shared TypeScript interfaces |
+| KPI display | `components/KPICards.tsx` | Dashboard KPI cards |
+| Analyst tab | `components/AIAnalyst.tsx` | Question input, analysis results, Plotly charts |
+| Forecasting tab | `components/Forecasting.tsx` | Forecast controls and results |
+| Reports tab | `components/Reports.tsx` | PDF report generation |
+| Charts | `components/PlotlyChart.tsx` | Plotly rendering wrapper |
 
-**Entry Points:**
-- `auto_visualize(data)` — Generates up to 8 chart options from a DataFrame
-- `build_chart_from_query(query, data)` — Intent-based chart from natural-language query (9 intents)
+## 5. Python API Routes
 
----
+| Route | File | Methods | Purpose |
+|---|---|---|---|
+| `/api/auth` | `api/auth.py` | POST | Validate user credentials and return a signed token |
+| `/api/datasets` | `api/datasets.py` | GET, POST | List bundled datasets and load a selected dataset |
+| `/api/upload` | `api/upload.py` | POST | Decode, validate, and analyze uploaded CSVs |
+| `/api/analyze` | `api/analyze.py` | POST | Run plain-English analysis against a dataset |
+| `/api/forecast` | `api/forecast.py` | POST | Generate trend forecasts |
+| `/api/report` | `api/report.py` | POST | Build an executive PDF report |
 
-### 4.4 `modules/ai_code_generator.py` — AI Code Generation (Fallback)
+Shared serverless helpers live in `api/_utils.py`. They provide CORS handling, JSON responses, token creation/verification, CSV validation, DataFrame serialization, and Plotly serialization.
 
-**Purpose:** Sends user queries to Groq's LLaMA model and receives executable Python/Pandas code. Used only when `smart_analysis` returns None.
-
-**Function:** `generate_analysis_code(api_key, query, df, dataset_context)`
-
-**Prompt includes:**
-- Dataset schema, column names, column types
-- Chart type selection guidance (new): trend → `px.line`, comparison → `px.bar`, boxplot → `px.box`, scatter → `px.scatter`, heatmap → `px.imshow`, outlier → scatter with color
-- IQR outlier method template
-- Example with chart figure creation
-
----
-
-### 4.5 `modules/code_executor.py` — Sandboxed Code Execution
-
-**Purpose:** Safely executes AI-generated Python code in a restricted environment.
-
-**Function:** `execute_code(code, df)`
-
-**Security Features:**
-- **Forbidden keyword scanner** — blocks: `import`, `os.`, `sys.`, `subprocess`, `open(`, `__`, `eval(`, `exec(`, `write(`, `read(`, `shutil`, `pathlib`, `socket`, `requests`, `http`
-- **Sandboxed execution** — code runs with only `pd`, `np`, `px`, `go`, `plt` in scope
-- **Result extraction** — safely retrieves `result` and `charts` variables
-- **Error handling** — returns user-friendly error messages
-
----
-
-### 4.6 `modules/query_utils.py` — Query Classification & Relevance
-
-**Purpose:** Detects query intent, validates dataset relevance, and generates follow-up suggestions.
-
-**Key Functions:**
-- `classify_query_intent(query, df, schema)` — Returns intent (chart, comparison, forecast, summary, table, analysis), clarification needs, and confidence score. Recognizes 20+ chart-related tokens.
-- `is_dataset_related_query(query, df, schema)` — Validates that the question is relevant to the loaded dataset. Uses fuzzy stem matching for column names.
-- `detect_simple_query(query, df)` — Pattern-matches common queries to one-liner pandas expressions.
-- `build_rephrase_suggestions(query, df, schema)` — Generates rephrased query suggestions when the original is ambiguous.
-
----
-
-### 4.7 `modules/app_tabs.py` — Tab Rendering & Orchestration
-
-**Purpose:** Renders the four main tabs (Data Overview, AI Analyst, Forecasting, Reports) and orchestrates the query execution pipeline.
-
-**Query Execution Flow (AI Analyst tab):**
-1. Classify intent via `classify_query_intent()`
-2. Check relevance via `is_dataset_related_query()`
-3. Try `run_smart_analysis(query, df)` — deterministic pandas
-4. If smart analysis succeeds: use `narrate_result()` for AI response
-5. Else try `detect_simple_query()` — pattern-matched code
-6. Else use `generate_analysis_code()` → `execute_code()` — LLM fallback
-7. Render result, chart, and follow-up suggestions
-
----
-
-### 4.8 `modules/app_logic.py` — Business Logic Helpers
-
-**Purpose:** KPI augmentation, quick insights, result formatting.
-
-**Key Functions:**
-- `augment_kpis_with_trends(kpis, df)` — Adds period-over-period delta percentages to KPI cards
-- `_compute_period_delta(df, column)` — Recent-window vs overall-mean comparison. Handles edge case where metric column IS the date column.
-- `generate_quick_insights(df)` — Dashboard-level insights (top performer, lowest signal, anomaly)
-- `build_overview_hero_chart(df)` — Generates the hero chart for the dashboard
-
----
-
-### 4.9 `modules/report_generator.py` — Professional PDF Generator
-
-**Purpose:** Generates a fully branded, narrative executive PDF report.
-
-**Function:** `generate_pdf(query, summary_text, dataframe, charts, analysis_history)`
-
-**PDF Features:**
-- **Cover Page** — Title with accent bar, metadata table, classification
-- **Executive Summary** — Key takeaways from AI responses, grouped and deduped
-- **Per-Query Sections** — Question quote, AI prose, supporting chart, compact reference table
-- **Print-Safe Charts** — `_plotly_to_bytes()` deep-copies figures and resets colors for white paper. Heatmaps preserve their coloraxis; non-heatmaps strip it.
-- **Page Decorations** — Header band, accent strip, confidentiality footer, page numbers
-
-**Chart Export Handling:**
-- `_reset_trace_colors_for_light_bg()` — Handles bar, scatter, line, pie, heatmap, and box trace types individually
-- Heatmap traces get `RdBu_r` colorscale and dark annotation text
-- Non-heatmap figures get `coloraxis=dict(showscale=False)`
-
----
-
-### 4.10 Other Modules
+## 6. Shared Python Modules
 
 | Module | Purpose |
 |---|---|
-| `data_loader.py` | CSV loading, column normalization (Revenue, Product, Region, Date synonyms) |
-| `dataset_analyzer.py` | Schema analysis: row/col count, column classification, example values |
-| `kpi_engine.py` | Auto-KPI extraction (Total, Average, Max, Min) + special KPIs (Attrition Rate, Profit Margin) |
-| `auto_insights.py` | Dashboard-level insights: top contributor, bottom performer, trends, missing data |
-| `insight_engine.py` | Business insight generation from analysis results |
-| `executive_summary.py` | Executive summary bullet points |
-| `forecasting.py` | Linear trend forecasting with confidence intervals |
-| `groq_ai.py` | Groq API for follow-up question suggestions |
-| `text_utils.py` | Text cleaning, markdown stripping, response structuring |
-| `app_state.py` | Session state management, activity tracking |
-| `app_perf.py` | Performance timing instrumentation |
-| `app_logging.py` | Structured logging |
-| `app_secrets.py` | API key management (env, secrets, dotenv) |
+| `modules/smart_analysis.py` | Deterministic pandas analysis for common query patterns |
+| `modules/ai_conversation.py` | AI narration and conversational response helpers |
+| `modules/ai_code_generator.py` | Guarded LLM code-generation fallback for novel queries |
+| `modules/code_executor.py` | Restricted execution environment for generated pandas code |
+| `modules/query_utils.py` | Query intent classification, relevance checks, suggestions |
+| `modules/auto_visualizer.py` | Plotly chart builders and query-driven chart selection |
+| `modules/kpi_engine.py` | Dataset-aware KPI extraction |
+| `modules/auto_insights.py` | Automated insight detection |
+| `modules/forecasting.py` | Linear trend forecast generation |
+| `modules/report_generator.py` | Executive PDF generation |
+| `modules/dataset_analyzer.py` | Schema and column profiling |
+| `modules/data_loader.py` | CSV loading and column normalization |
 
----
+The Streamlit-specific modules, such as `modules/app_tabs.py`, `modules/app_views.py`, and `modules/app_state.py`, support `app.py`.
 
-## 5. Session State Management
+## 7. Analysis Pipeline
 
-| Key                     | Type    | Purpose                                        |
-|-------------------------|---------|------------------------------------------------|
-| `active_tab`            | String  | Currently selected tab (session-persistent)    |
-| `messages`              | List    | Basic chat history (text only)                 |
-| `chat_history`          | List    | Rich chat history (results, charts, insights)  |
-| `analysis_history`      | List    | All queries + results for PDF report           |
-| `result_history`        | List    | Raw results for memory/comparison queries      |
-| `result_history_details`| List    | Metadata about each result                     |
-| `analysis_result`       | Various | Latest query's raw result                      |
-| `analysis_query`        | String  | Latest query text                              |
-| `analysis_insight`      | String  | Latest query's business insight                |
-| `chart_data`            | DF      | Latest query's chart-ready data                |
-| `report_charts`         | List    | Latest query's Plotly figure objects            |
+```text
+User question
+  |
+  v
+Validate dataset relevance
+  |
+  v
+Try deterministic smart analysis
+  |
+  | success
+  v
+Return computed result + Plotly chart + AI narration
 
----
+  |
+  | fallback path
+  v
+Try simple query detection
+  |
+  | fallback path
+  v
+Generate guarded pandas code
+  |
+  v
+Execute in restricted environment
+  |
+  v
+Return result, chart, and prose response
+```
 
-## 6. Security Model
+The preferred path is deterministic and does not require the model to invent calculations. AI is used to explain results, suggest follow-up questions, or handle analysis patterns outside the deterministic engine.
 
-1. **Smart Analysis** — Most queries bypass code generation entirely (deterministic pandas)
-2. **Prompt Engineering** — AI is instructed not to import libraries or use system calls
-3. **Import Stripping** — `ai_code_generator.py` removes any `import` / `from` lines
-4. **Forbidden Keywords** — `code_executor.py` blocks 15+ dangerous patterns
-5. **Sandboxed Execution** — Code runs with only `pd`, `np`, `px`, `go`, `plt` in scope
-6. **Error Isolation** — All exceptions are caught and returned as user-friendly strings
+## 8. Environment Variables
 
----
+| Variable | Required | Purpose |
+|---|---:|---|
+| `GROQ_API_KEY` | One AI key required | Groq narration and analysis support |
+| `GOOGLE_API_KEY` | Optional | Google Generative AI fallback/support |
+| `AUTH_SECRET` | Production | Token signing secret |
+| `ALLOWED_ORIGINS` | Optional | Comma-separated CORS allowlist |
+| `ALLOW_DEMO_USERS` | Optional | Enable or disable built-in demo users |
+| `NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS` | Optional | Show or hide demo credentials in the UI |
+| `ADMIN_USERNAME` | Optional | Custom default admin username |
+| `ADMIN_PASSWORD` | Optional | Custom default admin password |
+| `ADMIN_DISPLAY_NAME` | Optional | Custom default admin display name |
+| `AUTH_USERS_JSON` | Optional | Full user map with password hashes |
+| `MAX_BODY_BYTES` | Optional | Request body limit |
+| `MAX_CSV_BYTES` | Optional | CSV upload byte limit |
+| `MAX_CSV_ROWS` | Optional | CSV row limit |
+| `MAX_CSV_COLUMNS` | Optional | CSV column limit |
+| `AUTH_TOKEN_TTL_SECONDS` | Optional | Token lifetime |
 
-## 7. API Configuration
+Use `.env.local` for local Next.js/Vercel development and configure production values in the Vercel dashboard.
 
-| Parameter     | Value                         |
-|---------------|-------------------------------|
-| Model         | `llama-3.3-70b-versatile`     |
-| Temperature   | 0.1 (code gen) / 0.3 (narration + suggestions) |
-| API Key       | Stored in `.env` as `GROQ_API_KEY` |
-| Fallback      | Computed summary returned as-is if LLM fails |
+## 9. Local Development
 
----
+Install dependencies:
 
-## 8. How to Run
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/Mohammedkaif2003/ai_business_intelligence_assistant.git
-
-# 2. Create and activate virtual environment
-python -m venv venv
-venv\Scripts\Activate.ps1          # Windows PowerShell
-# source venv/bin/activate          # Mac/Linux
-
-# 3. Install dependencies
+```powershell
+npm install
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
 
-# 4. Set up your Groq API key
-# Create a .env file with: GROQ_API_KEY=your_key_here
+Run the full local stack:
 
-# 5. Run the application
+```powershell
+vercel dev
+```
+
+Run only the Next.js front end:
+
+```powershell
+npm run dev
+```
+
+Run the legacy Streamlit app:
+
+```powershell
+pip install -r requirements-streamlit.txt
 streamlit run app.py
 ```
 
-The app will open at `http://localhost:8501`.
+## 10. Testing and Verification
 
-Login credentials: `admin / admin123` or `analyst / analyst123`.
+Run Python tests:
 
----
+```powershell
+python -m pytest -q
+```
 
-*Document Updated: April 2026*
-*Apex Analytics — Version 3.0 Compute-First Architecture*
+Run the Next.js production build:
+
+```powershell
+npm run build
+```
+
+## 11. Security Model
+
+- API tokens are signed with `AUTH_SECRET`.
+- Production requires an explicit `AUTH_SECRET`.
+- Uploaded CSVs are decoded and checked against body, byte, row, and column limits.
+- Most analytical questions use deterministic pandas logic.
+- Generated code is reserved for fallback use and is scanned for unsafe keywords before execution.
+- Serverless functions return JSON errors instead of raw exceptions.
+- Real credentials and provider keys should stay out of version control.
+
+## 12. Deployment Notes
+
+Vercel uses:
+
+- `package.json` for the Next.js build.
+- `vercel.json` for framework/function configuration.
+- `requirements.txt` for Python serverless dependencies.
+- Environment variables from Project Settings.
+
+Recommended production settings:
+
+```env
+AUTH_SECRET=<long-random-secret>
+ALLOW_DEMO_USERS=false
+NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=false
+ALLOWED_ORIGINS=https://your-production-domain.example
+```
+
+## 13. Demo Script
+
+1. Sign in with a demo or configured user.
+2. Load `sales_data.csv` from the sample dataset selector.
+3. Review KPI cards and automatic insights.
+4. Ask: `What are the top regions by revenue?`
+5. Ask: `Show revenue trend over time.`
+6. Open Forecasting and generate a six-period forecast.
+7. Open Reports and export the analysis history as a PDF.
+
+## 14. Version Note
+
+This document reflects the Next.js + Vercel architecture as of April 2026. The Streamlit app remains available as a legacy local workflow.

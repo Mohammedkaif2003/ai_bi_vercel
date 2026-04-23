@@ -912,7 +912,7 @@ def render_dashboard_header(df: pd.DataFrame):
     st.markdown(
         f"""
         <div class="landing-hero">
-            <div class="landing-hero__kicker">Apex Analytics Platform</div>
+            <div class="landing-hero__kicker">Nexlytics Platform</div>
             <div class="landing-hero__title">Ask your data anything and turn raw records into executive-ready decisions.</div>
             <div class="landing-hero__subtitle">{html.escape(dataset_name)} is loaded and ready. Use the AI analyst, visual summaries, and forecasting workflows to move from question to action in minutes.</div>
             <div class="landing-hero__stats">

@@ -1,6 +1,6 @@
 # ── All app-wide constants ── edit this file to change settings
 
-APP_TITLE = "Apex Analytics"
+APP_TITLE = "Nexlytics"
 APP_VERSION = "2.0"
 APP_ICON = "⚡"
 

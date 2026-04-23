@@ -33,7 +33,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from _utils import handle_options, read_json_body, send_error, send_json  # noqa: E402
+from _utils import handle_options, read_json_body, require_auth, send_error, send_json  # noqa: E402
 from modules.report_generator import generate_pdf  # noqa: E402
 
 
@@ -42,17 +42,20 @@ class handler(BaseHTTPRequestHandler):
         handle_options(self)
 
     def do_POST(self):
+        if require_auth(self) is None:
+            return
+
         data = read_json_body(self)
         analysis_history = data.get("analysis_history") or []
         dataset_name = data.get("dataset_name") or "Active Dataset"
-        user_name = data.get("user_name") or "Apex Analytics User"
+        user_name = data.get("user_name") or "Nexlytics User"
 
         if not isinstance(analysis_history, list):
             send_error(self, "analysis_history must be a list.", 400)
             return
 
         # Write the PDF to /tmp (only writable location in Vercel)
-        tmp_path = os.path.join(tempfile.gettempdir(), "apex_report.pdf")
+        tmp_path = os.path.join(tempfile.gettempdir(), "nexlytics_report.pdf")
 
         try:
             generate_pdf(

@@ -2,6 +2,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { login } from "@/lib/api";
+import LogoMark from "@/components/LogoMark";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,9 +17,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await login(username, password);
-      // Persist token and user info for the session
-      sessionStorage.setItem("apex_token", user.token);
-      sessionStorage.setItem("apex_user", JSON.stringify(user));
+      sessionStorage.setItem("nexlytics_token", user.token);
+      sessionStorage.setItem("nexlytics_user", JSON.stringify(user));
       router.push("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed.");
@@ -30,14 +30,13 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Apex Analytics — Sign In</title>
+        <title>Nexlytics - Sign In</title>
       </Head>
       <div className="min-h-screen flex items-center justify-center bg-[#0F172A] px-4">
         <div className="w-full max-w-md">
-          {/* Hero card */}
           <div className="card mb-6 text-center py-8">
-            <div className="text-5xl mb-3">⚡</div>
-            <h1 className="text-3xl font-bold text-white mb-1">Apex Analytics</h1>
+            <LogoMark size={56} className="mx-auto mb-3" />
+            <h1 className="text-3xl font-bold text-white mb-1">Nexlytics</h1>
             <p className="text-[#94A3B8] text-sm">AI-Powered Business Intelligence</p>
             <hr className="border-[#334155] my-5" />
 
@@ -72,8 +71,7 @@ export default function LoginPage() {
                 />
               </div>
               {error && (
-                <p className="text-[#EF4444] text-sm bg-[#450a0a] border border-[#7f1d1d]
-                              rounded-lg px-3 py-2">
+                <p className="text-[#EF4444] text-sm bg-[#450a0a] border border-[#7f1d1d] rounded-lg px-3 py-2">
                   {error}
                 </p>
               )}
@@ -82,20 +80,21 @@ export default function LoginPage() {
                 className="btn-primary w-full mt-2"
                 disabled={loading}
               >
-                {loading ? "Signing in…" : "Sign In"}
+                {loading ? "Signing in..." : "Sign In"}
               </button>
             </form>
 
-            {/* Demo credentials */}
-            <details className="mt-5 text-left text-sm">
-              <summary className="cursor-pointer text-[#64748B] hover:text-[#94A3B8] transition-colors">
-                Demo credentials
-              </summary>
-              <div className="mt-2 bg-[#0F172A] rounded-lg p-3 text-[#94A3B8] space-y-1 border border-[#334155]">
-                <p><span className="text-white font-medium">Administrator:</span> admin / admin123</p>
-                <p><span className="text-white font-medium">Business Analyst:</span> analyst / analyst123</p>
-              </div>
-            </details>
+            {process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS !== "false" && (
+              <details className="mt-5 text-left text-sm">
+                <summary className="cursor-pointer text-[#64748B] hover:text-[#94A3B8] transition-colors">
+                  Demo credentials
+                </summary>
+                <div className="mt-2 bg-[#0F172A] rounded-lg p-3 text-[#94A3B8] space-y-1 border border-[#334155]">
+                  <p><span className="text-white font-medium">Administrator:</span> admin / admin123</p>
+                  <p><span className="text-white font-medium">Business Analyst:</span> analyst / analyst123</p>
+                </div>
+              </details>
+            )}
           </div>
         </div>
       </div>

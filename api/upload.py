@@ -27,8 +27,10 @@ from _utils import (  # noqa: E402
     df_to_csv_b64,
     handle_options,
     read_json_body,
+    require_auth,
     send_error,
     send_json,
+    df_to_records,
 )
 from modules.auto_insights import generate_auto_insights  # noqa: E402
 from modules.data_loader import normalize_columns  # noqa: E402
@@ -41,6 +43,9 @@ class handler(BaseHTTPRequestHandler):
         handle_options(self)
 
     def do_POST(self):
+        if require_auth(self) is None:
+            return
+
         data = read_json_body(self)
         csv_b64 = data.get("csv_b64", "")
         filename = str(data.get("filename", "upload.csv"))
@@ -70,6 +75,7 @@ class handler(BaseHTTPRequestHandler):
             "schema":   schema,
             "kpis":     kpis,
             "insights": insights,
+            "preview_rows": df_to_records(df.head(20)),
             "filename": filename,
             "shape":    list(df.shape),
         })

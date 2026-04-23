@@ -7,6 +7,7 @@ import KPICards from "@/components/KPICards";
 import AIAnalyst from "@/components/AIAnalyst";
 import ForecastingTab from "@/components/Forecasting";
 import ReportsTab from "@/components/Reports";
+import LogoMark from "@/components/LogoMark";
 
 type Tab = "overview" | "analyst" | "forecast" | "reports";
 
@@ -14,8 +15,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
-
-  // Dataset state
   const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
   const [dataSource, setDataSource] = useState<"upload" | "preloaded">("preloaded");
   const [datasetPayload, setDatasetPayload] = useState<DatasetPayload | null>(null);
@@ -24,19 +23,29 @@ export default function DashboardPage() {
   const [selectedPreloaded, setSelectedPreloaded] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auth guard
   useEffect(() => {
-    const raw = sessionStorage.getItem("apex_user");
-    if (!raw) { router.replace("/"); return; }
-    try { setUser(JSON.parse(raw)); } catch { router.replace("/"); }
+    const raw = sessionStorage.getItem("nexlytics_user");
+    const token = sessionStorage.getItem("nexlytics_token");
+    if (!raw || !token) {
+      router.replace("/");
+      return;
+    }
+    try {
+      setUser(JSON.parse(raw));
+    } catch {
+      router.replace("/");
+    }
   }, [router]);
 
-  // Load available datasets list
   useEffect(() => {
-    listDatasets().then((r) => {
-      setAvailableDatasets(r.datasets);
-      if (r.datasets.length > 0) setSelectedPreloaded(r.datasets[0].key);
-    }).catch(() => {});
+    listDatasets()
+      .then((r) => {
+        setAvailableDatasets(r.datasets);
+        if (r.datasets.length > 0) setSelectedPreloaded(r.datasets[0].key);
+      })
+      .catch((err: unknown) => {
+        setDatasetError(err instanceof Error ? err.message : "Failed to load dataset list.");
+      });
   }, []);
 
   function handleSignOut() {
@@ -71,24 +80,24 @@ export default function DashboardPage() {
       setDatasetError(err instanceof Error ? err.message : "Failed to upload file.");
     } finally {
       setLoadingDataset(false);
+      e.target.value = "";
     }
   }
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "overview",  label: "📊 Data Overview" },
-    { id: "analyst",   label: "🤖 AI Analyst" },
-    { id: "forecast",  label: "🔮 Forecasting" },
-    { id: "reports",   label: "📑 Reports" },
+    { id: "overview", label: "Data Overview" },
+    { id: "analyst", label: "AI Analyst" },
+    { id: "forecast", label: "Forecasting" },
+    { id: "reports", label: "Reports" },
   ];
 
   return (
     <>
-      <Head><title>Apex Analytics ⚡</title></Head>
+      <Head><title>Nexlytics</title></Head>
       <div className="min-h-screen flex flex-col">
-        {/* ── Top nav ── */}
         <header className="bg-[#0B1120] border-b border-[#1E293B] px-5 py-3 flex items-center gap-4">
-          <span className="text-2xl">⚡</span>
-          <span className="font-bold text-white text-lg">Apex Analytics</span>
+          <LogoMark size={28} />
+          <span className="font-bold text-white text-lg">Nexlytics</span>
           <span className="text-[#475569] text-sm hidden sm:block">v2.0</span>
           <div className="ml-auto flex items-center gap-3">
             {user && (
@@ -103,9 +112,7 @@ export default function DashboardPage() {
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* ── Sidebar ── */}
-          <aside className="w-64 bg-[#0B1120] border-r border-[#1E293B] p-4 flex flex-col gap-4
-                            overflow-y-auto shrink-0 hidden md:flex">
+          <aside className="w-64 bg-[#0B1120] border-r border-[#1E293B] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 hidden md:flex">
             <div>
               <p className="text-xs font-semibold text-[#475569] uppercase tracking-widest mb-3">
                 Data Source
@@ -149,7 +156,7 @@ export default function DashboardPage() {
                     onClick={handleLoadPreloaded}
                     disabled={loadingDataset || !selectedPreloaded}
                   >
-                    {loadingDataset ? "Loading…" : "Load Dataset"}
+                    {loadingDataset ? "Loading..." : "Load Dataset"}
                   </button>
                 </div>
               ) : (
@@ -166,7 +173,7 @@ export default function DashboardPage() {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={loadingDataset}
                   >
-                    {loadingDataset ? "Uploading…" : "Choose CSV file"}
+                    {loadingDataset ? "Uploading..." : "Choose CSV file"}
                   </button>
                 </div>
               )}
@@ -177,8 +184,8 @@ export default function DashboardPage() {
 
               {datasetPayload && (
                 <div className="mt-3 bg-[#1E293B] rounded-lg p-2.5 text-xs text-[#94A3B8]">
-                  <p className="text-[#10B981] font-medium mb-1">✅ {datasetPayload.filename}</p>
-                  <p>{datasetPayload.shape[0].toLocaleString()} rows × {datasetPayload.shape[1]} cols</p>
+                  <p className="text-[#10B981] font-medium mb-1">Loaded: {datasetPayload.filename}</p>
+                  <p>{datasetPayload.shape[0].toLocaleString()} rows x {datasetPayload.shape[1]} cols</p>
                 </div>
               )}
             </div>
@@ -186,8 +193,7 @@ export default function DashboardPage() {
             {user && (
               <div className="mt-auto border-t border-[#1E293B] pt-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-[#4F46E5] flex items-center
-                                  justify-center text-white text-sm font-bold shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-[#4F46E5] flex items-center justify-center text-white text-sm font-bold shrink-0">
                     {(user.display_name[0] || "U").toUpperCase()}
                   </div>
                   <div>
@@ -199,19 +205,16 @@ export default function DashboardPage() {
             )}
           </aside>
 
-          {/* ── Main content ── */}
           <main className="flex-1 overflow-y-auto p-5">
-            {/* Dataset header */}
             {datasetPayload && (
               <div className="mb-4 flex items-center gap-3">
                 <h2 className="text-xl font-bold text-white">{datasetPayload.filename}</h2>
                 <span className="text-[#64748B] text-sm">
-                  {datasetPayload.shape[0].toLocaleString()} rows · {datasetPayload.shape[1]} columns
+                  {datasetPayload.shape[0].toLocaleString()} rows, {datasetPayload.shape[1]} columns
                 </span>
               </div>
             )}
 
-            {/* Tab navigation */}
             <div className="flex gap-2 mb-5 flex-wrap">
               {tabs.map((t) => (
                 <button
@@ -224,26 +227,24 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Tab content */}
             {!datasetPayload ? (
               <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-                <div className="text-6xl mb-4">📊</div>
+                <div className="text-5xl mb-4 font-bold text-[#818CF8]">BI</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   Analyze your data instantly
                 </h3>
                 <p className="text-[#64748B] max-w-sm">
-                  Upload a CSV or select a sample dataset from the sidebar to start
-                  exploring insights.
+                  Upload a CSV or select a sample dataset from the sidebar to start exploring insights.
                 </p>
               </div>
             ) : (
               <>
-                {activeTab === "overview"  && <OverviewTab payload={datasetPayload} />}
-                {activeTab === "analyst"   && (
+                {activeTab === "overview" && <OverviewTab payload={datasetPayload} />}
+                {activeTab === "analyst" && (
                   <AIAnalyst payload={datasetPayload} onSwitchToForecast={() => setActiveTab("forecast")} />
                 )}
-                {activeTab === "forecast"  && <ForecastingTab payload={datasetPayload} />}
-                {activeTab === "reports"   && <ReportsTab payload={datasetPayload} user={user} />}
+                {activeTab === "forecast" && <ForecastingTab payload={datasetPayload} />}
+                {activeTab === "reports" && <ReportsTab payload={datasetPayload} user={user} />}
               </>
             )}
           </main>
@@ -253,43 +254,18 @@ export default function DashboardPage() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Data Overview tab (inline — simple component)
-// ---------------------------------------------------------------------------
-
 function OverviewTab({ payload }: { payload: DatasetPayload }) {
   const [showAll, setShowAll] = useState(false);
-
-  // Parse the first 20 rows from csv_b64 for the table preview
-  const [previewRows, setPreviewRows] = useState<Record<string, unknown>[]>([]);
-
-  useEffect(() => {
-    try {
-      const decoded = atob(payload.csv_b64);
-      const lines = decoded.split("\n").filter(Boolean);
-      const headers = lines[0].split(",");
-      const rows = lines.slice(1, 21).map((line) => {
-        const vals = line.split(",");
-        const row: Record<string, unknown> = {};
-        headers.forEach((h, i) => { row[h.trim()] = vals[i]?.trim() ?? ""; });
-        return row;
-      });
-      setPreviewRows(rows);
-    } catch { /* ignore */ }
-  }, [payload.csv_b64]);
-
-  const { schema, kpis, insights } = payload;
+  const { schema, kpis, insights, preview_rows: previewRows = [] } = payload;
   const displayedInsights = showAll ? insights : insights.slice(0, 4);
 
   return (
     <div className="space-y-5">
-      {/* KPIs */}
       <KPICards kpis={kpis} />
 
-      {/* Auto insights */}
       {insights.length > 0 && (
         <section className="card">
-          <h3 className="section-title">💡 Auto Insights</h3>
+          <h3 className="section-title">Auto Insights</h3>
           <ul className="space-y-1.5">
             {displayedInsights.map((ins, i) => (
               <li key={i} className="text-sm text-[#CBD5E1] flex gap-2">
@@ -303,20 +279,19 @@ function OverviewTab({ payload }: { payload: DatasetPayload }) {
               className="text-xs text-[#818CF8] mt-2 hover:underline"
               onClick={() => setShowAll((v) => !v)}
             >
-              {showAll ? "Show less" : `Show ${insights.length - 4} more…`}
+              {showAll ? "Show less" : `Show ${insights.length - 4} more...`}
             </button>
           )}
         </section>
       )}
 
-      {/* Schema */}
       <section className="card">
-        <h3 className="section-title">🗂 Dataset Schema</h3>
+        <h3 className="section-title">Dataset Schema</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {[
-            { label: "Rows",     value: schema.rows.toLocaleString() },
-            { label: "Columns",  value: schema.columns },
-            { label: "Numeric",  value: schema.numeric_columns.length },
+            { label: "Rows", value: schema.rows.toLocaleString() },
+            { label: "Columns", value: schema.columns },
+            { label: "Numeric", value: schema.numeric_columns.length },
             { label: "Categorical", value: schema.categorical_columns.length },
           ].map((stat) => (
             <div key={stat.label} className="bg-[#0F172A] rounded-lg p-3 text-center">
@@ -329,8 +304,7 @@ function OverviewTab({ payload }: { payload: DatasetPayload }) {
           {schema.column_names.map((col) => (
             <span
               key={col}
-              className="text-xs bg-[#1E293B] border border-[#334155] text-[#94A3B8]
-                         px-2 py-0.5 rounded"
+              className="text-xs bg-[#1E293B] border border-[#334155] text-[#94A3B8] px-2 py-0.5 rounded"
             >
               {col}
             </span>
@@ -338,20 +312,15 @@ function OverviewTab({ payload }: { payload: DatasetPayload }) {
         </div>
       </section>
 
-      {/* Data preview table */}
       {previewRows.length > 0 && (
         <section className="card overflow-hidden">
-          <h3 className="section-title">📋 Data Preview (first 20 rows)</h3>
+          <h3 className="section-title">Data Preview (first 20 rows)</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#334155]">
                   {schema.column_names.map((col) => (
-                    <th
-                      key={col}
-                      className="text-left py-2 px-3 text-[#64748B] font-semibold
-                                 whitespace-nowrap"
-                    >
+                    <th key={col} className="text-left py-2 px-3 text-[#64748B] font-semibold whitespace-nowrap">
                       {col}
                     </th>
                   ))}
@@ -359,10 +328,7 @@ function OverviewTab({ payload }: { payload: DatasetPayload }) {
               </thead>
               <tbody>
                 {previewRows.map((row, ri) => (
-                  <tr
-                    key={ri}
-                    className="border-b border-[#1E293B] hover:bg-[#1E293B]/50 transition-colors"
-                  >
+                  <tr key={ri} className="border-b border-[#1E293B] hover:bg-[#1E293B]/50 transition-colors">
                     {schema.column_names.map((col) => (
                       <td key={col} className="py-1.5 px-3 text-[#CBD5E1] whitespace-nowrap">
                         {String(row[col] ?? "")}

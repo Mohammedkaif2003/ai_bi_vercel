@@ -1,5 +1,5 @@
 /**
- * API client for Apex Analytics Vercel backend.
+ * API client for Nexlytics Vercel backend.
  *
  * Each function talks to the corresponding Python serverless endpoint
  * in api/*.py.  The base URL is empty so that calls are relative — this
@@ -19,9 +19,13 @@ import type {
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 async function post<T>(path: string, body: unknown): Promise<T> {
+  const token = typeof window !== "undefined" ? sessionStorage.getItem("nexlytics_token") : null;
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   const json = await res.json();
@@ -30,7 +34,10 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+  const token = typeof window !== "undefined" ? sessionStorage.getItem("nexlytics_token") : null;
+  const res = await fetch(`${BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
   const json = await res.json();
   if (!res.ok) throw new Error((json as { error?: string }).error ?? "Request failed");
   return json as T;

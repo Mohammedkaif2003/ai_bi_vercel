@@ -1,4 +1,4 @@
-"""Simple session-based login gate for Apex Analytics."""
+"""Simple session-based login gate for Nexlytics."""
 from __future__ import annotations
 
 import hashlib

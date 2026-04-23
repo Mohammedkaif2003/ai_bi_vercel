@@ -138,7 +138,7 @@ def _decorate_cover(canvas, doc):
     # Company/project wordmark inside the band
     canvas.setFillColor(colors.white)
     canvas.setFont("Helvetica-Bold", 18)
-    canvas.drawString(LEFT_MARGIN, PAGE_H - 0.70 * inch, "APEX ANALYTICS")
+    canvas.drawString(LEFT_MARGIN, PAGE_H - 0.70 * inch, "NEXLYTICS")
     canvas.setFont("Helvetica", 9)
     canvas.setFillColor(colors.HexColor("#C7D2FE"))
     canvas.drawString(LEFT_MARGIN, PAGE_H - 0.92 * inch,
@@ -153,7 +153,7 @@ def _decorate_cover(canvas, doc):
     canvas.setFillColor(C_MUTED)
     canvas.setFont("Helvetica", 8)
     canvas.drawCentredString(PAGE_W / 2, 32,
-                             "APEX ANALYTICS  ·  EXECUTIVE REPORT  ·  CONFIDENTIAL")
+                             "NEXLYTICS  ·  EXECUTIVE REPORT  ·  CONFIDENTIAL")
     canvas.restoreState()
 
 
@@ -173,7 +173,7 @@ def _decorate_page(canvas, doc):
     # Left: brand wordmark
     canvas.setFillColor(colors.white)
     canvas.setFont("Helvetica-Bold", 10)
-    canvas.drawString(LEFT_MARGIN, header_y + 0.18 * inch, "APEX ANALYTICS")
+    canvas.drawString(LEFT_MARGIN, header_y + 0.18 * inch, "NEXLYTICS")
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(colors.HexColor("#C7D2FE"))
     canvas.drawString(LEFT_MARGIN, header_y + 0.06 * inch,
@@ -673,7 +673,7 @@ def _build_cover(elements, styles, timestamp: str, n_analyses: int,
     # The cover's decorative navy band is drawn by _decorate_cover. The
     # first page content begins below the band.
     elements.append(_gap(1.4 * inch))
-    elements.append(Paragraph("APEX ANALYTICS", styles["CoverEyebrow"]))
+    elements.append(Paragraph("NEXLYTICS", styles["CoverEyebrow"]))
     elements.append(Paragraph("AI-Assisted Executive Report", styles["CoverTitle"]))
     elements.append(Paragraph(
         "A narrative briefing compiled from this session's AI analyses.",
@@ -905,7 +905,7 @@ def _build_disclaimer(elements, styles, timestamp: str):
     elements.append(_section_divider())
     elements.append(_gap(10))
     elements.append(Paragraph(
-        "This document was produced by the Apex Analytics AI assistant. All narrative "
+        "This document was produced by the Nexlytics AI assistant. All narrative "
         "content, findings, and supporting visualizations were generated from automated "
         "analysis of the dataset the user supplied during the session. While the system "
         "performs validation and sanity checks, AI-generated insights should always be "
@@ -916,7 +916,7 @@ def _build_disclaimer(elements, styles, timestamp: str):
     ))
     elements.append(_gap(16))
     elements.append(Paragraph(
-        f"Generated {timestamp} &nbsp;·&nbsp; Apex Analytics",
+        f"Generated {timestamp} &nbsp;·&nbsp; Nexlytics",
         styles["Small"],
     ))
 
@@ -955,10 +955,10 @@ def generate_pdf(
             if dataset_name is None:
                 dataset_name = st.session_state.get("dataset_name", "Active Dataset")
             if user_name is None:
-                user_name = st.session_state.get("auth_display_name", "Apex Analytics User")
+                user_name = st.session_state.get("auth_display_name", "Nexlytics User")
         except Exception:
             dataset_name = dataset_name or "Active Dataset"
-            user_name = user_name or "Apex Analytics User"
+            user_name = user_name or "Nexlytics User"
 
     logger.info(
         "Generating narrative PDF: history_len=%s single=%s",
@@ -973,8 +973,8 @@ def generate_pdf(
         bottomMargin=BOTTOM_MARGIN,
         leftMargin=LEFT_MARGIN,
         rightMargin=RIGHT_MARGIN,
-        title="Apex Analytics – Executive Report",
-        author="Apex Analytics",
+        title="Nexlytics – Executive Report",
+        author="Nexlytics",
     )
 
     styles   = _build_styles()

@@ -29,7 +29,7 @@ export default function ForecastingTab({ payload }: Props) {
 
   const trendColor = (trend?: string) => {
     if (trend === "increasing") return "text-[#10B981]";
-    if (trend === "declining")  return "text-[#EF4444]";
+    if (trend === "declining") return "text-[#EF4444]";
     return "text-[#F59E0B]";
   };
 
@@ -38,7 +38,7 @@ export default function ForecastingTab({ payload }: Props) {
       <div className="card flex flex-wrap items-end gap-4">
         <div>
           <label className="block text-sm text-[#94A3B8] mb-1">
-            Forecast periods (months)
+            Projection periods (months)
           </label>
           <input
             type="number"
@@ -49,12 +49,8 @@ export default function ForecastingTab({ payload }: Props) {
             className="input w-32"
           />
         </div>
-        <button
-          className="btn-primary"
-          onClick={handleForecast}
-          disabled={loading}
-        >
-          {loading ? "Generating…" : "🔮 Generate Forecast"}
+        <button className="btn-primary" onClick={handleForecast} disabled={loading}>
+          {loading ? "Generating..." : "Generate Trend Projection"}
         </button>
       </div>
 
@@ -66,23 +62,22 @@ export default function ForecastingTab({ payload }: Props) {
 
       {result && !result.available && (
         <div className="card border border-[#7c5200] bg-[#431407] text-[#FDE68A] text-sm">
-          ⚠️ {result.message}
+          {result.message}
         </div>
       )}
 
       {result?.available && (
         <>
-          {/* Trend summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: "Metric", value: result.metric ?? "—" },
+              { label: "Metric", value: result.metric ?? "-" },
               {
                 label: "Trend",
-                value: result.trend ? result.trend.charAt(0).toUpperCase() + result.trend.slice(1) : "—",
+                value: result.trend ? result.trend.charAt(0).toUpperCase() + result.trend.slice(1) : "-",
                 cls: trendColor(result.trend),
               },
-              { label: "Monthly Slope", value: result.slope != null ? result.slope.toLocaleString() : "—" },
-              { label: "Std Error", value: result.std_error != null ? result.std_error.toLocaleString() : "—" },
+              { label: "Monthly Slope", value: result.slope != null ? result.slope.toLocaleString() : "-" },
+              { label: "Std Error", value: result.std_error != null ? result.std_error.toLocaleString() : "-" },
             ].map((stat) => (
               <div key={stat.label} className="card text-center">
                 <p className={`text-lg font-bold ${stat.cls ?? "text-white"}`}>{stat.value}</p>
@@ -91,18 +86,19 @@ export default function ForecastingTab({ payload }: Props) {
             ))}
           </div>
 
-          {/* Chart */}
           {result.chart && (
             <div className="card">
-              <h3 className="section-title">Forecast Chart</h3>
+              <h3 className="section-title">Trend Projection Chart</h3>
               <PlotlyChart spec={result.chart} height={400} />
+              <p className="text-xs text-[#64748B] mt-2">
+                This projection uses monthly aggregation and linear trend fitting. Treat it as a planning baseline, not a guaranteed prediction.
+              </p>
             </div>
           )}
 
-          {/* Forecast table */}
           {result.forecast && result.forecast.length > 0 && (
             <div className="card overflow-hidden">
-              <h3 className="section-title">Forecast Values</h3>
+              <h3 className="section-title">Projected Values</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>

@@ -14,7 +14,7 @@ export default function ReportsTab({ payload, user }: Props) {
 
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem("apex_analysis_history");
+      const stored = sessionStorage.getItem("nexlytics_analysis_history");
       if (stored) {
         setHistory(JSON.parse(stored));
       }
@@ -30,7 +30,7 @@ export default function ReportsTab({ payload, user }: Props) {
       const res = await generateReport(
         history,
         payload.filename,
-        user?.display_name || "Apex Analytics User"
+        user?.display_name || "Nexlytics User"
       );
       
       // Decode base64 and trigger download
@@ -44,7 +44,7 @@ export default function ReportsTab({ payload, user }: Props) {
       
       const a = document.createElement("a");
       a.href = url;
-      a.download = "Apex_Analytics_Report.pdf";
+      a.download = "Nexlytics_Report.pdf";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

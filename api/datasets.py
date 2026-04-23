@@ -19,9 +19,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from _utils import (  # noqa: E402
+    df_to_records,
     df_to_csv_b64,
     handle_options,
     read_json_body,
+    require_auth,
     send_error,
     send_json,
 )
@@ -85,6 +87,7 @@ def _load_dataset(dataset_key: str) -> dict:
         "schema":   schema,
         "kpis":     kpis,
         "insights": insights,
+        "preview_rows": df_to_records(df.head(20)),
         "filename": safe_key,
         "shape":    list(df.shape),
     }
@@ -99,9 +102,14 @@ class handler(BaseHTTPRequestHandler):
         handle_options(self)
 
     def do_GET(self):
+        if require_auth(self) is None:
+            return
         send_json(self, {"datasets": _list_datasets()})
 
     def do_POST(self):
+        if require_auth(self) is None:
+            return
+
         data = read_json_body(self)
         dataset_key = str(data.get("dataset_key", "")).strip()
 

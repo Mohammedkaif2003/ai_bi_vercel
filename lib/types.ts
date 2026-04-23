@@ -1,4 +1,4 @@
-// Shared TypeScript types for the Apex Analytics Vercel app
+// Shared TypeScript types for the Nexlytics Vercel app
 
 export interface User {
   token: string;
@@ -35,6 +35,7 @@ export interface DatasetPayload {
   schema: Schema;
   kpis: KPI[];
   insights: string[];
+  preview_rows: Record<string, unknown>[];
   filename: string;
   shape: [number, number];
 }

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Apex Analytics are documented in this file.
+All notable changes to Nexlytics are documented in this file.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
