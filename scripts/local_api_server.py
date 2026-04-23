@@ -60,6 +60,9 @@ class DispatchHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+    def address_string(self):
+        return self.client_address[0]
+
 
 class NotFoundHandler(DispatchHandler):
     def do_GET(self):
@@ -74,6 +77,6 @@ class NotFoundHandler(DispatchHandler):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
-    server = HTTPServer(("localhost", port), DispatchHandler)
-    print(f"Local Python API listening on http://localhost:{port}")
+    server = HTTPServer(("127.0.0.1", port), DispatchHandler)
+    print(f"Local Python API listening on http://127.0.0.1:{port}")
     server.serve_forever()
