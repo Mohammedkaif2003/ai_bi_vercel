@@ -60,3 +60,5 @@ INITIAL_VS_ENHANCED.md
 # ── OneDrive / cloud-sync clutter ────────────────────────────────────────
 *.tmp
 *.lnk
+node_modules
+.next

@@ -26,8 +26,6 @@ export default function PlotlyChart({ spec, height = 420 }: Props) {
   };
 
   const layout: Partial<Plotly.Layout> = {
-    paper_bgcolor: "transparent",
-    plot_bgcolor: "transparent",
     font: {
       color: "#E2E8F0",
       family: "Manrope, Segoe UI, sans-serif",

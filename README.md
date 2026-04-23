@@ -155,37 +155,94 @@ User Query
 
 ## Quick Start
 
-### 1. Create a virtual environment
+This repository contains two runnable front-ends:
+
+- A legacy Streamlit app (local development, see "Streamlit" below)
+- A modern Next.js front-end with Python serverless APIs (Vercel deployment, recommended)
+
+Choose the workflow you want to run locally.
+
+### Option A — Streamlit (local development)
+
+1. Create a Python virtual environment and activate it:
 
 ```powershell
 python -m venv venv
 venv\Scripts\Activate.ps1
 ```
 
-### 2. Install dependencies
+2. Install the full Streamlit development dependencies:
 
 ```powershell
-pip install -r requirements.txt
+pip install -r requirements-streamlit.txt
 ```
 
-### 3. Add your Groq API key
-
-Create a `.env` file in the project root:
+3. Add your Groq API key to a `.env` file in the project root:
 
 ```env
 GROQ_API_KEY=your_groq_key_here
 ```
 
-### 4. Run the app
+4. Run the Streamlit app:
 
 ```powershell
 streamlit run app.py
 ```
 
-Open `http://localhost:8501` and sign in with one of the demo users:
+Open `http://localhost:8501` and sign in with the demo users:
 
 - `admin / admin123`
 - `analyst / analyst123`
+
+### Option B — Next.js + Vercel (full-stack, recommended for production)
+
+This project ships a Next.js front-end in `pages/` that talks to Python serverless endpoints in `api/*.py`.
+Vercel will build the Next.js app and install Python dependencies listed in `requirements.txt` for the serverless functions.
+
+1. Install Node.js (v18+ recommended) and dependencies:
+
+```bash
+npm install
+```
+
+2. Local development options:
+
+- Front-end only (no Python serverless functions):
+
+    ```bash
+    npm run dev
+    ```
+
+- Full-stack local development (Next.js + Python serverless functions): install the Vercel CLI and run the local dev server which emulates Vercel's environment:
+
+    ```bash
+    npm i -g vercel
+    vercel dev
+    ```
+
+    `vercel dev` will serve both the Next.js front-end and the Python functions under `/api`.
+
+3. Set environment variables for development and production:
+
+- Locally you can create a `.env.local` file for Next.js or a `.env` for Python-based functions used by `vercel dev`.
+- For production, set `GROQ_API_KEY`, `GOOGLE_API_KEY` (if used), and `AUTH_SECRET` via the Vercel dashboard (Project › Settings › Environment Variables).
+
+Example `.env.local` (only for local testing):
+
+```env
+NEXT_PUBLIC_API_BASE=""
+GROQ_API_KEY=your_groq_key_here
+AUTH_SECRET=change-this-secret
+```
+
+4. Build and deploy to Vercel:
+
+```bash
+npm run build
+vercel --prod
+```
+
+Or push the repository to GitHub and import it into Vercel (the `vercel.json` config already maps `api/*.py` to a Python runtime and uses `requirements.txt` for serverless dependencies).
 
 ## Demo Flow
 
