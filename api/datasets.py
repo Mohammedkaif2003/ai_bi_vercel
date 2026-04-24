@@ -27,6 +27,9 @@ from _utils import (  # noqa: E402
     send_error,
     send_json,
 )
+from supabase_client import get_supabase_for_user  # noqa: E402
+import uuid  # noqa: E402
+
 from modules.auto_insights import generate_auto_insights  # noqa: E402
 from modules.data_loader import normalize_columns  # noqa: E402
 from modules.dataset_analyzer import analyze_dataset  # noqa: E402
@@ -49,32 +52,71 @@ _FRIENDLY: dict[str, str] = {
 }
 
 
-def _list_datasets() -> list[dict]:
-    if not os.path.isdir(_DATA_DIR):
-        return []
+def _list_datasets(user: dict | None) -> list[dict]:
     result = []
-    for fname in sorted(os.listdir(_DATA_DIR)):
-        if fname.endswith(".csv"):
-            result.append({
-                "key":   fname,
-                "label": _FRIENDLY.get(fname, fname),
-            })
+    
+    # 1. Fetch from Supabase if authenticated as a real user
+    if user and user.get("id") != "demo-user-id":
+        try:
+            supabase = get_supabase_for_user(user.get("token"))
+            if supabase:
+                res = supabase.table("datasets").select("id, filename").eq("user_id", user.get("id")).execute()
+                for row in res.data:
+                    result.append({
+                        "key": f"sb_{row['id']}",
+                        "label": f"{row['filename']} (Cloud)"
+                    })
+        except Exception as exc:
+            print(f"Failed to fetch user datasets: {exc}")
+
+    # 2. Add bundled datasets
+    if os.path.isdir(_DATA_DIR):
+        for fname in sorted(os.listdir(_DATA_DIR)):
+            if fname.endswith(".csv"):
+                result.append({
+                    "key":   fname,
+                    "label": _FRIENDLY.get(fname, fname),
+                })
     return result
 
 
-def _load_dataset(dataset_key: str) -> dict:
-    """Load, normalise and package a bundled dataset."""
+def _load_dataset(dataset_key: str, user: dict | None) -> dict:
+    """Load, normalise and package a dataset (bundled or Supabase)."""
     import pandas as pd
+    import io
 
     safe_key = os.path.basename(dataset_key)
-    path = os.path.join(_DATA_DIR, safe_key)
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Dataset not found: {safe_key}")
 
-    try:
-        df = pd.read_csv(path, encoding="utf-8")
-    except UnicodeDecodeError:
-        df = pd.read_csv(path, encoding="latin-1")
+    # Check if it's a Supabase dataset
+    if dataset_key.startswith("sb_") and user and user.get("id") != "demo-user-id":
+        dataset_id = dataset_key[3:]
+        supabase = get_supabase_for_user(user.get("token"))
+        if not supabase:
+            raise FileNotFoundError("Could not connect to Supabase.")
+        
+        res = supabase.table("datasets").select("storage_path, filename").eq("id", dataset_id).eq("user_id", user.get("id")).execute()
+        if not res.data:
+            raise FileNotFoundError(f"Cloud dataset not found: {dataset_id}")
+            
+        storage_path = res.data[0]["storage_path"]
+        filename = res.data[0]["filename"]
+        
+        file_res = supabase.storage.from_("user_datasets").download(storage_path)
+        try:
+            df = pd.read_csv(io.BytesIO(file_res), encoding="utf-8")
+        except UnicodeDecodeError:
+            df = pd.read_csv(io.BytesIO(file_res), encoding="latin-1")
+        safe_key = filename
+    else:
+        # Bundled dataset
+        path = os.path.join(_DATA_DIR, safe_key)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Dataset not found: {safe_key}")
+
+        try:
+            df = pd.read_csv(path, encoding="utf-8")
+        except UnicodeDecodeError:
+            df = pd.read_csv(path, encoding="latin-1")
 
     df = normalize_columns(df)
     schema = analyze_dataset(df)
@@ -83,6 +125,7 @@ def _load_dataset(dataset_key: str) -> dict:
     csv_b64 = df_to_csv_b64(df)
 
     return {
+        "key":      dataset_key,
         "csv_b64":  csv_b64,
         "schema":   schema,
         "kpis":     kpis,
@@ -102,12 +145,14 @@ class handler(BaseHTTPRequestHandler):
         handle_options(self)
 
     def do_GET(self):
-        if require_auth(self) is None:
+        user = require_auth(self)
+        if user is None:
             return
-        send_json(self, {"datasets": _list_datasets()})
+        send_json(self, {"datasets": _list_datasets(user)})
 
     def do_POST(self):
-        if require_auth(self) is None:
+        user = require_auth(self)
+        if user is None:
             return
 
         data = read_json_body(self)
@@ -118,7 +163,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            payload = _load_dataset(dataset_key)
+            payload = _load_dataset(dataset_key, user)
         except FileNotFoundError as exc:
             send_error(self, str(exc), 404)
             return

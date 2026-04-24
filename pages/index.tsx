@@ -4,6 +4,7 @@ import Head from "next/head";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, User, LogIn, Info, UserPlus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { login as legacyLogin } from "@/lib/api";
 import LogoMark from "@/components/LogoMark";
 
 export default function LoginPage() {
@@ -17,8 +18,16 @@ export default function LoginPage() {
   // Check if already logged in
   useEffect(() => {
     async function checkUser() {
+      // 1. Check Supabase
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        router.push("/dashboard");
+        return;
+      }
+
+      // 2. Check Local Storage for legacy session
+      const localUser = sessionStorage.getItem("nexlytics_user");
+      if (localUser) {
         router.push("/dashboard");
       }
     }
@@ -39,12 +48,29 @@ export default function LoginPage() {
         if (signUpError) throw signUpError;
         setError("Check your email for the confirmation link!");
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (signInError) throw signInError;
-        router.push("/dashboard");
+        // Try Supabase first if it looks like an email
+        if (email.includes("@")) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (!signInError) {
+            router.push("/dashboard");
+            return;
+          }
+          // If Supabase failed but it's an email, we still might want to try legacy 
+          // just in case they use email for legacy too, but usually legacy is username.
+        }
+
+        // Fallback to legacy login
+        try {
+          const user = await legacyLogin(email, password);
+          sessionStorage.setItem("nexlytics_user", JSON.stringify(user));
+          router.push("/dashboard");
+        } catch (legacyErr: any) {
+          // If both failed, show the most relevant error
+          throw new Error(legacyErr.message || "Invalid credentials.");
+        }
       }
     } catch (err: any) {
       setError(err.message || "An error occurred.");
@@ -90,12 +116,11 @@ export default function LoginPage() {
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
                   <input
                     id="email"
-                    type="email"
+                    type="text"
                     className="input pl-12"
-                    placeholder="name@company.com"
+                    placeholder="Email or username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
                     required
                   />
                 </div>
@@ -151,13 +176,27 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-8 text-center">
+            <div className="mt-8 text-center space-y-4">
               <button 
                 onClick={() => setIsSignUp(!isSignUp)}
                 className="text-xs text-slate-500 hover:text-indigo-400 transition-colors"
               >
                 {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
               </button>
+
+              {!isSignUp && (
+                <div className="pt-4 border-t border-white/[0.05]">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Demo Credentials</p>
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <span className="text-indigo-400 font-bold">Admin:</span> admin / admin123
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="text-indigo-400 font-bold">Analyst:</span> analyst / analyst123
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           

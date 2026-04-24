@@ -20,9 +20,27 @@ import { supabase } from "./supabase";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function getAuthToken(): Promise<string | undefined> {
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  if (session?.access_token) return session.access_token;
+
+  // Fallback to sessionStorage for demo/local users
+  if (typeof window !== "undefined") {
+    const localUserJson = sessionStorage.getItem("nexlytics_user");
+    if (localUserJson) {
+      try {
+        const user = JSON.parse(localUserJson);
+        return user.token;
+      } catch (e) {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const token = await getAuthToken();
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: {
@@ -37,8 +55,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  const token = await getAuthToken();
   const res = await fetch(`${BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });

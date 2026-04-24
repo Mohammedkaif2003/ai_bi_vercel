@@ -19,9 +19,11 @@ interface Props {
   payload: DatasetPayload;
   user: User;
   onSwitchToForecast?: () => void;
+  explicitSessionId?: string | null;
+  onSessionCreated?: (session: any) => void;
 }
 
-export default function AIAnalyst({ payload, user }: Props) {
+export default function AIAnalyst({ payload, user, explicitSessionId, onSessionCreated }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -33,16 +35,17 @@ export default function AIAnalyst({ payload, user }: Props) {
   useEffect(() => {
     async function loadHistory() {
       if (!user.id) return;
+      let sessionData = null;
 
-      // Find or create session for this user and dataset
-      const { data: sessionData } = await supabase
-        .from('chat_sessions')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('dataset_name', payload.filename)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      if (explicitSessionId) {
+        const { data } = await supabase
+          .from('chat_sessions')
+          .select('id')
+          .eq('id', explicitSessionId)
+          .single();
+        sessionData = data;
+      }
+
 
       if (sessionData) {
         setSessionId(sessionData.id);
@@ -94,7 +97,7 @@ export default function AIAnalyst({ payload, user }: Props) {
     }
 
     loadHistory();
-  }, [payload.filename, user.id]);
+  }, [payload.filename, user.id, explicitSessionId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -116,13 +119,19 @@ export default function AIAnalyst({ payload, user }: Props) {
       if (!activeSessionId) {
         const { data: newSession, error: sessionErr } = await supabase
           .from('chat_sessions')
-          .insert({ user_id: user.id, dataset_name: payload.filename })
+          .insert({ 
+            user_id: user.id, 
+            dataset_name: payload.filename,
+            dataset_key: payload.key,
+            title: q.length > 30 ? q.substring(0, 30) + '...' : q
+          })
           .select()
           .single();
         
         if (sessionErr) throw sessionErr;
         activeSessionId = newSession.id;
         setSessionId(activeSessionId);
+        if (onSessionCreated) onSessionCreated(newSession);
       }
 
       // 3. Save User Message

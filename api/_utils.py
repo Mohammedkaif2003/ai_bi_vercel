@@ -125,7 +125,9 @@ def verify_token(token: str) -> dict | None:
             
             return {
                 "username": payload_json.get("email", "Supabase User"),
-                "role": "Pro Analyst"
+                "role": "Pro Analyst",
+                "id": payload_json.get("sub", ""),
+                "token": token
             }
             
         # Fallback to original custom token format
@@ -139,7 +141,7 @@ def verify_token(token: str) -> dict | None:
             return None
         if int(time.time()) - int(ts) > TOKEN_TTL_SECONDS:
             return None
-        return {"username": username, "role": role}
+        return {"username": username, "role": role, "id": "demo-user-id", "token": token}
     except Exception:
         return None
 

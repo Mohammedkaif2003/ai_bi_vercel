@@ -38,12 +38,16 @@ from modules.dataset_analyzer import analyze_dataset  # noqa: E402
 from modules.kpi_engine import generate_kpis  # noqa: E402
 
 
+from supabase_client import get_supabase_for_user  # noqa: E402
+import uuid  # noqa: E402
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         handle_options(self)
 
     def do_POST(self):
-        if require_auth(self) is None:
+        user = require_auth(self)
+        if user is None:
             return
 
         data = read_json_body(self)
@@ -69,8 +73,40 @@ class handler(BaseHTTPRequestHandler):
         except Exception as exc:
             send_error(self, f"Processing error: {exc}", 500)
             return
+            
+        # Optional: Save to Supabase
+        dataset_id = str(uuid.uuid4())
+        try:
+            supabase = get_supabase_for_user(user.get("token"))
+            if supabase and user.get("id") != "demo-user-id":
+                user_id = user.get("id")
+                # 1. Upload to Storage
+                # Supabase storage upload expects bytes
+                import base64
+                csv_bytes = base64.b64decode(normalised_csv_b64.encode("utf-8"))
+                storage_path = f"{user_id}/{dataset_id}_{filename}"
+                
+                supabase.storage.from_("user_datasets").upload(
+                    path=storage_path,
+                    file=csv_bytes,
+                    file_options={"content-type": "text/csv"}
+                )
+                
+                # 2. Save record to Database
+                supabase.table("datasets").insert({
+                    "id": dataset_id,
+                    "user_id": user_id,
+                    "filename": filename,
+                    "storage_path": storage_path,
+                    "row_count": df.shape[0],
+                    "column_count": df.shape[1]
+                }).execute()
+        except Exception as exc:
+            # We log the error but still return the analysis so the user flow isn't completely broken
+            print(f"Failed to save to Supabase: {exc}")
 
         send_json(self, {
+            "dataset_id": dataset_id,
             "csv_b64":  normalised_csv_b64,
             "schema":   schema,
             "kpis":     kpis,

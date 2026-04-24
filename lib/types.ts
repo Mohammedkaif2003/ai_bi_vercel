@@ -32,6 +32,7 @@ export interface KPI {
 }
 
 export interface DatasetPayload {
+  key: string;
   csv_b64: string;
   schema: Schema;
   kpis: KPI[];
@@ -39,6 +40,14 @@ export interface DatasetPayload {
   preview_rows: Record<string, unknown>[];
   filename: string;
   shape: [number, number];
+}
+
+export interface ChatSession {
+  id: string;
+  dataset_name: string;
+  dataset_key: string;
+  title?: string;
+  created_at: string;
 }
 
 export interface AnalysisResult {
