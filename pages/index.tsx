@@ -1,209 +1,198 @@
-import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import { motion, AnimatePresence } from "framer-motion";
-import { Lock, User, LogIn, Info, UserPlus } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { login as legacyLogin } from "@/lib/api";
+import { motion } from "framer-motion";
+import { 
+  Sparkles, 
+  BarChart3, 
+  Shield, 
+  Zap, 
+  ArrowRight,
+  MessageSquare,
+  TrendingUp,
+  FileText
+} from "lucide-react";
 import LogoMark from "@/components/LogoMark";
 
-export default function LoginPage() {
+export default function LandingPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  // Check if already logged in
-  useEffect(() => {
-    async function checkUser() {
-      // 1. Check Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        router.push("/dashboard");
-        return;
-      }
-
-      // 2. Check Local Storage for legacy session
-      const localUser = sessionStorage.getItem("nexlytics_user");
-      if (localUser) {
-        router.push("/dashboard");
-      }
+  const features = [
+    {
+      title: "AI Conversations",
+      description: "Ask complex business questions in plain English and get instant visual answers.",
+      icon: MessageSquare,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10"
+    },
+    {
+      title: "Predictive Insights",
+      description: "Advanced forecasting models that identify trends before they happen.",
+      icon: TrendingUp,
+      color: "text-indigo-400",
+      bg: "bg-indigo-500/10"
+    },
+    {
+      title: "Executive Reports",
+      description: "Automatically package your findings into professional, presentation-ready PDFs.",
+      icon: FileText,
+      color: "text-violet-400",
+      bg: "bg-violet-500/10"
     }
-    checkUser();
-  }, [router]);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      if (isSignUp) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (signUpError) throw signUpError;
-        setError("Check your email for the confirmation link!");
-      } else {
-        // Try Supabase first if it looks like an email
-        if (email.includes("@")) {
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (!signInError) {
-            router.push("/dashboard");
-            return;
-          }
-          // If Supabase failed but it's an email, we still might want to try legacy 
-          // just in case they use email for legacy too, but usually legacy is username.
-        }
-
-        // Fallback to legacy login
-        try {
-          const user = await legacyLogin(email, password);
-          sessionStorage.setItem("nexlytics_user", JSON.stringify(user));
-          router.push("/dashboard");
-        } catch (legacyErr: any) {
-          // If both failed, show the most relevant error
-          throw new Error(legacyErr.message || "Invalid credentials.");
-        }
-      }
-    } catch (err: any) {
-      setError(err.message || "An error occurred.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  ];
 
   return (
     <>
       <Head>
-        <title>Nexlytics | {isSignUp ? "Create Account" : "Sign In"}</title>
+        <title>Nexlytics AI | Intelligence Redefined</title>
+        <meta name="description" content="Nexlytics is an enterprise-grade AI Business Intelligence platform for data analysis, forecasting, and automated reporting." />
       </Head>
-      <div className="min-h-screen flex items-center justify-center bg-mesh px-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
-        >
-          <div className="glass-card p-8 md:p-10 shadow-2xl relative overflow-hidden">
-            {/* Background Glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50" />
-            
-            <div className="text-center mb-8">
-              <motion.div 
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                className="mb-4 inline-block"
-              >
-                <LogoMark size={64} className="mx-auto" />
-              </motion.div>
-              <h1 className="text-4xl font-bold text-white tracking-tight mb-2">Nexlytics</h1>
-              <p className="text-slate-400 font-medium">Enterprise Intelligence Platform</p>
+
+      <div className="min-h-screen bg-[#030712] selection:bg-indigo-500/30">
+        {/* Navigation */}
+        <nav className="fixed top-0 w-full z-50 bg-[#030712]/80 backdrop-blur-xl border-b border-white/[0.05]">
+          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <LogoMark size={32} />
+              <span className="text-white font-bold text-xl tracking-tight">Nexlytics</span>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="email">
-                  Email Address
-                </label>
-                <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
-                  <input
-                    id="email"
-                    type="text"
-                    className="input pl-12"
-                    placeholder="Email or username"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="password">
-                  Password
-                </label>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
-                  <input
-                    id="password"
-                    type="password"
-                    className="input pl-12"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    required
-                  />
-                </div>
-              </div>
-
-              {error && (
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={`flex items-center gap-3 text-sm rounded-xl px-4 py-3 ${
-                    error.includes("confirm") 
-                      ? "text-emerald-400 bg-emerald-500/5 border border-emerald-500/10" 
-                      : "text-rose-400 bg-rose-500/5 border border-rose-500/10"
-                  }`}
-                >
-                  <Info size={16} />
-                  <span>{error}</span>
-                </motion.div>
-              )}
-
-              <button
-                type="submit"
-                className="btn-primary w-full py-4 flex items-center justify-center gap-2 group"
-                disabled={loading}
-              >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    {isSignUp ? <UserPlus size={20} /> : <LogIn size={20} />}
-                    <span>{isSignUp ? "Create Account" : "Access Dashboard"}</span>
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="mt-8 text-center space-y-4">
+            <div className="flex items-center gap-6">
               <button 
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-xs text-slate-500 hover:text-indigo-400 transition-colors"
+                onClick={() => router.push("/login")}
+                className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
               >
-                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+                Sign In
               </button>
-
-              {!isSignUp && (
-                <div className="pt-4 border-t border-white/[0.05]">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Demo Credentials</p>
-                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <span className="text-indigo-400 font-bold">Admin:</span> admin / admin123
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="text-indigo-400 font-bold">Analyst:</span> analyst / analyst123
-                    </span>
-                  </div>
-                </div>
-              )}
+              <button 
+                onClick={() => router.push("/login")}
+                className="bg-white text-black px-5 py-2.5 rounded-full text-sm font-bold hover:bg-slate-200 transition-all active:scale-95"
+              >
+                Get Started
+              </button>
             </div>
           </div>
-          
-          <p className="mt-8 text-center text-slate-600 text-xs">
-            &copy; 2026 Nexlytics AI. All rights reserved.
+        </nav>
+
+        {/* Hero Section */}
+        <section className="relative pt-40 pb-32 px-6 overflow-hidden">
+          {/* Animated Background Elements */}
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute -top-24 -right-24 w-96 h-96 bg-violet-500/10 blur-[100px] rounded-full pointer-events-none" />
+
+          <div className="max-w-5xl mx-auto text-center relative z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-indigo-400 text-xs font-bold uppercase tracking-widest mb-8"
+            >
+              <Sparkles size={14} />
+              <span>The Future of BI is Here</span>
+            </motion.div>
+
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-6xl md:text-8xl font-bold text-white tracking-tight leading-[1.1] mb-8"
+            >
+              Business Intelligence <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-indigo-400">
+                Powered by AI.
+              </span>
+            </motion.h1>
+
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-xl text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed"
+            >
+              Connect your data and talk to it in plain English. Nexlytics uses advanced generative AI to analyze trends, forecast outcomes, and generate reports instantly.
+            </motion.p>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            >
+              <button 
+                onClick={() => router.push("/login")}
+                className="group bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 shadow-xl shadow-indigo-600/20 transition-all active:scale-95 text-lg"
+              >
+                Launch Dashboard
+                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button className="px-8 py-4 rounded-2xl font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all text-lg">
+                View Demo
+              </button>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="py-24 px-6 border-t border-white/[0.05]">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-20">
+              <h2 className="text-3xl font-bold text-white mb-4">Enterprise Grade Analytics</h2>
+              <p className="text-slate-400 max-w-xl mx-auto italic">Everything you need to turn raw data into strategic decisions.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {features.map((feature, i) => (
+                <motion.div 
+                  key={feature.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="glass-card p-10 group hover:border-indigo-500/30 transition-all"
+                >
+                  <div className={`w-14 h-14 rounded-2xl ${feature.bg} flex items-center justify-center ${feature.color} mb-8 group-hover:scale-110 transition-transform`}>
+                    <feature.icon size={28} />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-4">{feature.title}</h3>
+                  <p className="text-slate-400 leading-relaxed">{feature.description}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Stats / Proof Section */}
+        <section className="py-24 px-6 bg-gradient-to-b from-transparent to-indigo-500/[0.02]">
+          <div className="max-w-7xl mx-auto glass-card p-12 flex flex-col md:flex-row items-center justify-around gap-12 text-center">
+            <div>
+              <p className="text-5xl font-bold text-white mb-2 tracking-tight">99%</p>
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Accuracy</p>
+            </div>
+            <div className="w-px h-12 bg-white/10 hidden md:block" />
+            <div>
+              <p className="text-5xl font-bold text-white mb-2 tracking-tight">10x</p>
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Faster Insights</p>
+            </div>
+            <div className="w-px h-12 bg-white/10 hidden md:block" />
+            <div>
+              <p className="text-5xl font-bold text-white mb-2 tracking-tight">Zero</p>
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Config Required</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="py-12 px-6 border-t border-white/[0.05] text-center">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <LogoMark size={24} />
+            <span className="text-white font-bold text-sm tracking-tight">Nexlytics</span>
+          </div>
+          <p className="text-slate-500 text-xs mb-8">
+            &copy; 2026 Nexlytics AI platform. All rights reserved. Built for professional analysts.
           </p>
-        </motion.div>
+          <div className="flex justify-center gap-8 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+            <a href="#" className="hover:text-indigo-400 transition-colors">Privacy</a>
+            <a href="#" className="hover:text-indigo-400 transition-colors">Terms</a>
+            <a href="#" className="hover:text-indigo-400 transition-colors">Security</a>
+          </div>
+        </footer>
       </div>
     </>
   );

@@ -14,20 +14,30 @@ import type { DatasetPayload, ChatMessage, AnalysisHistoryEntry, User } from "@/
 import { analyze } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import PlotlyChart from "./PlotlyChart";
+import ConfirmModal from "./ConfirmModal";
 
 interface Props {
-  payload: DatasetPayload;
+  payload: DatasetPayload | null;
   user: User;
   onSwitchToForecast?: () => void;
   explicitSessionId?: string | null;
   onSessionCreated?: (session: any) => void;
+  onDatasetRecovered?: (payload: DatasetPayload) => void;
 }
 
-export default function AIAnalyst({ payload, user, explicitSessionId, onSessionCreated }: Props) {
+export default function AIAnalyst({ 
+  payload, 
+  user, 
+  onSwitchToForecast, 
+  explicitSessionId, 
+  onSessionCreated,
+  onDatasetRecovered
+}: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<AnalysisHistoryEntry[]>([]);
 
@@ -45,7 +55,6 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
           .single();
         sessionData = data;
       }
-
 
       if (sessionData) {
         setSessionId(sessionData.id);
@@ -72,7 +81,7 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
           const analysisEntries = formattedMsgs
             .filter(m => m.role === 'assistant' && m.query_type !== 'irrelevant')
             .map(m => ({
-              query: "Previous Query", // We don't store the user query paired in the same row, but we could find it
+              query: "Previous Query",
               ai_response: m.content,
               insight: m.content,
               result: m.result || []
@@ -87,6 +96,16 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
     }
 
     function showGreeting() {
+      if (!payload) {
+        setMessages([
+          {
+            role: "assistant",
+            content: "Welcome back! I can see the history of this conversation, but the original dataset is no longer available on the server. \n\nTo continue analyzing or viewing charts, please re-upload the original file.",
+            timestamp: Date.now(),
+          },
+        ]);
+        return;
+      }
       setMessages([
         {
           role: "assistant",
@@ -97,7 +116,7 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
     }
 
     loadHistory();
-  }, [payload.filename, user.id, explicitSessionId]);
+  }, [payload?.filename, user.id, explicitSessionId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -121,8 +140,8 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
           .from('chat_sessions')
           .insert({ 
             user_id: user.id, 
-            dataset_name: payload.filename,
-            dataset_key: payload.key,
+            dataset_name: payload?.filename || "Unknown Dataset",
+            dataset_key: payload?.key || "unknown",
             title: q.length > 30 ? q.substring(0, 30) + '...' : q
           })
           .select()
@@ -141,6 +160,10 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
         content: q,
         created_at: new Date(userTimestamp).toISOString()
       });
+
+      if (!payload) {
+        throw new Error("Dataset is missing. Please re-upload the file to continue.");
+      }
 
       const result = await analyze(q, payload.csv_b64, payload.filename);
       const assistantTimestamp = Date.now();
@@ -190,21 +213,23 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
   }
 
   function handleClearChat() {
-    if (confirm("Are you sure you want to clear the analysis history? This will also remove items from your Report.")) {
-      if (sessionId) {
-        supabase.from('chat_messages').delete().eq('session_id', sessionId).then(() => {
-           setMessages([
-            {
-              role: "assistant",
-              content: `Chat cleared. Ask me anything about **${payload.filename}**.`,
-              timestamp: Date.now(),
-            },
-          ]);
-        });
-      }
-      historyRef.current = [];
-      sessionStorage.removeItem("nexlytics_analysis_history");
+    setShowClearModal(true);
+  }
+
+  async function performClearChat() {
+    if (sessionId) {
+      supabase.from('chat_messages').delete().eq('session_id', sessionId).then(() => {
+         setMessages([
+          {
+            role: "assistant",
+            content: `Chat cleared. Ask me anything about **${payload?.filename || "this dataset"}**.`,
+            timestamp: Date.now(),
+          },
+        ]);
+      });
     }
+    historyRef.current = [];
+    sessionStorage.removeItem("nexlytics_analysis_history");
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -214,15 +239,21 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
     }
   }
 
-  const { schema } = payload;
-  const metric = schema.numeric_columns[0];
-  const category = schema.categorical_columns[0];
-  const suggestions = [
-    metric && category ? `Total ${metric} by ${category}` : null,
-    metric && category ? `Top 5 ${category} by ${metric}` : null,
-    schema.datetime_columns[0] && metric ? `Trend of ${metric} over time` : null,
-    metric ? `Average ${metric} distribution` : null,
-  ].filter(Boolean) as string[];
+  // Generate suggestions safely
+  const getSuggestions = () => {
+    if (!payload?.schema) return [];
+    const { schema } = payload;
+    const metric = schema.numeric_columns[0];
+    const category = schema.categorical_columns[0];
+    return [
+      metric && category ? `Total ${metric} by ${category}` : null,
+      metric && category ? `Top 5 ${category} by ${metric}` : null,
+      schema.datetime_columns[0] && metric ? `Trend of ${metric} over time` : null,
+      metric ? `Average ${metric} distribution` : null,
+    ].filter(Boolean) as string[];
+  };
+
+  const suggestions = getSuggestions();
 
   return (
     <div className="flex flex-col h-[calc(100vh-250px)] min-h-[550px] relative">
@@ -342,12 +373,59 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
             </div>
           </motion.div>
         )}
+
+        <AnimatePresence>
+          {!payload && messages.length > 1 && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mt-6 p-8 rounded-[2rem] bg-amber-500/10 border border-amber-500/20 text-center mx-4 overflow-hidden relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-amber-500/[0.05] to-transparent pointer-events-none" />
+              <div className="relative z-10">
+                <div className="w-14 h-14 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-amber-500/10">
+                  <TableIcon className="text-amber-400" size={28} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">Dataset Recovery Required</h3>
+                <p className="text-slate-400 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
+                  The analytical backbone of this conversation is currently unavailable. Upload the original **CSV file** to restore charts and analysis capabilities.
+                </p>
+                <button 
+                  onClick={() => document.getElementById('recovery-upload')?.click()}
+                  className="btn-primary bg-amber-600 hover:bg-amber-500 shadow-xl shadow-amber-600/30 py-3 px-8 text-sm font-bold tracking-wide"
+                >
+                  Re-upload Dataset
+                </button>
+                <input 
+                  id="recovery-upload" 
+                  type="file" 
+                  accept=".csv" 
+                  className="hidden" 
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !onDatasetRecovered) return;
+                    const { uploadCsv, fileToBase64 } = await import("@/lib/api");
+                    try {
+                      const b64 = await fileToBase64(file);
+                      const newPayload = await uploadCsv(b64, file.name);
+                      onDatasetRecovered(newPayload);
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div ref={bottomRef} className="h-4" />
       </div>
 
       {/* Input Area */}
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#030712] via-[#030712]/90 to-transparent">
-        {suggestions.length > 0 && messages.length <= 1 && (
+
+        {suggestions.length > 0 && messages.length <= 1 && payload && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -374,26 +452,36 @@ export default function AIAnalyst({ payload, user, explicitSessionId, onSessionC
             </div>
             <input
               className="bg-transparent border-none focus:ring-0 text-sm text-white placeholder-slate-500 flex-1 py-2"
-              placeholder="Ask a question about this data..."
+              placeholder={payload ? "Ask a question about this data..." : "Re-upload dataset to continue chat"}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={loading}
+              disabled={loading || !payload}
             />
             <button 
               className={`p-2 rounded-xl transition-all ${
-                input.trim() && !loading 
+                input.trim() && !loading && payload
                   ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/40" 
                   : "bg-white/5 text-slate-600 cursor-not-allowed"
               }`}
               onClick={() => sendMessage()} 
-              disabled={loading || !input.trim()}
+              disabled={loading || !input.trim() || !payload}
             >
               <Send size={18} />
             </button>
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showClearModal}
+        onClose={() => setShowClearModal(false)}
+        onConfirm={performClearChat}
+        title="Clear Analysis History"
+        message="Are you sure you want to clear the analysis history? This will also remove all items from your current Report draft."
+        confirmLabel="Clear Everything"
+        type="danger"
+      />
     </div>
   );
 }

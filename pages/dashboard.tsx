@@ -11,8 +11,17 @@ import {
   Database,
   Upload,
   ChevronRight,
-  Info
+  Info,
+  Library, 
+  Plus, 
+  Search, 
+  ChevronDown, 
+  Upload as UploadIcon, 
+  Trash2, 
+  Edit2, 
+  AlertCircle 
 } from "lucide-react";
+import ConfirmModal from "@/components/ConfirmModal";
 import { listDatasets, loadDataset, uploadCsv, fileToBase64 } from "@/lib/api";
 import type { DatasetPayload, User, DatasetInfo, ChatSession } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
@@ -34,6 +43,7 @@ export default function DashboardPage() {
   const [sessionDataset, setSessionDataset] = useState<DatasetPayload | null>(null);
   const [loadingDataset, setLoadingDataset] = useState(false);
   const [datasetError, setDatasetError] = useState("");
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
   const [selectedPreloaded, setSelectedPreloaded] = useState("");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,14 +78,14 @@ export default function DashboardPage() {
         }
       }
 
-      router.replace("/");
+      router.replace("/login");
     }
 
     getSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session && !sessionStorage.getItem("nexlytics_user")) {
-        router.replace("/");
+        router.replace("/login");
       }
     });
 
@@ -171,24 +181,37 @@ export default function DashboardPage() {
     try {
       const payload = await loadDataset(keyToLoad);
       setSessionDataset(payload);
-      setActiveSessionId(session.id);
-      setActiveTab("analyst");
+      setDatasetPayload(payload); // Also set global dataset if possible
     } catch (err: unknown) {
-      setDatasetError(err instanceof Error ? err.message : "Failed to load session dataset.");
-    } finally {
-      setLoadingDataset(false);
+      const msg = err instanceof Error ? err.message : "Failed to load dataset.";
+      if (msg.includes("not found")) {
+        // Allow loading the session history even if the dataset is missing
+        setSessionDataset(null);
+      } else {
+        setDatasetError(msg);
+        setLoadingDataset(false);
+        return;
+      }
     }
+
+    setActiveSessionId(session.id);
+    setActiveTab("analyst");
+    setLoadingDataset(false);
   }
 
   async function handleDeleteSession(sessionId: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this chat session?")) return;
-    
-    await supabase.from("chat_sessions").delete().eq("id", sessionId);
-    setChatSessions((prev) => prev.filter((s) => s.id !== sessionId));
-    if (activeSessionId === sessionId) {
+    setDeleteSessionId(sessionId);
+  }
+
+  async function performDeleteSession() {
+    if (!deleteSessionId) return;
+    await supabase.from("chat_sessions").delete().eq("id", deleteSessionId);
+    setChatSessions((prev) => prev.filter((s) => s.id !== deleteSessionId));
+    if (activeSessionId === deleteSessionId) {
       setActiveSessionId(null);
     }
+    setDeleteSessionId(null);
   }
 
   async function handleRenameSession(session: ChatSession, e: React.MouseEvent) {
@@ -230,14 +253,7 @@ export default function DashboardPage() {
                 <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-wider">{user.role}</span>
               </div>
             )}
-            <button
-              onClick={() => router.push('/settings')}
-              className="btn-secondary text-sm py-2 px-3 flex items-center gap-2"
-              title="Settings"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-              <span className="hidden sm:inline">Settings</span>
-            </button>
+
             <button
               onClick={handleSignOut}
               className="btn-secondary text-sm py-2 px-3 flex items-center gap-2"
@@ -465,7 +481,7 @@ export default function DashboardPage() {
             </div>
 
             <AnimatePresence mode="wait">
-              {!datasetPayload && activeTab !== "analyst" ? (
+              {!datasetPayload && activeTab !== "analyst" && activeTab !== "reports" ? (
                 <motion.div
                   key="need-dataset"
                   initial={{ opacity: 0, y: 20 }}
@@ -509,9 +525,9 @@ export default function DashboardPage() {
                   transition={{ duration: 0.3 }}
                 >
                   {activeTab === "overview" && datasetPayload && <OverviewTab payload={datasetPayload} />}
-                  {activeTab === "analyst" && sessionDataset && (
+                  {activeTab === "analyst" && (
                     <AIAnalyst 
-                      key={activeSessionId || newChatKey} 
+                      key={newChatKey} 
                       payload={sessionDataset} 
                       user={user!} 
                       onSwitchToForecast={() => setActiveTab("forecast")} 
@@ -520,16 +536,30 @@ export default function DashboardPage() {
                         setActiveSessionId(session.id);
                         setChatSessions((prev) => [session, ...prev]);
                       }}
+                      onDatasetRecovered={(newPayload) => {
+                        setSessionDataset(newPayload);
+                        setDatasetPayload(newPayload);
+                      }}
                     />
                   )}
                   {activeTab === "forecast" && datasetPayload && <ForecastingTab payload={datasetPayload} />}
-                  {activeTab === "reports" && datasetPayload && <ReportsTab payload={datasetPayload} user={user} />}
+                  {activeTab === "reports" && <ReportsTab payload={datasetPayload} user={user} activeSessionId={activeSessionId || (chatSessions.length > 0 ? chatSessions[0].id : null)} sessions={chatSessions} />}
                 </motion.div>
               )}
             </AnimatePresence>
           </main>
         </div>
       </div>
+
+      <ConfirmModal 
+        isOpen={!!deleteSessionId}
+        onClose={() => setDeleteSessionId(null)}
+        onConfirm={performDeleteSession}
+        title="Delete Chat Session"
+        message="Are you sure you want to delete this conversation? This action cannot be undone and all insights will be permanently removed."
+        confirmLabel="Delete Permanently"
+        type="danger"
+      />
     </>
   );
 }

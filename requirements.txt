@@ -5,4 +5,4 @@ groq
 python-dotenv
 reportlab
 google-generativeai
-supabase
+supabase==2.10.0
