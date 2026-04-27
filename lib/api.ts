@@ -121,12 +121,16 @@ export async function forecast(
 export async function generateReport(
   analysis_history: AnalysisHistoryEntry[],
   dataset_name: string,
-  user_name: string
+  user_name: string,
+  report_title?: string,
+  report_intro?: string
 ): Promise<{ pdf_b64: string }> {
   return post<{ pdf_b64: string }>("/api/report", {
     analysis_history,
     dataset_name,
     user_name,
+    report_title,
+    report_intro,
   });
 }
 

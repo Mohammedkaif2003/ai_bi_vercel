@@ -7,6 +7,7 @@ document reads like an executive briefing, not a dashboard printout.
 """
 from __future__ import annotations
 
+import base64
 import copy
 import os
 import re
@@ -36,6 +37,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    KeepTogether,
 )
 
 from modules.app_logging import get_logger
@@ -93,29 +95,28 @@ def _build_styles():
     add(name="CoverValue",   fontName="Helvetica",      fontSize=11, textColor=C_INK,
         leading=14, alignment=TA_LEFT, spaceAfter=6)
 
-    add(name="H1",   fontName="Helvetica-Bold", fontSize=18, textColor=C_INK,
-        spaceBefore=0, spaceAfter=4, leading=22)
-    add(name="H2",   fontName="Helvetica-Bold", fontSize=13, textColor=C_ACCENT,
-        spaceBefore=10, spaceAfter=5, leading=17)
-    add(name="Eyebrow", fontName="Helvetica-Bold", fontSize=8, textColor=C_MUTED,
-        spaceBefore=12, spaceAfter=3, leading=11)
+    add(name="H1",   fontName="Helvetica-Bold", fontSize=22, textColor=C_INK,
+        spaceBefore=0, spaceAfter=8, leading=26)
+    add(name="H2",   fontName="Helvetica-Bold", fontSize=14, textColor=C_ACCENT2,
+        spaceBefore=14, spaceAfter=8, leading=18)
+    add(name="Eyebrow", fontName="Helvetica-Bold", fontSize=8.5, textColor=C_MUTED,
+        spaceBefore=16, spaceAfter=4, leading=12, leftIndent=0)
 
     add(name="Body", fontName="Helvetica", fontSize=10.5, textColor=C_BODY,
-        spaceAfter=8, leading=16, alignment=TA_JUSTIFY)
+        spaceAfter=10, leading=17, alignment=TA_LEFT)
     add(name="BodyTight", fontName="Helvetica", fontSize=10.5, textColor=C_BODY,
-        spaceAfter=4, leading=16, alignment=TA_JUSTIFY)
-    add(name="Quote", fontName="Helvetica-Oblique", fontSize=12, textColor=C_INK,
-        leading=18, spaceBefore=4, spaceAfter=12,
-        leftIndent=14, rightIndent=10,
-        borderColor=C_ACCENT, borderWidth=0, borderPadding=0)
+        spaceAfter=6, leading=17, alignment=TA_LEFT)
+    add(name="Quote", fontName="Helvetica-BoldOblique", fontSize=12, textColor=C_INK,
+        leading=18, spaceBefore=6, spaceAfter=14,
+        leftIndent=14, rightIndent=10)
     add(name="BulletItem", fontName="Helvetica", fontSize=10.5, textColor=C_BODY,
-        spaceAfter=4, leading=15, leftIndent=16, bulletIndent=4)
+        spaceAfter=6, leading=16, leftIndent=24, bulletIndent=10)
     add(name="Caption", fontName="Helvetica-Oblique", fontSize=9, textColor=C_MUTED,
-        spaceBefore=2, spaceAfter=10, leading=12, alignment=TA_CENTER)
+        spaceBefore=4, spaceAfter=12, leading=13, alignment=TA_CENTER)
     add(name="Small", fontName="Helvetica", fontSize=9, textColor=C_MUTED,
-        spaceAfter=4, leading=12)
+        spaceAfter=6, leading=13)
     add(name="TOCItem", fontName="Helvetica", fontSize=11, textColor=C_INK,
-        spaceBefore=3, spaceAfter=3, leading=16)
+        spaceBefore=4, spaceAfter=4, leading=18)
 
     return base
 
@@ -366,19 +367,7 @@ def _section_divider() -> Table:
     return tbl
 
 
-def _quote_box(text: str, styles) -> Table:
-    """Blue-bar quote block for the user's question."""
-    p = Paragraph(f"&#8220;{_safe_xml(text, max_len=500)}&#8221;", styles["Quote"])
-    tbl = Table([[p]], colWidths=[BODY_W])
-    tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, -1), C_QUOTE_BG),
-        ("LINEBEFORE",    (0, 0), (0, -1), 3, C_ACCENT),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 16),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 14),
-        ("TOPPADDING",    (0, 0), (-1, -1), 12),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-    ]))
-    return tbl
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -669,12 +658,12 @@ def _compact_table(df, max_rows: int = 6) -> Optional[Table]:
 # ─────────────────────────────────────────────────────────────────────────────
 def _build_cover(elements, styles, timestamp: str, n_analyses: int,
                  dataset_name: str, user_name: str, overview_text: str,
-                 toc_entries: list[str]):
+                 toc_entries: list[str], report_title: str = ""):
     # The cover's decorative navy band is drawn by _decorate_cover. The
     # first page content begins below the band.
     elements.append(_gap(1.4 * inch))
     elements.append(Paragraph("NEXLYTICS", styles["CoverEyebrow"]))
-    elements.append(Paragraph("AI-Assisted Executive Report", styles["CoverTitle"]))
+    elements.append(Paragraph(report_title or "AI-Assisted Executive Report", styles["CoverTitle"]))
     elements.append(Paragraph(
         "A narrative briefing compiled from this session's AI analyses.",
         styles["CoverSub"],
@@ -742,22 +731,28 @@ def _build_cover(elements, styles, timestamp: str, n_analyses: int,
 
     # TOC
     if toc_entries:
-        elements.append(Paragraph("CONTENTS", styles["Eyebrow"]))
-        elements.append(_accent_rule())
+        toc_elements = []
+        toc_elements.append(Paragraph("CONTENTS", styles["Eyebrow"]))
+        toc_elements.append(_accent_rule())
         for entry in toc_entries:
-            elements.append(Paragraph(entry, styles["TOCItem"]))
+            toc_elements.append(Paragraph(entry, styles["TOCItem"]))
+        elements.append(KeepTogether(toc_elements))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Executive summary (prose from AI responses)
 # ─────────────────────────────────────────────────────────────────────────────
-def _build_executive_summary(elements, history: list, styles):
+def _build_executive_summary(elements, history: list, styles, report_intro: str = ""):
     elements.append(PageBreak())
     elements.append(Paragraph("Executive Summary", styles["H1"]))
     elements.append(_accent_rule())
     elements.append(_section_divider())
     elements.append(_gap(10))
 
+    if report_intro:
+        elements.append(Paragraph(report_intro, styles["Body"]))
+        elements.append(_gap(12))
+    
     n = len(history)
     label = "analyses" if n != 1 else "analysis"
     intro = (
@@ -785,12 +780,12 @@ def _build_executive_summary(elements, history: list, styles):
 
     if takeaways:
         elements.append(Paragraph("Key Takeaways", styles["H2"]))
-        for t in takeaways[:5]:
+        for t in takeaways[:6]:
             elements.append(Paragraph(
-                f'<font color="{HX_ACCENT}">&#9679;</font>&#160;&#160;{_safe_xml(t, max_len=500)}',
+                f'<font color="{HX_ACCENT}" size="12">&#8226;</font>&#160;&#160;{_safe_xml(t, max_len=500)}',
                 styles["BulletItem"],
             ))
-        elements.append(_gap(6))
+        elements.append(_gap(10))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -825,19 +820,17 @@ def _build_analysis_section(elements, entry: dict, num: int, styles):
     insight   = str(entry.get("insight") or "").strip()
     charts    = entry.get("charts") or []
     dataframe = entry.get("result")
+    chart_b64 = entry.get("chart_b64") # Base64 chart image from frontend
 
     # Section title + divider — the divider is a full-width hairline with a
     # thick indigo left-accent block so each analysis visibly breaks from
     # the previous one.
     elements.append(Paragraph(f"Analysis {num:02d}", styles["Eyebrow"]))
-    short_q = re.sub(r"\s+", " ", query).strip()[:90]
-    elements.append(Paragraph(_safe_xml(short_q, max_len=160), styles["H1"]))
-    elements.append(_accent_rule())
+    short_q = re.sub(r"\s+", " ", query).strip()[:100]
+    elements.append(Paragraph(_safe_xml(short_q, max_len=180), styles["H1"]))
+    elements.append(_gap(2))
     elements.append(_section_divider())
-    elements.append(_gap(10))
-
-    # Question quote
-    elements.append(_quote_box(query, styles))
+    elements.append(_gap(12))
 
     # AI response as prose
     sections = _split_ai_response(ai_resp)
@@ -864,6 +857,14 @@ def _build_analysis_section(elements, entry: dict, num: int, styles):
         img_bytes = _plotly_to_bytes(fig)
         if img_bytes:
             break
+    if not img_bytes and chart_b64:
+        try:
+            # Fix incorrect padding if it exists
+            padded_b64 = chart_b64 + "=" * ((4 - len(chart_b64) % 4) % 4)
+            img_bytes = base64.b64decode(padded_b64)
+        except Exception as e:
+            logger.warning(f"Failed to decode chart_b64: {e}")
+
     if not img_bytes and isinstance(dataframe, (pd.DataFrame, pd.Series)):
         img_bytes = _chart_from_dataframe(dataframe, title=query[:60])
 
@@ -933,6 +934,8 @@ def generate_pdf(
     dataset_name: str | None = None,
     user_name: str | None = None,
     file_path: str | None = None,
+    report_title: str | None = None,
+    report_intro: str | None = None
 ) -> str:
     """
     Generate a narrative-first PDF report.
@@ -1011,7 +1014,7 @@ def generate_pdf(
 
     # ── Cover ─────────────────────────────────────────────────────────────────
     _build_cover(elements, styles, timestamp, n, dataset_name, user_name,
-                 overview, toc_entries)
+                 overview, toc_entries, report_title=report_title)
 
     if n == 0:
         elements.append(PageBreak())
@@ -1023,7 +1026,7 @@ def generate_pdf(
             styles["Body"],
         ))
     else:
-        _build_executive_summary(elements, history, styles)
+        _build_executive_summary(elements, history, styles, report_intro=report_intro)
 
         for i, entry in enumerate(history, 1):
             elements.append(PageBreak())

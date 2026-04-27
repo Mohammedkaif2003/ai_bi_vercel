@@ -49,6 +49,8 @@ class handler(BaseHTTPRequestHandler):
         analysis_history = data.get("analysis_history") or []
         dataset_name = data.get("dataset_name") or "Active Dataset"
         user_name = data.get("user_name") or "Nexlytics User"
+        report_title = data.get("report_title") or "AI-Assisted Executive Briefing"
+        report_intro = data.get("report_intro") or ""
 
         if not isinstance(analysis_history, list):
             send_error(self, "analysis_history must be a list.", 400)
@@ -63,6 +65,8 @@ class handler(BaseHTTPRequestHandler):
                 dataset_name=dataset_name,
                 user_name=user_name,
                 file_path=tmp_path,
+                report_title=report_title,
+                report_intro=report_intro
             )
         except Exception as exc:
             send_error(self, f"PDF generation failed: {exc}", 500)

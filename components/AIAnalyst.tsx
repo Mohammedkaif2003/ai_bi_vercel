@@ -8,8 +8,12 @@ import {
   HelpCircle,
   Table as TableIcon,
   ChevronRight,
-  Trash2
+  Trash2,
+  Copy,
+  PlusCircle,
+  Check
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import type { DatasetPayload, ChatMessage, AnalysisHistoryEntry, User } from "@/lib/types";
 import { analyze } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
@@ -38,6 +42,8 @@ export default function AIAnalyst({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<AnalysisHistoryEntry[]>([]);
 
@@ -91,6 +97,7 @@ export default function AIAnalyst({
           showGreeting();
         }
       } else {
+        setSessionId(null);
         showGreeting();
       }
     }
@@ -115,8 +122,12 @@ export default function AIAnalyst({
       ]);
     }
 
+    setMessages([]);
+    setSessionId(null);
+    historyRef.current = [];
+    
     loadHistory();
-  }, [payload?.filename, user.id, explicitSessionId]);
+  }, [payload?.filename, payload?.key, user.id, explicitSessionId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -254,6 +265,18 @@ export default function AIAnalyst({
   };
 
   const suggestions = getSuggestions();
+  
+  const handleCopy = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(idx);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleAddToReport = (idx: number) => {
+    setAddedIndices(prev => new Set(prev).add(idx));
+    // In a real app, this might sync to a "Report Draft" table in Supabase
+    // or set a flag in the message itself. For now, we provide visual feedback.
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-250px)] min-h-[550px] relative">
@@ -284,9 +307,36 @@ export default function AIAnalyst({
                 </div>
               )}
               
-              <div className="flex flex-col gap-2 max-w-[85%]">
-                <div className={msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"}>
-                  <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+              <div className="flex flex-col gap-2 max-w-[85%] group">
+                <div className={`${msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"} relative group`}>
+                  {msg.role === "assistant" && (
+                    <div className="absolute -top-3 -right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                      <button 
+                        onClick={() => handleCopy(msg.content, idx)}
+                        className="p-1.5 bg-slate-800 border border-white/10 rounded-lg text-slate-400 hover:text-white shadow-xl"
+                        title="Copy to clipboard"
+                      >
+                        {copiedIndex === idx ? <Check size={12} /> : <Copy size={12} />}
+                      </button>
+                      {msg.query_type !== 'irrelevant' && (
+                        <button 
+                          onClick={() => handleAddToReport(idx)}
+                          className={`p-1.5 border rounded-lg shadow-xl transition-all ${
+                            addedIndices.has(idx) 
+                              ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400" 
+                              : "bg-slate-800 border-white/10 text-slate-400 hover:text-white"
+                          }`}
+                          title="Add to report"
+                        >
+                          <PlusCircle size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="leading-relaxed prose prose-invert prose-sm max-w-none">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
 
                   {msg.chart && msg.query_type !== "irrelevant" && (
                     <motion.div 

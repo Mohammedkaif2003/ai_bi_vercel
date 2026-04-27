@@ -85,4 +85,6 @@ export interface AnalysisHistoryEntry {
   ai_response: string;
   insight: string;
   result: Record<string, unknown>[];
+  chart?: any;
+  chart_b64?: string;
 }

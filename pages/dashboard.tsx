@@ -139,6 +139,7 @@ export default function DashboardPage() {
       setDatasetPayload(payload);
       setSessionDataset(payload);
       setActiveSessionId(null);
+      setNewChatKey(Date.now().toString());
     } catch (err: unknown) {
       setDatasetError(err instanceof Error ? err.message : "Failed to load dataset.");
     } finally {
@@ -157,6 +158,7 @@ export default function DashboardPage() {
       setDatasetPayload(payload);
       setSessionDataset(payload);
       setActiveSessionId(null);
+      setNewChatKey(Date.now().toString());
     } catch (err: unknown) {
       setDatasetError(err instanceof Error ? err.message : "Failed to upload file.");
     } finally {

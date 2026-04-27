@@ -106,7 +106,7 @@ class handler(BaseHTTPRequestHandler):
             print(f"Failed to save to Supabase: {exc}")
 
         send_json(self, {
-            "dataset_id": dataset_id,
+            "key":      dataset_id,
             "csv_b64":  normalised_csv_b64,
             "schema":   schema,
             "kpis":     kpis,
