@@ -248,23 +248,6 @@ export default function ReportsTab({
             </AnimatePresence>
           </div>
 
-          <div className="relative flex items-center gap-3 p-2 bg-[#0B0F19] border border-white/10 rounded-2xl mt-6">
-            <Sparkles className="ml-4 text-slate-500" size={18} />
-            <input
-              className="bg-transparent border-none focus:ring-0 text-sm text-white flex-1 py-3 outline-none"
-              placeholder="Ask a question to append..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAskQuestion()}
-              disabled={isAnalyzing}
-            />
-            <button 
-              className={`p-3 rounded-xl transition-all ${chatInput.trim() && !isAnalyzing ? "bg-indigo-600 text-white" : "bg-white/5 text-slate-700"}`}
-              onClick={handleAskQuestion}
-            >
-              <Send size={18} />
-            </button>
-          </div>
         </div>
 
         <div className="lg:col-span-5 space-y-6">

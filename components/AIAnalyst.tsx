@@ -272,9 +272,9 @@ export default function AIAnalyst({
     setEditingIndex(null);
     toast.success("Narration updated locally");
   };
-
+  
   return (
-    <div className="flex flex-col h-[calc(100vh-250px)] min-h-[550px] relative">
+    <div className="flex flex-col h-[calc(100vh-220px)] relative overflow-hidden bg-[#030712]/20 rounded-2xl border border-white/5 shadow-2xl">
       <div className="absolute top-0 right-2 z-10">
         <button 
           onClick={() => setShowClearModal(true)}
@@ -286,7 +286,7 @@ export default function AIAnalyst({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-6 px-2 pb-24 pt-10 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto space-y-6 px-6 pb-32 pt-10 custom-scrollbar">
         <AnimatePresence initial={false}>
           {messages.length === 0 && payload && (
              <motion.div 
@@ -474,7 +474,7 @@ export default function AIAnalyst({
         <div ref={bottomRef} className="h-4" />
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#030712] via-[#030712]/95 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#030712] via-[#030712]/95 to-transparent backdrop-blur-sm">
         {suggestions.length > 0 && messages.length <= 1 && payload && (
           <div className="flex flex-wrap gap-2.5 mb-6">
             {suggestions.map((s) => (
@@ -497,8 +497,8 @@ export default function AIAnalyst({
               <HelpCircle size={22} />
             </div>
             <input
-              className="bg-transparent border-none focus:ring-0 text-[15px] text-white placeholder-slate-600 flex-1 py-3 outline-none"
-              placeholder={isListening ? "Listening..." : (payload ? "Ask your data anything..." : "Upload a dataset to begin...")}
+              className="bg-transparent border-none focus:ring-0 text-[15px] text-white placeholder-slate-500 flex-1 py-4 outline-none"
+              placeholder={isListening ? "Listening..." : (payload ? "Ask me to analyze your data..." : "Select a dataset first...")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}

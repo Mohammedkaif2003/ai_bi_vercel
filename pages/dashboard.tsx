@@ -49,6 +49,7 @@ import ReportsTab from "@/components/Reports";
 import LiveBoard from "@/components/LiveBoard";
 import LogoMark from "@/components/LogoMark";
 import { CommandPalette } from "@/components/CommandPalette";
+import { Toaster, toast } from "sonner";
 
 type Tab = "overview" | "analyst" | "forecast" | "reports" | "board";
 
@@ -169,8 +170,14 @@ export default function DashboardPage() {
       setSessionDataset(payload);
       setActiveSessionId(null);
       setNewChatKey(Date.now().toString());
+      toast.success(`Dataset "${payload.filename}" loaded successfully!`, {
+        description: `${payload.shape[0].toLocaleString()} rows and ${payload.shape[1]} columns processed.`,
+        icon: <Database size={16} className="text-emerald-400" />
+      });
     } catch (err: unknown) {
-      setDatasetError(err instanceof Error ? err.message : "Failed to load dataset.");
+      const msg = err instanceof Error ? err.message : "Failed to load dataset.";
+      setDatasetError(msg);
+      toast.error("Loading failed", { description: msg });
     } finally {
       setLoadingDataset(false);
     }
@@ -188,8 +195,14 @@ export default function DashboardPage() {
       setSessionDataset(payload);
       setActiveSessionId(null);
       setNewChatKey(Date.now().toString());
+      toast.success("File uploaded successfully", {
+        description: `${file.name} is now active.`,
+        icon: <Upload size={16} className="text-emerald-400" />
+      });
     } catch (err: unknown) {
-      setDatasetError(err instanceof Error ? err.message : "Failed to upload file.");
+      const msg = err instanceof Error ? err.message : "Failed to upload file.";
+      setDatasetError(msg);
+      toast.error("Upload failed", { description: msg });
     } finally {
       setLoadingDataset(false);
       e.target.value = "";
@@ -271,8 +284,9 @@ export default function DashboardPage() {
           handleLoadSelected();
         }}
       />
-      <div className="min-h-screen flex flex-col bg-mesh">
-        <header className="bg-[#030712]/60 backdrop-blur-2xl border-b border-white/[0.05] px-8 py-5 flex items-center gap-6 sticky top-0 z-50">
+      <Toaster position="top-right" theme="dark" closeButton richColors />
+      <div className="h-screen flex flex-col bg-mesh overflow-hidden">
+        <header className="h-[80px] bg-[#030712]/60 backdrop-blur-2xl border-b border-white/[0.05] px-8 flex items-center gap-6 z-50 shrink-0">
           <div className="max-w-[1920px] mx-auto w-full flex items-center gap-6">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
@@ -308,8 +322,8 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden max-w-[1920px] mx-auto w-full">
-          <aside className="w-72 bg-[#0B0F19]/50 border-r border-white/[0.08] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 hidden md:flex backdrop-blur-md">
+        <div className="flex flex-1 overflow-hidden max-w-[1920px] mx-auto w-full h-[calc(100vh-80px)]">
+          <aside className="w-72 bg-[#0B0F19]/50 border-r border-white/[0.08] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 hidden md:flex backdrop-blur-md custom-scrollbar">
             <motion.div
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -417,10 +431,13 @@ export default function DashboardPage() {
             </motion.div>
             <button
               onClick={handleNewChat}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 px-4 font-semibold shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-between"
+              className="w-full bg-white/[0.03] hover:bg-white/[0.08] text-white border border-white/10 rounded-xl py-3 px-4 font-semibold transition-all flex items-center justify-between group/chat"
             >
-              <span>New Chat</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <div className="flex items-center gap-2">
+                <Plus size={18} className="text-indigo-400 group-hover/chat:scale-110 transition-transform" />
+                <span>New Analysis</span>
+              </div>
+              <Sparkles size={14} className="text-indigo-500/50 group-hover/chat:text-indigo-400 transition-colors" />
             </button>
 
             <div className="relative">
@@ -439,7 +456,7 @@ export default function DashboardPage() {
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.1 }}
-                className="flex-1 flex flex-col min-h-0"
+                className="flex flex-col"
               >
                 <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4 mt-2 border-t border-white/[0.05] pt-6">
                   Chat History
@@ -549,7 +566,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 text-indigo-400 font-black text-[9px] uppercase tracking-[0.2em] mb-4 px-2">
                   <Sparkles size={12} /> Intelligence Discovery
                 </div>
-                <div className="space-y-4 px-2">
+                <div className="space-y-4 px-2 pb-20">
                   <div>
                     <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Key Keywords</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -574,7 +591,7 @@ export default function DashboardPage() {
             )}
           </aside>
 
-          <main className="flex-1 overflow-y-auto p-5">
+          <main className="flex-1 overflow-y-auto p-5 custom-scrollbar">
             {datasetPayload && (
               <div className="mb-4 flex items-center gap-3">
                 <h2 className="text-xl font-bold text-white">{datasetPayload.filename}</h2>
