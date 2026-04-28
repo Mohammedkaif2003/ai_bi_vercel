@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { useState, useEffect } from "react";
 import Head from "next/head";
 import { motion } from "framer-motion";
 import { 
@@ -15,6 +16,23 @@ import LogoMark from "@/components/LogoMark";
 
 export default function LandingPage() {
   const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    import("@/lib/supabase").then(({ supabase }) => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setIsLoggedIn(!!session);
+      });
+    });
+  }, []);
+
+  const handleAction = () => {
+    if (isLoggedIn) {
+      router.push("/dashboard");
+    } else {
+      router.push("/login");
+    }
+  };
 
   const features = [
     {
@@ -63,10 +81,10 @@ export default function LandingPage() {
                 Sign In
               </button>
               <button 
-                onClick={() => router.push("/login")}
+                onClick={handleAction}
                 className="bg-white text-black px-5 py-2.5 rounded-full text-sm font-bold hover:bg-slate-200 transition-all active:scale-95"
               >
-                Get Started
+                {isLoggedIn ? "Dashboard" : "Get Started"}
               </button>
             </div>
           </div>
@@ -116,10 +134,10 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               <button 
-                onClick={() => router.push("/login")}
+                onClick={handleAction}
                 className="group bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 shadow-xl shadow-indigo-600/20 transition-all active:scale-95 text-lg"
               >
-                Launch Dashboard
+                {isLoggedIn ? "Go to Dashboard" : "Launch Dashboard"}
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
               <button className="px-8 py-4 rounded-2xl font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all text-lg">

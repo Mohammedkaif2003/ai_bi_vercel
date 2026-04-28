@@ -7,16 +7,19 @@ import {
   User as UserIcon, 
   HelpCircle,
   Table as TableIcon,
-  ChevronRight,
   Trash2,
   Copy,
   PlusCircle,
-  Check
+  Check,
+  Pin,
+  PinOff,
+  Mic,
+  MicOff
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import type { DatasetPayload, ChatMessage, AnalysisHistoryEntry, User } from "@/lib/types";
-import { analyze } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
+import type { DatasetPayload, User, ChatMessage } from "@/lib/types";
+import { pinInsight } from "@/lib/api";
+import { useChat } from "@/hooks/useChat";
 import PlotlyChart from "./PlotlyChart";
 import ConfirmModal from "./ConfirmModal";
 
@@ -24,233 +27,50 @@ interface Props {
   payload: DatasetPayload | null;
   user: User;
   onSwitchToForecast?: () => void;
-  explicitSessionId?: string | null;
-  onSessionCreated?: (session: any) => void;
+  messages: ChatMessage[];
+  sendMessage: (content: string) => Promise<void>;
+  clearChat: () => void;
+  isAnalyzing: boolean;
+  chatError: string | null;
   onDatasetRecovered?: (payload: DatasetPayload) => void;
 }
 
 export default function AIAnalyst({ 
   payload, 
   user, 
-  onSwitchToForecast, 
-  explicitSessionId, 
-  onSessionCreated,
-  onDatasetRecovered
+  messages,
+  sendMessage,
+  clearChat,
+  isAnalyzing,
+  chatError,
+  onDatasetRecovered,
 }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
+  const [pinnedIndices, setPinnedIndices] = useState<Set<number>>(new Set());
+  const [isListening, setIsListening] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const historyRef = useRef<AnalysisHistoryEntry[]>([]);
-
-  // 1. Load session and messages on mount or dataset change
-  useEffect(() => {
-    async function loadHistory() {
-      if (!user.id) return;
-      let sessionData = null;
-
-      if (explicitSessionId) {
-        const { data } = await supabase
-          .from('chat_sessions')
-          .select('id')
-          .eq('id', explicitSessionId)
-          .single();
-        sessionData = data;
-      }
-
-      if (sessionData) {
-        setSessionId(sessionData.id);
-        
-        // Load messages for this session
-        const { data: msgs } = await supabase
-          .from('chat_messages')
-          .select('*')
-          .eq('session_id', sessionData.id)
-          .order('created_at', { ascending: true });
-
-        if (msgs && msgs.length > 0) {
-          const formattedMsgs: ChatMessage[] = msgs.map(m => ({
-            role: m.role,
-            content: m.content,
-            result: m.result_data,
-            chart: m.chart_spec,
-            query_type: m.query_type,
-            timestamp: new Date(m.created_at).getTime()
-          }));
-          setMessages(formattedMsgs);
-          
-          // Sync analysis history for reports
-          const analysisEntries = formattedMsgs
-            .filter(m => m.role === 'assistant' && m.query_type !== 'irrelevant')
-            .map(m => ({
-              query: "Previous Query",
-              ai_response: m.content,
-              insight: m.content,
-              result: m.result || []
-            }));
-          historyRef.current = analysisEntries;
-        } else {
-          showGreeting();
-        }
-      } else {
-        setSessionId(null);
-        showGreeting();
-      }
-    }
-
-    function showGreeting() {
-      if (!payload) {
-        setMessages([
-          {
-            role: "assistant",
-            content: "Welcome back! I can see the history of this conversation, but the original dataset is no longer available on the server. \n\nTo continue analyzing or viewing charts, please re-upload the original file.",
-            timestamp: Date.now(),
-          },
-        ]);
-        return;
-      }
-      setMessages([
-        {
-          role: "assistant",
-          content: `Hello! I'm your AI Analyst. I've indexed **${payload.filename}** (${payload.shape[0].toLocaleString()} rows). \n\nAsk me about trends, distributions, or specific comparisons. How can I help you explore this data today?`,
-          timestamp: Date.now(),
-        },
-      ]);
-    }
-
-    setMessages([]);
-    setSessionId(null);
-    historyRef.current = [];
-    
-    loadHistory();
-  }, [payload?.filename, payload?.key, user.id, explicitSessionId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, isAnalyzing]);
 
-  async function sendMessage(text?: string) {
+  const handleSend = async (text?: string) => {
     const q = (text || input).trim();
-    if (!q || loading) return;
+    if (!q || isAnalyzing) return;
     setInput("");
-    setLoading(true);
+    await sendMessage(q);
+  };
 
-    const userTimestamp = Date.now();
-    const userMsg: ChatMessage = { role: "user", content: q, timestamp: userTimestamp };
-    setMessages((prev) => [...prev, userMsg]);
-
-    try {
-      // 2. Ensure session exists
-      let activeSessionId = sessionId;
-      if (!activeSessionId) {
-        const { data: newSession, error: sessionErr } = await supabase
-          .from('chat_sessions')
-          .insert({ 
-            user_id: user.id, 
-            dataset_name: payload?.filename || "Unknown Dataset",
-            dataset_key: payload?.key || "unknown",
-            title: q.length > 30 ? q.substring(0, 30) + '...' : q
-          })
-          .select()
-          .single();
-        
-        if (sessionErr) throw sessionErr;
-        activeSessionId = newSession.id;
-        setSessionId(activeSessionId);
-        if (onSessionCreated) onSessionCreated(newSession);
-      }
-
-      // 3. Save User Message
-      await supabase.from('chat_messages').insert({
-        session_id: activeSessionId,
-        role: 'user',
-        content: q,
-        created_at: new Date(userTimestamp).toISOString()
-      });
-
-      if (!payload) {
-        throw new Error("Dataset is missing. Please re-upload the file to continue.");
-      }
-
-      const result = await analyze(q, payload.csv_b64, payload.filename);
-      const assistantTimestamp = Date.now();
-      const aiMsg: ChatMessage = {
-        role: "assistant",
-        content: result.narration || result.summary || "I've analyzed the data but couldn't generate a narration.",
-        result: result.result,
-        chart: result.chart,
-        query_type: result.query_type,
-        timestamp: assistantTimestamp,
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-
-      // 4. Save Assistant Message
-      await supabase.from('chat_messages').insert({
-        session_id: activeSessionId,
-        role: 'assistant',
-        content: aiMsg.content,
-        chart_spec: aiMsg.chart,
-        result_data: aiMsg.result,
-        query_type: aiMsg.query_type,
-        created_at: new Date(assistantTimestamp).toISOString()
-      });
-
-      if (result.query_type !== "irrelevant") {
-        const entry: AnalysisHistoryEntry = {
-          query: q,
-          ai_response: result.narration || result.summary || "",
-          insight: result.summary || "",
-          result: result.result || [],
-        };
-        historyRef.current = [...historyRef.current, entry];
-        sessionStorage.setItem("nexlytics_analysis_history", JSON.stringify(historyRef.current));
-      }
-    } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: err.message || "Analysis failed. Please try again.",
-          timestamp: Date.now(),
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleClearChat() {
-    setShowClearModal(true);
-  }
-
-  async function performClearChat() {
-    if (sessionId) {
-      supabase.from('chat_messages').delete().eq('session_id', sessionId).then(() => {
-         setMessages([
-          {
-            role: "assistant",
-            content: `Chat cleared. Ask me anything about **${payload?.filename || "this dataset"}**.`,
-            timestamp: Date.now(),
-          },
-        ]);
-      });
-    }
-    historyRef.current = [];
-    sessionStorage.removeItem("nexlytics_analysis_history");
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSend();
     }
-  }
+  };
 
-  // Generate suggestions safely
   const getSuggestions = () => {
     if (!payload?.schema) return [];
     const { schema } = payload;
@@ -274,15 +94,64 @@ export default function AIAnalyst({
 
   const handleAddToReport = (idx: number) => {
     setAddedIndices(prev => new Set(prev).add(idx));
-    // In a real app, this might sync to a "Report Draft" table in Supabase
-    // or set a flag in the message itself. For now, we provide visual feedback.
+  };
+
+  const handlePin = async (msg: ChatMessage, idx: number) => {
+    if (!payload || !msg.chart) return;
+    try {
+      setPinnedIndices(prev => new Set(prev).add(idx));
+      await pinInsight({
+        dataset_key: payload.dataset_key,
+        filename: payload.filename,
+        query: messages[idx-1]?.role === 'user' ? messages[idx-1].content : "Analysis",
+        chart_spec: msg.chart,
+        narration: msg.content
+      });
+    } catch (err) {
+      console.error("Failed to pin insight:", err);
+      setPinnedIndices(prev => {
+        const next = new Set(prev);
+        next.delete(idx);
+        return next;
+      });
+    }
+  };
+
+  const toggleVoice = () => {
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice recognition is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      setIsListening(false);
+    };
+
+    recognition.start();
   };
 
   return (
     <div className="flex flex-col h-[calc(100vh-250px)] min-h-[550px] relative">
       <div className="absolute top-0 right-2 z-10">
         <button 
-          onClick={handleClearChat}
+          onClick={() => setShowClearModal(true)}
           className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
           title="Clear Chat"
         >
@@ -291,12 +160,25 @@ export default function AIAnalyst({
         </button>
       </div>
 
-      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto space-y-6 px-2 pb-24 pt-10 scrollbar-hide">
         <AnimatePresence initial={false}>
+          {messages.length === 0 && payload && (
+             <motion.div 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               className="chat-bubble-ai max-w-[90%]"
+             >
+               <Bot size={18} className="text-indigo-400 mb-2" />
+               <p className="leading-relaxed">
+                 Hello! I&apos;m your AI Analyst. I&apos;ve indexed **{payload.filename}** ({payload.shape[0].toLocaleString()} rows). 
+                 Ask me about trends, distributions, or specific comparisons.
+               </p>
+             </motion.div>
+          )}
+
           {messages.map((msg, idx) => (
             <motion.div 
-              key={msg.timestamp + idx}
+              key={idx}
               initial={{ opacity: 0, y: 10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} items-start gap-3`}
@@ -318,6 +200,19 @@ export default function AIAnalyst({
                       >
                         {copiedIndex === idx ? <Check size={12} /> : <Copy size={12} />}
                       </button>
+                      {msg.chart && (
+                        <button 
+                          onClick={() => handlePin(msg, idx)}
+                          className={`p-1.5 border rounded-lg shadow-xl transition-all ${
+                            pinnedIndices.has(idx) 
+                              ? "bg-indigo-600 border-indigo-500 text-white" 
+                              : "bg-slate-800 border-white/10 text-slate-400 hover:text-white"
+                          }`}
+                          title={pinnedIndices.has(idx) ? "Pinned to Dashboard" : "Pin to Dashboard"}
+                        >
+                          <Pin size={12} className={pinnedIndices.has(idx) ? "fill-current" : ""} />
+                        </button>
+                      )}
                       {msg.query_type !== 'irrelevant' && (
                         <button 
                           onClick={() => handleAddToReport(idx)}
@@ -344,7 +239,10 @@ export default function AIAnalyst({
                       animate={{ opacity: 1, scale: 1 }}
                       className="mt-4 -mx-2 bg-black/20 rounded-xl overflow-hidden border border-white/5 shadow-inner"
                     >
-                      <PlotlyChart spec={msg.chart} height={340} />
+                      <PlotlyChart 
+                        spec={msg.chart} 
+                        height={340} 
+                      />
                     </motion.div>
                   )}
 
@@ -378,9 +276,11 @@ export default function AIAnalyst({
                     </div>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-600 font-medium px-1">
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                {msg.timestamp && (
+                  <span className="text-[10px] text-slate-600 font-medium px-1">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
               </div>
 
               {msg.role === "user" && (
@@ -392,12 +292,8 @@ export default function AIAnalyst({
           ))}
         </AnimatePresence>
 
-        {loading && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex justify-start items-start gap-3"
-          >
+        {isAnalyzing && (
+          <div className="flex justify-start items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0 border border-indigo-500/20">
               <Bot size={18} className="animate-pulse" />
             </div>
@@ -406,119 +302,76 @@ export default function AIAnalyst({
                 {[0, 1, 2].map((i) => (
                   <motion.span
                     key={i}
-                    animate={{ 
-                      scale: [1, 1.3, 1],
-                      opacity: [0.3, 1, 0.3]
-                    }}
-                    transition={{ 
-                      repeat: Infinity, 
-                      duration: 1, 
-                      delay: i * 0.2 
-                    }}
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.3, 1, 0.3] }}
+                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
                     className="w-1.5 h-1.5 bg-indigo-400 rounded-full"
                   />
                 ))}
               </div>
-              <span className="text-slate-400 font-medium italic">Analyzing dataset...</span>
+              <span className="text-slate-400 font-medium italic">Analyzing...</span>
             </div>
-          </motion.div>
+          </div>
         )}
-
-        <AnimatePresence>
-          {!payload && messages.length > 1 && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mt-6 p-8 rounded-[2rem] bg-amber-500/10 border border-amber-500/20 text-center mx-4 overflow-hidden relative"
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-amber-500/[0.05] to-transparent pointer-events-none" />
-              <div className="relative z-10">
-                <div className="w-14 h-14 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-amber-500/10">
-                  <TableIcon className="text-amber-400" size={28} />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Dataset Recovery Required</h3>
-                <p className="text-slate-400 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
-                  The analytical backbone of this conversation is currently unavailable. Upload the original **CSV file** to restore charts and analysis capabilities.
-                </p>
-                <button 
-                  onClick={() => document.getElementById('recovery-upload')?.click()}
-                  className="btn-primary bg-amber-600 hover:bg-amber-500 shadow-xl shadow-amber-600/30 py-3 px-8 text-sm font-bold tracking-wide"
-                >
-                  Re-upload Dataset
-                </button>
-                <input 
-                  id="recovery-upload" 
-                  type="file" 
-                  accept=".csv" 
-                  className="hidden" 
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file || !onDatasetRecovered) return;
-                    const { uploadCsv, fileToBase64 } = await import("@/lib/api");
-                    try {
-                      const b64 = await fileToBase64(file);
-                      const newPayload = await uploadCsv(b64, file.name);
-                      onDatasetRecovered(newPayload);
-                    } catch (err) {
-                      console.error(err);
-                    }
-                  }}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <div ref={bottomRef} className="h-4" />
       </div>
 
-      {/* Input Area */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#030712] via-[#030712]/90 to-transparent">
-
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#030712] via-[#030712]/95 to-transparent">
         {suggestions.length > 0 && messages.length <= 1 && payload && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-wrap gap-2 mb-4"
-          >
+          <div className="flex flex-wrap gap-2.5 mb-6">
             {suggestions.map((s) => (
               <button
                 key={s}
-                className="group flex items-center gap-2 text-[11px] bg-white/[0.03] border border-white/[0.08] text-slate-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 rounded-xl px-4 py-2 transition-all shadow-lg"
-                onClick={() => sendMessage(s)}
+                className="group flex items-center gap-2.5 text-[11px] bg-white/[0.03] border border-white/10 text-slate-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 rounded-xl px-5 py-2.5 transition-all shadow-xl active:scale-95"
+                onClick={() => handleSend(s)}
               >
-                <Sparkles size={12} className="group-hover:text-indigo-200" />
-                {s}
+                <Sparkles size={14} className="group-hover:text-indigo-200 transition-colors" />
+                <span className="font-bold uppercase tracking-wider">{s}</span>
               </button>
             ))}
-          </motion.div>
+          </div>
         )}
-
-        <div className="relative group">
-          <div className="absolute inset-0 bg-indigo-500/10 rounded-2xl blur-xl group-focus-within:bg-indigo-500/20 transition-all opacity-0 group-focus-within:opacity-100" />
-          <div className="relative flex items-center gap-2 p-1.5 glass-card !rounded-2xl border-white/10 group-focus-within:border-indigo-500/50 transition-all">
-            <div className="pl-3 text-slate-500">
-              <HelpCircle size={18} />
+        
+        <div className="relative group max-w-4xl mx-auto">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-2xl blur opacity-10 group-focus-within:opacity-30 transition-opacity duration-500" />
+          <div className="relative flex items-center gap-3 p-2 bg-[#0B0F19]/80 backdrop-blur-2xl border border-white/10 rounded-2xl group-focus-within:border-indigo-500/50 transition-all shadow-2xl">
+            <div className="pl-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors">
+              <HelpCircle size={22} />
             </div>
             <input
-              className="bg-transparent border-none focus:ring-0 text-sm text-white placeholder-slate-500 flex-1 py-2"
-              placeholder={payload ? "Ask a question about this data..." : "Re-upload dataset to continue chat"}
+              className="bg-transparent border-none focus:ring-0 text-[15px] text-white placeholder-slate-600 flex-1 py-3 outline-none"
+              placeholder={isListening ? "Listening..." : (payload ? "Ask your data anything..." : "Upload a dataset to begin...")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={loading || !payload}
+              disabled={isAnalyzing || !payload}
             />
-            <button 
-              className={`p-2 rounded-xl transition-all ${
-                input.trim() && !loading && payload
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/40" 
-                  : "bg-white/5 text-slate-600 cursor-not-allowed"
-              }`}
-              onClick={() => sendMessage()} 
-              disabled={loading || !input.trim() || !payload}
-            >
-              <Send size={18} />
-            </button>
+            <div className="flex items-center gap-2 pr-2">
+              <button
+                onClick={toggleVoice}
+                disabled={isAnalyzing || !payload}
+                className={`p-2 rounded-xl transition-all ${
+                  isListening 
+                    ? "bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/40" 
+                    : "text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10"
+                }`}
+                title="Voice Input"
+              >
+                {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+              </button>
+              <button 
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
+                  input.trim() && !isAnalyzing && payload
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 active:scale-95" 
+                    : "bg-white/5 text-slate-700 cursor-not-allowed"
+                }`}
+                onClick={() => handleSend()} 
+                disabled={isAnalyzing || !input.trim() || !payload}
+              >
+                <span className="hidden sm:inline text-xs uppercase tracking-widest">Analyze</span>
+                <Send size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -526,10 +379,10 @@ export default function AIAnalyst({
       <ConfirmModal
         isOpen={showClearModal}
         onClose={() => setShowClearModal(false)}
-        onConfirm={performClearChat}
+        onConfirm={clearChat}
         title="Clear Analysis History"
-        message="Are you sure you want to clear the analysis history? This will also remove all items from your current Report draft."
-        confirmLabel="Clear Everything"
+        message="Are you sure you want to clear the analysis history?"
+        confirmLabel="Clear"
         type="danger"
       />
     </div>

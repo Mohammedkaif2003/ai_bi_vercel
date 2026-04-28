@@ -42,12 +42,15 @@ class handler(BaseHTTPRequestHandler):
         handle_options(self)
 
     def do_POST(self):
-        if require_auth(self) is None:
+        user = require_auth(self)
+        if user is None:
             return
 
         data = read_json_body(self)
         analysis_history = data.get("analysis_history") or []
         dataset_name = data.get("dataset_name") or "Active Dataset"
+        
+        log_audit(user, "report_gen", {"dataset_name": dataset_name, "n_analyses": len(analysis_history)})
         user_name = data.get("user_name") or "Nexlytics User"
         report_title = data.get("report_title") or "AI-Assisted Executive Briefing"
         report_intro = data.get("report_intro") or ""
@@ -59,6 +62,9 @@ class handler(BaseHTTPRequestHandler):
         # Write the PDF to /tmp (only writable location in Vercel)
         tmp_path = os.path.join(tempfile.gettempdir(), "nexlytics_report.pdf")
 
+        brand_logo_b64 = data.get("brand_logo_b64")
+        brand_color = data.get("brand_color") or "#2563EB"
+
         try:
             generate_pdf(
                 analysis_history=analysis_history,
@@ -66,7 +72,9 @@ class handler(BaseHTTPRequestHandler):
                 user_name=user_name,
                 file_path=tmp_path,
                 report_title=report_title,
-                report_intro=report_intro
+                report_intro=report_intro,
+                brand_logo_b64=brand_logo_b64,
+                brand_color=brand_color
             )
         except Exception as exc:
             send_error(self, f"PDF generation failed: {exc}", 500)

@@ -55,21 +55,8 @@ _FRIENDLY: dict[str, str] = {
 def _list_datasets(user: dict | None) -> list[dict]:
     result = []
     
-    # 1. Fetch from Supabase if authenticated as a real user
-    if user and user.get("id") != "demo-user-id":
-        try:
-            supabase = get_supabase_for_user(user.get("token"))
-            if supabase:
-                res = supabase.table("datasets").select("id, filename").eq("user_id", user.get("id")).execute()
-                for row in res.data:
-                    result.append({
-                        "key": f"sb_{row['id']}",
-                        "label": f"{row['filename']} (Cloud)"
-                    })
-        except Exception as exc:
-            print(f"Failed to fetch user datasets: {exc}")
-
-    # 2. Add bundled datasets
+    # Only return local datasets (Library samples)
+    # Cloud datasets are stored for chat history persistence but kept out of the general Library
     if os.path.isdir(_DATA_DIR):
         for fname in sorted(os.listdir(_DATA_DIR)):
             if fname.endswith(".csv"):
@@ -125,7 +112,7 @@ def _load_dataset(dataset_key: str, user: dict | None) -> dict:
     csv_b64 = df_to_csv_b64(df)
 
     return {
-        "key":      dataset_key,
+        "dataset_key": dataset_key,
         "csv_b64":  csv_b64,
         "schema":   schema,
         "kpis":     kpis,

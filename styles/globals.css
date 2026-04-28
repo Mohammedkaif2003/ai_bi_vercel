@@ -38,6 +38,12 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
   ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+  /* Hide default browser password eye */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
 }
 
 @layer components {
@@ -75,10 +81,24 @@
   }
 
   .input {
-    @apply bg-black/20 border border-white/[0.1] rounded-xl px-4 py-2.5
+    @apply bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5
            text-white placeholder-[#475569] focus:outline-none
            focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
            w-full transition-all;
+  }
+
+  /* Style dropdowns specifically with the arrow */
+  select.input {
+    @apply appearance-none cursor-pointer pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236366f1'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.25rem;
+  }
+
+  /* Style dropdown options */
+  select.input option {
+    @apply bg-[#0f172a] text-white py-2;
   }
 
   .kpi-card {

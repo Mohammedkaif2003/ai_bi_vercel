@@ -70,18 +70,21 @@ class handler(BaseHTTPRequestHandler):
             kpis = generate_kpis(df)
             insights = generate_auto_insights(df)
             normalised_csv_b64 = df_to_csv_b64(df)
+            
+            # 1. Generate a unique key and store in Redis for high-speed chat access
+            dataset_id = str(uuid.uuid4())
+            from redis_client import store_dataset
+            store_dataset(dataset_id, normalised_csv_b64, ttl=3600) # 1 hour TTL
+            
         except Exception as exc:
             send_error(self, f"Processing error: {exc}", 500)
             return
             
-        # Optional: Save to Supabase
-        dataset_id = str(uuid.uuid4())
+        # 2. Persistent Storage (Supabase) - used for reloading sessions later
         try:
             supabase = get_supabase_for_user(user.get("token"))
             if supabase and user.get("id") != "demo-user-id":
                 user_id = user.get("id")
-                # 1. Upload to Storage
-                # Supabase storage upload expects bytes
                 import base64
                 csv_bytes = base64.b64decode(normalised_csv_b64.encode("utf-8"))
                 storage_path = f"{user_id}/{dataset_id}_{filename}"
@@ -92,7 +95,6 @@ class handler(BaseHTTPRequestHandler):
                     file_options={"content-type": "text/csv"}
                 )
                 
-                # 2. Save record to Database
                 supabase.table("datasets").insert({
                     "id": dataset_id,
                     "user_id": user_id,
@@ -102,18 +104,16 @@ class handler(BaseHTTPRequestHandler):
                     "column_count": df.shape[1]
                 }).execute()
         except Exception as exc:
-            # We log the error but still return the analysis so the user flow isn't completely broken
             print(f"Failed to save to Supabase: {exc}")
 
         send_json(self, {
-            "key":      dataset_id,
-            "csv_b64":  normalised_csv_b64,
-            "schema":   schema,
-            "kpis":     kpis,
-            "insights": insights,
+            "dataset_key": dataset_id,
+            "schema":      schema,
+            "kpis":        kpis,
+            "insights":    insights,
             "preview_rows": df_to_records(df.head(20)),
-            "filename": filename,
-            "shape":    list(df.shape),
+            "filename":    filename,
+            "shape":       list(df.shape),
         })
 
     def log_message(self, format, *args):

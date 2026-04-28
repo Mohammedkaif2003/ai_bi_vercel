@@ -64,3 +64,5 @@ node_modules
 .next
 
 .vercel
+
+*.log

@@ -1,11 +1,19 @@
 import os
+import re
+from html import unescape
 from dotenv import load_dotenv
 import pandas as pd
 from modules.app_secrets import get_secret
 
+# Try to import the modern Google AI SDK, but fall back gracefully
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:
+    genai = None  # type: ignore
+    types = None  # type: ignore
+
 load_dotenv()
-import re
-from html import unescape
 
 _BULLET_PREFIX = re.compile(r"^\s*([-*•·]|\d+[.)])\s+")
 _BOLD_HEADER = re.compile(r"\*\*(.+?)\*\*")
@@ -19,10 +27,9 @@ _KNOWN_SCAFFOLD = re.compile(
 
 
 def sanitize_ai_output(text: str) -> str:
-    """Force the model's reply into flowing prose: strip HTML, code fences,
-    markdown headers/bold, bullet glyphs, and well-known section labels.
-    Even when the system prompt is followed loosely, the user-facing
-    bubble should still look like a paragraph from a senior analyst."""
+    """Force the model's reply into professional prose: strip HTML, code fences,
+    and well-known section labels, but preserve markdown bolding and bullets
+    since the frontend supports them."""
     if not text:
         return ""
 
@@ -35,24 +42,15 @@ def sanitize_ai_output(text: str) -> str:
     text = _HEADING_LINE.sub("", text)
     text = _KNOWN_SCAFFOLD.sub("", text)
 
-    # Unwrap **bold** to plain text (no visual emphasis in chat bubble).
-    text = _BOLD_HEADER.sub(r"\1", text)
-
-    # Strip leading bullet glyphs / numbered-list markers from each line and
-    # collapse the result into a flowing paragraph.
+    # Join lines but preserve bullet points and lists
     cleaned_lines: list[str] = []
     for raw_line in text.splitlines():
-        line = _BULLET_PREFIX.sub("", raw_line).strip()
+        line = raw_line.strip()
         if not line:
             continue
         cleaned_lines.append(line)
 
-    # Join sentence-fragment lines into prose. Preserve paragraph breaks
-    # only where the model emitted truly blank lines (already filtered),
-    # so the result reads as one or two natural paragraphs.
-    joined = " ".join(cleaned_lines)
-    joined = re.sub(r"\s{2,}", " ", joined).strip()
-    return joined
+    return "\n\n".join(cleaned_lines)
 GROQ_API_KEY = get_secret("GROQ_API_KEY")
 GOOGLE_API_KEY = get_secret("GOOGLE_API_KEY")
 
@@ -61,13 +59,12 @@ GOOGLE_API_KEY = get_secret("GOOGLE_API_KEY")
 # ═══════════════════════════════════════════════════
 
 ANALYST_SYSTEM_PROMPT = """You are a Senior Business Intelligence Analyst
-talking to a colleague. Answer in natural, flowing prose — exactly the way
-you would explain the result out loud. Your reply must read like one or two
-short conversational paragraphs.
+talking to a colleague. Answer in professional, analytical prose. 
+You MAY use bolding (**word**) and bullet points to highlight key metrics or findings.
 
 ABSOLUTE FORMAT RULES (these override any habit you have):
-- Never use bullet points, dashes, asterisks, or numbered lists. Not even one.
-- Never use markdown headings (# / ## / ###) or bold (**word**).
+- Use 1-2 short paragraphs or a structured list of 3-5 bullets.
+- Never use markdown headings (# / ## / ###).
 - Never use section labels like "Executive Insight:", "Key Findings:",
   "Business Impact:", "Summary:", "Takeaways:", "Recommendations:".
 - Never start with phrases like "Here is the analysis", "Based on the data",
@@ -220,24 +217,22 @@ Analyze this data using your senior analyst framework. Be specific to THIS data 
     raw_response = None
 
     # Try Google Gemini first
-    if GOOGLE_API_KEY:
+    if GOOGLE_API_KEY and genai is not None:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel(
-                "gemini-2.0-flash",
-                system_instruction=system_prompt
-            )
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
+            client = genai.Client(api_key=GOOGLE_API_KEY)
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
                     temperature=0.3,
                     max_output_tokens=max_tokens_gemini
                 )
             )
             if response and response.text:
                 raw_response = response.text
-        except Exception:
+        except Exception as e:
+            print(f"[Gemini Error]: {e}")
             pass  # fallback
 
     # Fallback: Groq
@@ -255,7 +250,8 @@ Analyze this data using your senior analyst framework. Be specific to THIS data 
                 max_tokens=max_tokens_groq
             )
             raw_response = response.choices[0].message.content
-        except Exception:
+        except Exception as e:
+            print(f"[Groq Error]: {e}")
             pass
 
     if raw_response is None:
@@ -283,12 +279,11 @@ _NARRATE_SYSTEM = """You are a Senior Business Intelligence Analyst.
 You receive a user question and a PRE-COMPUTED analysis summary.
 The numbers are already correct — do NOT recalculate or second-guess them.
 
-Your only job is to explain the results in 3-5 natural, conversational sentences.
-Reference the actual numbers given. Point out which values stand out and why
-they matter from a business perspective.
+Your job is to explain the results in 3-5 sentences. 
+You MAY use bolding (**word**) and bullet points to emphasize key metrics.
 
 RULES:
-- No bullet points, no numbered lists, no markdown, no section headers.
+- No markdown headings or section headers.
 - No phrases like "Based on the analysis" or "The data shows". Just start.
 - Keep it under 100 words.
 - Sound like a colleague explaining results over coffee."""
@@ -329,18 +324,16 @@ Explain these results to a business colleague in 3-5 sentences."""
             pass
 
     # Fallback: Google Gemini
-    if GOOGLE_API_KEY:
+    if GOOGLE_API_KEY and genai is not None:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel(
-                "gemini-2.0-flash",
-                system_instruction=_NARRATE_SYSTEM,
-            )
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.3, max_output_tokens=250,
+            client = genai.Client(api_key=GOOGLE_API_KEY)
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=_NARRATE_SYSTEM,
+                    temperature=0.3,
+                    max_output_tokens=250,
                 ),
             )
             if response and response.text:
@@ -378,12 +371,13 @@ Write a SHORT, professional message (2-3 sentences) that:
 Keep it helpful and direct. Under 60 words."""
 
     # Try Gemini first
-    if GOOGLE_API_KEY:
+    if GOOGLE_API_KEY and genai is not None:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            response = model.generate_content(prompt)
+            client = genai.Client(api_key=GOOGLE_API_KEY)
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt
+            )
             if response and response.text:
                 return response.text.strip()
         except Exception:

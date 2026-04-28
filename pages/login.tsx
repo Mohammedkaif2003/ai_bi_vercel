@@ -2,9 +2,8 @@ import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, User, LogIn, Info, UserPlus } from "lucide-react";
+import { Lock, User, LogIn, Info, UserPlus, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { login as legacyLogin } from "@/lib/api";
 import LogoMark from "@/components/LogoMark";
 
 export default function LoginPage() {
@@ -14,20 +13,13 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Check if already logged in
   useEffect(() => {
     async function checkUser() {
-      // 1. Check Supabase
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        router.push("/dashboard");
-        return;
-      }
-
-      // 2. Check Local Storage for legacy session
-      const localUser = sessionStorage.getItem("nexlytics_user");
-      if (localUser) {
         router.push("/dashboard");
       }
     }
@@ -48,26 +40,12 @@ export default function LoginPage() {
         if (signUpError) throw signUpError;
         setError("Check your email for the confirmation link!");
       } else {
-        // Try Supabase first if it looks like an email
-        if (email.includes("@")) {
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (!signInError) {
-            router.push("/dashboard");
-            return;
-          }
-        }
-
-        // Fallback to legacy login
-        try {
-          const user = await legacyLogin(email, password);
-          sessionStorage.setItem("nexlytics_user", JSON.stringify(user));
-          router.push("/dashboard");
-        } catch (legacyErr: any) {
-          throw new Error(legacyErr.message || "Invalid credentials.");
-        }
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) throw signInError;
+        router.push("/dashboard");
       }
     } catch (err: any) {
       setError(err.message || "An error occurred.");
@@ -79,7 +57,7 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Nexlytics | {isSignUp ? "Create Account" : "Sign In"}</title>
+        <title>{`Nexlytics | ${isSignUp ? "Create Account" : "Sign In"}`}</title>
       </Head>
       <div className="min-h-screen flex items-center justify-center bg-mesh px-4">
         <motion.div 
@@ -92,6 +70,13 @@ export default function LoginPage() {
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50" />
             
             <div className="text-center mb-8">
+              <button 
+                onClick={() => router.push("/")}
+                className="absolute top-6 left-6 text-slate-500 hover:text-white transition-colors flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest"
+              >
+                <ArrowLeft size={14} />
+                Back
+              </button>
               <motion.div 
                 initial={{ scale: 0.8 }}
                 animate={{ scale: 1 }}
@@ -113,9 +98,9 @@ export default function LoginPage() {
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
                   <input
                     id="email"
-                    type="text"
+                    type="email"
                     className="input pl-12"
-                    placeholder="Email or username"
+                    placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -131,14 +116,22 @@ export default function LoginPage() {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
                   <input
                     id="password"
-                    type="password"
-                    className="input pl-12"
+                    type={showPassword ? "text" : "password"}
+                    className="input pl-12 pr-12"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-400 transition-colors focus:outline-none"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
 
@@ -180,20 +173,6 @@ export default function LoginPage() {
               >
                 {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
               </button>
-
-              {!isSignUp && (
-                <div className="pt-4 border-t border-white/[0.05]">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Demo Credentials</p>
-                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <span className="text-indigo-400 font-bold">Admin:</span> admin / admin123
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="text-indigo-400 font-bold">Analyst:</span> analyst / analyst123
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           

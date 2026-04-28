@@ -20,8 +20,8 @@ interface Props {
 
 export default function PlotlyChart({ spec, height = 420 }: Props) {
   const figure = spec as {
-    data?: Plotly.Data[];
-    layout?: Partial<Plotly.Layout>;
+    data?: any[];
+    layout?: any;
     config?: Partial<Plotly.Config>;
   };
 
@@ -109,7 +109,9 @@ export default function PlotlyChart({ spec, height = 420 }: Props) {
         }}
         style={{ width: "100%", height: `${height}px` }}
         useResizeHandler
+        
       />
+      
     </div>
   );
 }

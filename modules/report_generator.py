@@ -124,22 +124,35 @@ def _build_styles():
 # ─────────────────────────────────────────────────────────────────────────────
 # Page decorators
 # ─────────────────────────────────────────────────────────────────────────────
-def _decorate_cover(canvas, doc):
+def _decorate_cover(canvas, doc, logo_b64=None):
     canvas.saveState()
     # Full-bleed top band in deep brand navy
     canvas.setFillColor(C_COVER_BAND)
     canvas.rect(0, PAGE_H - 1.2 * inch, PAGE_W, 1.2 * inch, fill=True, stroke=False)
-    # Accent bar along the top edge (indigo → violet)
-    canvas.setFillColor(C_ACCENT2)
-    canvas.rect(0, PAGE_H - 0.10 * inch, PAGE_W * 0.62, 0.10 * inch, fill=True, stroke=False)
-    canvas.setFillColor(C_ACCENT3)
-    canvas.rect(PAGE_W * 0.62, PAGE_H - 0.10 * inch, PAGE_W * 0.38, 0.10 * inch,
-                fill=True, stroke=False)
+    # Accent bar along the top edge (using brand color)
+    canvas.setFillColor(C_ACCENT)
+    canvas.rect(0, PAGE_H - 0.10 * inch, PAGE_W, 0.10 * inch, fill=True, stroke=False)
 
-    # Company/project wordmark inside the band
-    canvas.setFillColor(colors.white)
-    canvas.setFont("Helvetica-Bold", 18)
-    canvas.drawString(LEFT_MARGIN, PAGE_H - 0.70 * inch, "NEXLYTICS")
+    # Logo or Wordmark
+    if logo_b64:
+        try:
+            from io import BytesIO
+            img_data = base64.b64decode(logo_b64)
+            img = Image(BytesIO(img_data))
+            # Fit in a 1.5x0.6 area
+            aspect = img.imageWidth / img.imageHeight
+            h = 0.4 * inch
+            w = h * aspect
+            canvas.drawImage(BytesIO(img_data), LEFT_MARGIN, PAGE_H - 0.85 * inch, width=w, height=h, preserveAspectRatio=True, mask='auto')
+        except:
+            canvas.setFillColor(colors.white)
+            canvas.setFont("Helvetica-Bold", 18)
+            canvas.drawString(LEFT_MARGIN, PAGE_H - 0.70 * inch, "NEXLYTICS")
+    else:
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 18)
+        canvas.drawString(LEFT_MARGIN, PAGE_H - 0.70 * inch, "NEXLYTICS")
+
     canvas.setFont("Helvetica", 9)
     canvas.setFillColor(colors.HexColor("#C7D2FE"))
     canvas.drawString(LEFT_MARGIN, PAGE_H - 0.92 * inch,

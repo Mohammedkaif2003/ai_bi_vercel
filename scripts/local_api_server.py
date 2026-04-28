@@ -15,8 +15,22 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+# Load environment variables from .env or .env.local
+try:
+    from dotenv import load_dotenv
+    # Load .env first (base)
+    base_env = os.path.join(ROOT, ".env")
+    if os.path.exists(base_env):
+        load_dotenv(base_env)
+    
+    # Then load .env.local (overrides)
+    local_env = os.path.join(ROOT, ".env.local")
+    if os.path.exists(local_env):
+        load_dotenv(local_env, override=True)
+except ImportError:
+    pass # If python-dotenv is not installed, assume env vars are set manually
+
 from api.analyze import handler as AnalyzeHandler
-from api.auth import handler as AuthHandler
 from api.datasets import handler as DatasetsHandler
 from api.forecast import handler as ForecastHandler
 from api.report import handler as ReportHandler
@@ -26,7 +40,6 @@ from api._utils import send_error
 
 ROUTES = {
     "/api/analyze": AnalyzeHandler,
-    "/api/auth": AuthHandler,
     "/api/datasets": DatasetsHandler,
     "/api/forecast": ForecastHandler,
     "/api/report": ReportHandler,

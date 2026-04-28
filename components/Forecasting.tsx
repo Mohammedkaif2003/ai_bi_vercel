@@ -18,7 +18,7 @@ export default function ForecastingTab({ payload }: Props) {
     setError("");
     setResult(null);
     try {
-      const res = await forecast(payload.csv_b64, periods);
+      const res = await forecast(payload.dataset_key, periods);
       setResult(res);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Forecasting failed.");

@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import io
 import json
+import functools
 import os
 import sys
 import time
@@ -66,6 +67,20 @@ def handle_options(handler) -> None:
     handler.end_headers()
 
 
+def log_audit(user, action: str, details: dict = None):
+    """Silently log an action to the audit_logs table."""
+    try:
+        from lib.supabase_client import supabase
+        supabase.table("audit_logs").insert({
+            "user_id": user.get("id"),
+            "action": action,
+            "details": details or {},
+            "dataset_key": details.get("dataset_key") if details else None
+        }).execute()
+    except Exception as e:
+        print(f"Audit Log Failed: {e}")
+
+
 def send_json(handler, data, status: int = 200) -> None:
     body = json.dumps(data, default=_json_default).encode("utf-8")
     handler.send_response(status)
@@ -91,59 +106,37 @@ def read_json_body(handler) -> dict:
         return {}
 
 
-def get_auth_secret() -> str:
-    secret = os.getenv("AUTH_SECRET")
-    is_production = os.getenv("VERCEL_ENV") == "production" or os.getenv("NODE_ENV") == "production"
-    if secret:
-        return secret
-    if is_production:
-        raise RuntimeError("AUTH_SECRET must be configured in production.")
-    return "local-development-secret-change-me"
-
-
-def create_token(username: str, role: str) -> str:
-    payload = f"{username}:{role}:{int(time.time())}"
-    sig = hmac.new(get_auth_secret().encode(), payload.encode(), hashlib.sha256).hexdigest()
-    return f"{payload}:{sig}"
-
-
 def verify_token(token: str) -> dict | None:
+    """Securely verifies a Supabase JWT by calling the Supabase Auth server.
+    This ensures the token is valid, signed, and not expired.
+    """
+    import logging
+    logger = logging.getLogger("auth")
+
+    if not token or token.count(".") != 2:
+        return None
+
+    from supabase_client import get_supabase
     try:
-        # Check if it's a Supabase JWT (3 parts separated by dots)
-        if token.count(".") == 2:
-            import base64
-            # JWT payloads are base64url encoded
-            payload_b64 = token.split(".")[1]
-            # Add padding for standard base64 decoding if needed
-            missing_padding = len(payload_b64) % 4
-            if missing_padding:
-                payload_b64 += '=' * (4 - missing_padding)
-            
-            # Use urlsafe_b64decode to handle '-' and '_' in JWTs
-            payload_bytes = base64.urlsafe_b64decode(payload_b64)
-            payload_json = json.loads(payload_bytes.decode("utf-8"))
-            
+        # Initialize client with service role key for verification
+        supabase = get_supabase()
+        
+        # Verify the token with Supabase Auth server
+        response = supabase.auth.get_user(token)
+        user = response.user
+        
+        if user:
             return {
-                "username": payload_json.get("email", "Supabase User"),
+                "username": user.email or "Supabase User",
                 "role": "Pro Analyst",
-                "id": payload_json.get("sub", ""),
+                "id": user.id,
                 "token": token
             }
-            
-        # Fallback to original custom token format
-        parts = token.split(":")
-        if len(parts) != 4:
-            return None
-        username, role, ts, sig = parts
-        payload_str = f"{username}:{role}:{ts}"
-        expected = hmac.new(get_auth_secret().encode(), payload_str.encode(), hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(sig, expected):
-            return None
-        if int(time.time()) - int(ts) > TOKEN_TTL_SECONDS:
-            return None
-        return {"username": username, "role": role, "id": "demo-user-id", "token": token}
-    except Exception:
-        return None
+        logger.warning("Supabase: No user found for token.")
+    except Exception as e:
+        logger.error(f"Supabase verification error: {e}")
+        
+    return None
 
 
 def require_auth(handler) -> dict | None:
@@ -160,13 +153,84 @@ def require_auth(handler) -> dict | None:
 
 
 # ---------------------------------------------------------------------------
+# Dataset Loading Helpers
+# ---------------------------------------------------------------------------
+
+def load_dataset_b64(dataset_key: str, user: dict | None = None) -> str:
+    """Robustly load a dataset as base64 from any source:
+    1. Redis Cache
+    2. Supabase Storage (if key starts with 'sb_' or is a valid UUID)
+    3. Local Filesystem (bundled samples)
+    """
+    import io
+    import re
+    import pandas as pd
+    from redis_client import get_dataset, store_dataset
+
+    # 1. Try Redis Cache (High-speed)
+    csv_b64 = get_dataset(dataset_key)
+    if csv_b64:
+        return csv_b64
+
+    # 2. Try Supabase Storage (Cloud)
+    # Check if it starts with 'sb_' OR is a raw UUID
+    is_sb_prefixed = dataset_key.startswith("sb_")
+    is_uuid = bool(re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", dataset_key, re.I))
+    
+    if (is_sb_prefixed or is_uuid) and user:
+        dataset_id = dataset_key[3:] if is_sb_prefixed else dataset_key
+        from supabase_client import get_supabase_for_user
+        supabase = get_supabase_for_user(user.get("token"))
+        if not supabase:
+            raise ValueError("Could not connect to Supabase.")
+        
+        # Query the datasets table to find the storage path
+        res = supabase.table("datasets").select("storage_path").eq("id", dataset_id).execute()
+        if not res.data:
+            # If we didn't find it and it wasn't prefixed, maybe it's actually a local file name
+            if not is_sb_prefixed and not is_uuid:
+                pass # fall through to local check
+            else:
+                raise ValueError(f"Cloud dataset not found: {dataset_id}")
+        else:
+            path = res.data[0]["storage_path"]
+            content = supabase.storage.from_("user_datasets").download(path)
+            csv_b64 = base64.b64encode(content).decode("utf-8")
+            
+            # Re-cache for next time
+            store_dataset(dataset_key, csv_b64)
+            return csv_b64
+
+    # 3. Try Local Filesystem (Library Samples)
+    # Use basename to prevent directory traversal
+    safe_name = os.path.basename(dataset_key)
+    local_path = os.path.join(_ROOT, "data", "raw", safe_name)
+    if os.path.exists(local_path):
+        try:
+            df = pd.read_csv(local_path)
+            csv_b64 = df_to_csv_b64(df)
+            # Cache for next time
+            store_dataset(dataset_key, csv_b64)
+            return csv_b64
+        except Exception as e:
+            raise ValueError(f"Failed to load local dataset: {e}")
+
+    raise ValueError(f"Dataset not found: {dataset_key}")
+
+
+# ---------------------------------------------------------------------------
 # DataFrame serialisation helpers
 # ---------------------------------------------------------------------------
 
+@functools.lru_cache(maxsize=4)
+def _parse_csv_bytes(csv_bytes: bytes):
+    """Internal cached parser for CSV bytes."""
+    import pandas as pd
+    return pd.read_csv(io.BytesIO(csv_bytes))
+
+
 def df_from_csv_b64(csv_b64: str):
     """Decode a base64-encoded CSV string and return a DataFrame."""
-    import pandas as pd
-
     try:
         csv_bytes = base64.b64decode(csv_b64.encode("utf-8"), validate=True)
     except (binascii.Error, ValueError) as exc:
@@ -175,13 +239,15 @@ def df_from_csv_b64(csv_b64: str):
     if len(csv_bytes) > MAX_CSV_BYTES:
         raise ValueError(f"CSV exceeds the {MAX_CSV_BYTES // (1024 * 1024)} MB upload limit.")
 
-    df = pd.read_csv(io.BytesIO(csv_bytes))
+    # Use the cached parser to avoid re-reading the same bytes
+    df = _parse_csv_bytes(csv_bytes)
+    
     rows, cols = df.shape
     if rows > MAX_CSV_ROWS:
         raise ValueError(f"CSV has {rows} rows; the limit is {MAX_CSV_ROWS}.")
     if cols > MAX_CSV_COLUMNS:
         raise ValueError(f"CSV has {cols} columns; the limit is {MAX_CSV_COLUMNS}.")
-    return df
+    return df.copy() # Return a copy to prevent mutation of cached object
 
 
 def df_to_csv_b64(df) -> str:

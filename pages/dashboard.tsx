@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,30 +16,45 @@ import {
   Plus, 
   Search, 
   ChevronDown, 
-  Upload as UploadIcon, 
   Trash2, 
   Edit2, 
-  AlertCircle 
+  AlertCircle,
+  LucideIcon,
+  Bell,
+  BookOpen,
+  Share2,
 } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
-import { listDatasets, loadDataset, uploadCsv, fileToBase64 } from "@/lib/api";
+import {
+  listDatasets,
+  loadDataset,
+  uploadCsv,
+  fileToBase64,
+  generateReport
+} from "@/lib/api";
 import type { DatasetPayload, User, DatasetInfo, ChatSession } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import KPICards from "@/components/KPICards";
 import AIAnalyst from "@/components/AIAnalyst";
 import ForecastingTab from "@/components/Forecasting";
+import { useChat } from "@/hooks/useChat";
 import ReportsTab from "@/components/Reports";
+import LiveBoard from "@/components/LiveBoard";
 import LogoMark from "@/components/LogoMark";
 
-type Tab = "overview" | "analyst" | "forecast" | "reports";
+type Tab = "overview" | "analyst" | "forecast" | "reports" | "board";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  
   const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
   const [dataSource, setDataSource] = useState<"upload" | "preloaded">("preloaded");
   const [datasetPayload, setDatasetPayload] = useState<DatasetPayload | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  
   const [sessionDataset, setSessionDataset] = useState<DatasetPayload | null>(null);
   const [loadingDataset, setLoadingDataset] = useState(false);
   const [datasetError, setDatasetError] = useState("");
@@ -47,13 +62,14 @@ export default function DashboardPage() {
   const [selectedPreloaded, setSelectedPreloaded] = useState("");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renamingTitle, setRenamingTitle] = useState("");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [newChatKey, setNewChatKey] = useState("new");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function getSession() {
-      // 1. Try Supabase
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setUser({
@@ -63,28 +79,15 @@ export default function DashboardPage() {
           role: "Pro Analyst",
           token: session.access_token
         });
-        return;
+      } else {
+        router.replace("/login");
       }
-
-      // 2. Fallback to Session Storage (Legacy)
-      const localUserJson = sessionStorage.getItem("nexlytics_user");
-      if (localUserJson) {
-        try {
-          const localUser = JSON.parse(localUserJson);
-          setUser(localUser);
-          return;
-        } catch (e) {
-          sessionStorage.removeItem("nexlytics_user");
-        }
-      }
-
-      router.replace("/login");
     }
 
     getSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session && !sessionStorage.getItem("nexlytics_user")) {
+      if (!session) {
         router.replace("/login");
       }
     });
@@ -96,14 +99,14 @@ export default function DashboardPage() {
     listDatasets()
       .then((r) => {
         setAvailableDatasets(r.datasets);
-        if (r.datasets.length > 0) setSelectedPreloaded(r.datasets[0].key);
+        if (r.datasets.length > 0) setSelectedKeys([r.datasets[0].key]);
       })
       .catch((err: unknown) => {
         setDatasetError(err instanceof Error ? err.message : "Failed to load dataset list.");
       });
   }, []);
 
-  async function fetchSessions() {
+  const fetchSessions = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
       .from("chat_sessions")
@@ -111,31 +114,49 @@ export default function DashboardPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (data) setChatSessions(data as ChatSession[]);
-  }
+  }, [user]);
 
   useEffect(() => {
-    if (user) fetchSessions();
-  }, [user]);
+    fetchSessions();
+  }, [fetchSessions]);
+
+  // Unified Chat State (Shared across all tabs)
+  const {
+    messages,
+    isLoading: isAnalyzing,
+    error: chatError,
+    sendMessage,
+    clearChat,
+    setSessionId
+  } = useChat({
+    user,
+    datasetKey: datasetPayload?.dataset_key,
+    datasetName: datasetPayload?.filename,
+    initialSessionId: activeSessionId,
+    onSessionCreated: (session) => {
+      setActiveSessionId(session.id);
+      setChatSessions((prev) => [session, ...prev]);
+    }
+  });
 
   // Optionally refresh sessions periodically or when tab changes
   useEffect(() => {
     if (activeTab === "analyst") {
       fetchSessions();
     }
-  }, [activeTab]);
+  }, [activeTab, fetchSessions]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
-    sessionStorage.removeItem("nexlytics_user");
-    router.replace("/");
+    router.replace("/login");
   }
 
-  async function handleLoadPreloaded() {
-    if (!selectedPreloaded) return;
+  async function handleLoadSelected() {
+    if (selectedKeys.length === 0) return;
     setLoadingDataset(true);
     setDatasetError("");
     try {
-      const payload = await loadDataset(selectedPreloaded);
+      const payload = await loadDataset(selectedKeys[0]);
       setDatasetPayload(payload);
       setSessionDataset(payload);
       setActiveSessionId(null);
@@ -216,52 +237,54 @@ export default function DashboardPage() {
     setDeleteSessionId(null);
   }
 
-  async function handleRenameSession(session: ChatSession, e: React.MouseEvent) {
-    e.stopPropagation();
-    const newTitle = prompt("Enter a new name for this chat:", session.title || session.dataset_name);
-    if (!newTitle || newTitle.trim() === "") return;
+  async function handleRenameSession(session: ChatSession, newTitle: string) {
+    if (!newTitle || newTitle.trim() === "" || newTitle === session.title) return;
 
     await supabase.from("chat_sessions").update({ title: newTitle }).eq("id", session.id);
     setChatSessions((prev) => prev.map((s) => s.id === session.id ? { ...s, title: newTitle } : s));
   }
 
-  const tabs: { id: Tab; label: string; icon: any }[] = [
-    { id: "overview", label: "Data Overview", icon: LayoutDashboard },
+  const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
+    { id: "overview", label: "Data Overview", icon: Database },
     { id: "analyst", label: "AI Analyst", icon: MessageSquare },
     { id: "forecast", label: "Forecasting", icon: TrendingUp },
     { id: "reports", label: "Reports", icon: FileText },
+    { id: "board", label: "Live Board", icon: LayoutDashboard },
   ];
 
   return (
     <>
-      <Head><title>Nexlytics | Dashboard</title></Head>
+      <Head><title>{`Nexlytics | Dashboard`}</title></Head>
       <div className="min-h-screen flex flex-col bg-mesh">
-        <header className="bg-white/[0.02] backdrop-blur-md border-b border-white/[0.08] px-6 py-4 flex items-center gap-4 sticky top-0 z-50">
+        <header className="bg-[#030712]/60 backdrop-blur-2xl border-b border-white/[0.05] px-8 py-5 flex items-center gap-6 sticky top-0 z-50">
           <motion.div
-            initial={{ rotate: -10, scale: 0.9 }}
-            animate={{ rotate: 0, scale: 1 }}
-            className="flex items-center gap-3"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-4 cursor-pointer"
+            onClick={() => router.push("/")}
           >
-            <LogoMark size={32} />
-            <span className="font-bold text-white text-xl tracking-tight">Nexlytics</span>
+            <LogoMark size={36} />
+            <span className="font-bold text-white text-2xl tracking-tighter">Nexlytics</span>
           </motion.div>
-          <span className="bg-indigo-500/10 text-indigo-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/20 hidden sm:block">
-            v2.0 PRO
-          </span>
-          <div className="ml-auto flex items-center gap-4">
+          <div className="flex items-center gap-2 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 hidden sm:flex">
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+            <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-widest">
+              v2.0 PRO
+            </span>
+          </div>
+          <div className="ml-auto flex items-center gap-6">
             {user && (
-              <div className="hidden md:flex flex-col items-end">
-                <span className="text-white text-sm font-medium">{user.display_name}</span>
-                <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-wider">{user.role}</span>
+              <div className="hidden md:flex flex-col items-end gap-0.5">
+                <span className="text-white text-sm font-bold tracking-tight">{user.display_name}</span>
+                <span className="text-indigo-400/80 text-[10px] font-bold uppercase tracking-[0.15em]">{user.role}</span>
               </div>
             )}
 
             <button
               onClick={handleSignOut}
-              className="btn-secondary text-sm py-2 px-3 flex items-center gap-2"
-              title="Sign Out"
+              className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/20 transition-all active:scale-95 text-sm font-semibold"
             >
-              <LogOut size={16} />
+              <LogOut size={16} className="group-hover:-translate-x-0.5 transition-transform" />
               <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
@@ -293,33 +316,50 @@ export default function DashboardPage() {
                       : "text-slate-400 hover:text-white"
                     }`}
                 >
-                  Upload
+                  <Upload size={14} className="inline-block mr-2 relative" />
+                  <span className="align-middle">Upload</span>
                 </button>
               </div>
 
               {dataSource === "preloaded" ? (
                 <div className="space-y-3">
-                  <div className="relative">
-                    <Database className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                    <select
-                      className="input text-sm pl-9"
-                      value={selectedPreloaded}
-                      onChange={(e) => setSelectedPreloaded(e.target.value)}
-                    >
-                      {availableDatasets.map((d) => (
-                        <option key={d.key} value={d.key}>{d.label}</option>
-                      ))}
-                    </select>
+                  <div className="max-h-48 overflow-y-auto space-y-2 pr-1 scrollbar-hide">
+                    {availableDatasets.map((d) => (
+                      <label 
+                        key={d.key} 
+                        className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          selectedKeys.includes(d.key) 
+                            ? "bg-indigo-600/10 border-indigo-500/30 text-indigo-300" 
+                            : "bg-white/[0.03] border-white/[0.05] text-slate-400 hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded border-white/10 bg-black/40 text-indigo-600 focus:ring-indigo-500/20"
+                          checked={selectedKeys.includes(d.key)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedKeys([d.key]);
+                            else setSelectedKeys([]);
+                          }}
+                        />
+                        <div className="flex-1 truncate">
+                          <p className="text-[11px] font-bold truncate uppercase tracking-wider">{d.label}</p>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                   <button
                     className="btn-primary w-full text-sm py-3 flex items-center justify-center gap-2"
-                    onClick={handleLoadPreloaded}
-                    disabled={loadingDataset || !selectedPreloaded}
+                    onClick={handleLoadSelected}
+                    disabled={loadingDataset || selectedKeys.length === 0}
                   >
                     {loadingDataset ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
-                      <>Load Dataset <ChevronRight size={16} /></>
+                      <>
+                        Load Dataset
+                        <ChevronRight size={16} />
+                      </>
                     )}
                   </button>
                 </div>
@@ -391,22 +431,48 @@ export default function DashboardPage() {
                     .map((session) => (
                     <div
                       key={session.id}
-                      onClick={() => handleLoadSession(session)}
+                      onClick={() => !renamingId && handleLoadSession(session)}
                       className={`group flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${
                         activeSessionId === session.id
                           ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
                           : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 border border-transparent"
                       }`}
                     >
-                      <div className="flex items-center gap-2 truncate">
+                      <div className="flex items-center gap-2 truncate flex-1">
                         <MessageSquare size={14} className={activeSessionId === session.id ? "text-indigo-400" : "text-slate-500"} />
-                        <span className="text-xs truncate font-medium">
-                          {session.title || session.dataset_name}
-                        </span>
+                        {renamingId === session.id ? (
+                          <input
+                            autoFocus
+                            className="bg-slate-800 text-xs text-white px-1 py-0.5 rounded outline-none border border-indigo-500 w-full"
+                            value={renamingTitle}
+                            onChange={(e) => setRenamingTitle(e.target.value)}
+                            onBlur={() => {
+                              handleRenameSession(session, renamingTitle);
+                              setRenamingId(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleRenameSession(session, renamingTitle);
+                                setRenamingId(null);
+                              } else if (e.key === 'Escape') {
+                                setRenamingId(null);
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <span className="text-xs truncate font-medium">
+                            {session.title || session.dataset_name}
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity ml-2">
                         <button
-                          onClick={(e) => handleRenameSession(session, e)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRenamingId(session.id);
+                            setRenamingTitle(session.title || session.dataset_name);
+                          }}
                           className="p-1 text-slate-500 hover:text-indigo-400"
                           title="Rename Session"
                         >
@@ -442,17 +508,17 @@ export default function DashboardPage() {
               )}
 
             {user && (
-              <div className="mt-auto pt-6 border-t border-white/[0.08]">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-indigo-500/20">
-                    {(user.display_name[0] || "U").toUpperCase()}
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="text-sm font-semibold text-white truncate">{user.display_name}</p>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{user.role}</p>
-                  </div>
+            <div className="mt-auto pt-6 border-t border-white/[0.05] space-y-2">
+              <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/20">
+                  {user?.display_name?.charAt(0) || "U"}
+                </div>
+                <div className="flex-1 truncate">
+                  <p className="text-xs font-bold text-white truncate">{user?.display_name}</p>
+                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">{user?.role}</p>
                 </div>
               </div>
+            </div>
             )}
           </aside>
 
@@ -466,92 +532,119 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <div className="flex gap-2 mb-8 bg-white/[0.03] p-1 rounded-2xl w-fit border border-white/[0.05]">
+            <div className="flex gap-2 mb-10 bg-black/40 p-1.5 rounded-2xl w-fit border border-white/5 backdrop-blur-xl shadow-2xl">
               {tabs.map((t) => (
                 <button
                   key={t.id}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${activeTab === t.id
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                      : "text-slate-400 hover:text-white hover:bg-white/[0.05]"
+                  className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-sm font-bold tracking-tight transition-all duration-300 relative ${activeTab === t.id
+                      ? "text-white"
+                      : "text-slate-500 hover:text-slate-200"
                     }`}
                   onClick={() => setActiveTab(t.id)}
                 >
-                  <t.icon size={16} />
-                  {t.label}
+                  {activeTab === t.id && (
+                    <motion.div 
+                      layoutId="activeTab"
+                      className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl shadow-lg shadow-indigo-500/20"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <t.icon size={18} className="relative z-10" />
+                  <span className="relative z-10">{t.label}</span>
                 </button>
               ))}
             </div>
 
-            <AnimatePresence mode="wait">
-              {!datasetPayload && activeTab !== "analyst" && activeTab !== "reports" ? (
-                <motion.div
-                  key="need-dataset"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="flex flex-col items-center justify-center min-h-[60vh] text-center"
-                >
-                  <div className="w-20 h-20 bg-slate-800/50 rounded-3xl flex items-center justify-center mb-6 border border-white/10">
-                    <Database className="text-slate-400" size={40} />
+            <div className="flex-1 relative">
+              {/* Data Overview Tab */}
+              <div className={activeTab === "overview" ? "block" : "hidden"}>
+                {datasetPayload ? (
+                  <div className="space-y-6">
+                
+                    <OverviewTab payload={datasetPayload} />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">
-                    Dataset Required
-                  </h3>
-                  <p className="text-slate-400 max-w-md text-lg">
-                    Please go to the AI Analyst tab to select or upload a dataset before viewing the {activeTab} dashboard.
-                  </p>
-                </motion.div>
-              ) : !datasetPayload && activeTab === "analyst" && !sessionDataset ? (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="flex flex-col items-center justify-center min-h-[60vh] text-center"
-                >
-                  <div className="w-20 h-20 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-6 border border-indigo-500/20">
-                    <Database className="text-indigo-400" size={40} />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">
-                    What data do you want to analyze today?
-                  </h3>
-                  <p className="text-slate-400 max-w-md text-lg mb-8">
-                    Use the sidebar on the left to upload a CSV or select a dataset from your library.
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {activeTab === "overview" && datasetPayload && <OverviewTab payload={datasetPayload} />}
-                  {activeTab === "analyst" && (
-                    <AIAnalyst 
-                      key={newChatKey} 
-                      payload={sessionDataset} 
-                      user={user!} 
-                      onSwitchToForecast={() => setActiveTab("forecast")} 
-                      explicitSessionId={activeSessionId} 
-                      onSessionCreated={(session) => {
-                        setActiveSessionId(session.id);
-                        setChatSessions((prev) => [session, ...prev]);
-                      }}
-                      onDatasetRecovered={(newPayload) => {
-                        setSessionDataset(newPayload);
-                        setDatasetPayload(newPayload);
-                      }}
-                    />
-                  )}
-                  {activeTab === "forecast" && datasetPayload && <ForecastingTab payload={datasetPayload} />}
-                  {activeTab === "reports" && <ReportsTab payload={datasetPayload} user={user} activeSessionId={activeSessionId || (chatSessions.length > 0 ? chatSessions[0].id : null)} sessions={chatSessions} />}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+                  >
+                    <div className="w-20 h-20 bg-slate-800/50 rounded-3xl flex items-center justify-center mb-6 border border-white/10">
+                      <Database className="text-slate-400" size={40} />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-3">Dataset Required</h3>
+                    <p className="text-slate-400 max-w-md text-lg">Please load a dataset to view the overview.</p>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* AI Analyst Tab (Always alive to preserve state) */}
+              <div className={activeTab === "analyst" ? "block" : "hidden"}>
+                {(!datasetPayload && !sessionDataset) ? (
+                   <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+                  >
+                    <div className="w-20 h-20 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-6 border border-indigo-500/20">
+                      <Database className="text-indigo-400" size={40} />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-3">What data do you want to analyze today?</h3>
+                    <p className="text-slate-400 max-w-md text-lg">Use the sidebar to upload a CSV or select a dataset.</p>
+                  </motion.div>
+                ) : (
+                  <AIAnalyst 
+                    payload={sessionDataset} 
+                    user={user!} 
+                    onSwitchToForecast={() => setActiveTab("forecast")} 
+                    messages={messages}
+                    sendMessage={sendMessage}
+                    clearChat={clearChat}
+                    isAnalyzing={isAnalyzing}
+                    chatError={chatError}
+                    onDatasetRecovered={(newPayload) => {
+                      setSessionDataset(newPayload);
+                      setDatasetPayload(newPayload);
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Forecasting Tab */}
+              <div className={activeTab === "forecast" ? "block" : "hidden"}>
+                {datasetPayload ? <ForecastingTab payload={datasetPayload} /> : <p className="text-slate-400 text-center py-20">Load a dataset to use forecasting.</p>}
+              </div>
+
+              {/* Reports Tab */}
+              <div className={activeTab === "reports" ? "block" : "hidden"}>
+                <ReportsTab 
+                  payload={datasetPayload} 
+                  user={user} 
+                  messages={messages}
+                  sendMessage={sendMessage}
+                  isAnalyzing={isAnalyzing}
+                  chatError={chatError}
+                  activeSessionId={activeSessionId}
+                />
+              </div>
+
+              {/* Live Board Tab */}
+              <div className={activeTab === "board" ? "block" : "hidden"}>
+                <LiveBoard 
+                  isActive={activeTab === "board"} 
+                />
+              </div>
+
+              {/* Alerts Tab */}
+              {/* Alerts/Knowledge/Integrations tabs removed */}
+            </div>
           </main>
         </div>
+
+        
       </div>
+
+      
 
       <ConfirmModal 
         isOpen={!!deleteSessionId}

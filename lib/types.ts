@@ -32,8 +32,8 @@ export interface KPI {
 }
 
 export interface DatasetPayload {
-  key: string;
-  csv_b64: string;
+  dataset_key: string;
+  csv_b64?: string;
   schema: Schema;
   kpis: KPI[];
   insights: string[];

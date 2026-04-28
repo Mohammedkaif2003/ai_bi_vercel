@@ -22,21 +22,7 @@ const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 async function getAuthToken(): Promise<string | undefined> {
   const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) return session.access_token;
-
-  // Fallback to sessionStorage for demo/local users
-  if (typeof window !== "undefined") {
-    const localUserJson = sessionStorage.getItem("nexlytics_user");
-    if (localUserJson) {
-      try {
-        const user = JSON.parse(localUserJson);
-        return user.token;
-      } catch (e) {
-        return undefined;
-      }
-    }
-  }
-  return undefined;
+  return session?.access_token;
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
@@ -65,14 +51,6 @@ async function get<T>(path: string): Promise<T> {
 }
 
 // ---------------------------------------------------------------------------
-// Auth
-// ---------------------------------------------------------------------------
-
-export async function login(username: string, password: string): Promise<User> {
-  return post<User>("/api/auth", { username, password });
-}
-
-// ---------------------------------------------------------------------------
 // Datasets
 // ---------------------------------------------------------------------------
 
@@ -97,10 +75,10 @@ export async function uploadCsv(
 
 export async function analyze(
   query: string,
-  csv_b64: string,
+  dataset_key: string,
   dataset_name?: string
 ): Promise<AnalysisResult> {
-  return post<AnalysisResult>("/api/analyze", { query, csv_b64, dataset_name });
+  return post<AnalysisResult>("/api/analyze", { query, dataset_key, dataset_name });
 }
 
 // ---------------------------------------------------------------------------
@@ -108,10 +86,10 @@ export async function analyze(
 // ---------------------------------------------------------------------------
 
 export async function forecast(
-  csv_b64: string,
+  dataset_key: string,
   periods: number = 6
 ): Promise<ForecastResult> {
-  return post<ForecastResult>("/api/forecast", { csv_b64, periods });
+  return post<ForecastResult>("/api/forecast", { dataset_key, periods });
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +111,78 @@ export async function generateReport(
     report_intro,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Pinned Insights (Live Dashboard)
+// ---------------------------------------------------------------------------
+
+export async function pinInsight(data: {
+  dataset_key: string;
+  filename: string;
+  query: string;
+  chart_spec: any;
+  narration?: string;
+}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Authentication required");
+
+  const { data: result, error } = await supabase
+    .from("pinned_insights")
+    .insert({
+      ...data,
+      user_id: user.id
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return result;
+}
+
+export async function unpinInsight(id: string) {
+  const { error } = await supabase
+    .from("pinned_insights")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function listPinnedInsights() {
+  const { data, error } = await supabase
+    .from("pinned_insights")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+
+export async function inspectData(dataset_key: string): Promise<any> {
+  return post("/api/wrangle", { dataset_key, action: "inspect" });
+}
+
+export async function cleanData(dataset_key: string): Promise<any> {
+  return post("/api/wrangle", { dataset_key, action: "clean" });
+}
+
+
+export async function createAlert(alert: any) {
+  const { data, error } = await supabase.from("alerts").insert([alert]).select();
+  if (error) throw error;
+  return data[0];
+}
+
+export async function listAlerts() {
+  const { data, error } = await supabase.from("alerts").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAlert(id: string) {
+  const { error } = await supabase.from("alerts").delete().eq("id", id);
+  if (error) throw error;
+}
+
 
 // ---------------------------------------------------------------------------
 // Helpers

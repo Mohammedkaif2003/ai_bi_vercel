@@ -31,6 +31,7 @@ from _utils import (  # noqa: E402
     df_to_records,
     fig_to_json,
     handle_options,
+    load_dataset_b64,
     read_json_body,
     require_auth,
     send_error,
@@ -85,21 +86,47 @@ class handler(BaseHTTPRequestHandler):
         handle_options(self)
 
     def do_POST(self):
-        if require_auth(self) is None:
+        user = require_auth(self)
+        if user is None:
             return
 
         data = read_json_body(self)
-        csv_b64 = data.get("csv_b64", "")
+        dataset_key = data.get("dataset_key")
         try:
             periods = int(data.get("periods", 6))
         except (TypeError, ValueError):
             periods = 6
         periods = max(1, min(periods, 24))
 
-        if not csv_b64:
-            send_error(self, "csv_b64 is required.", 400)
+        if not dataset_key:
+            send_error(self, "dataset_key is required.", 400)
             return
 
+        # 1. Check Redis Cache for this specific forecast
+        from redis_client import get_redis_client
+        import json
+        r = get_redis_client()
+        cache_key = f"forecast:{dataset_key}:{periods}"
+        
+        if r:
+            try:
+                cached = r.get(cache_key)
+                if cached:
+                    return send_json(self, json.loads(cached))
+            except Exception:
+                pass # Continue to compute if cache is corrupt or Redis fails
+
+        # 2. Load Dataset Content
+        try:
+            csv_b64 = load_dataset_b64(dataset_key, user)
+        except ValueError as e:
+            send_error(self, str(e), 404)
+            return
+        except Exception as e:
+            send_error(self, f"Unexpected error loading dataset: {e}", 500)
+            return
+
+        log_audit(user, "forecast", {"dataset_key": dataset_key, "periods": periods})
         try:
             df = df_from_csv_b64(csv_b64)
             df = normalize_columns(df)
@@ -107,16 +134,18 @@ class handler(BaseHTTPRequestHandler):
             send_error(self, f"Could not load dataset: {exc}", 422)
             return
 
+        # 3. Compute Forecast
         result = forecast_revenue(df, periods=periods)
 
         if not result.get("available"):
-            send_json(self, {
+            err_res = {
                 "available": False,
                 "message": result.get("message", "Forecasting not available."),
                 "forecast": [],
                 "historical": [],
                 "chart": None,
-            })
+            }
+            send_json(self, err_res)
             return
 
         forecast_df = result.get("forecast_df")
@@ -125,7 +154,7 @@ class handler(BaseHTTPRequestHandler):
 
         chart = _build_forecast_chart(historical_df, forecast_df, metric)
 
-        send_json(self, {
+        final_response = {
             "available":  True,
             "message":    result.get("message", ""),
             "metric":     metric,
@@ -135,7 +164,16 @@ class handler(BaseHTTPRequestHandler):
             "forecast":   df_to_records(forecast_df),
             "historical": df_to_records(historical_df),
             "chart":      chart,
-        })
+        }
+
+        # 4. Cache the result for 30 minutes
+        if r:
+            try:
+                r.setex(cache_key, 1800, json.dumps(final_response))
+            except Exception as e:
+                print(f"Failed to cache forecast: {e}")
+
+        send_json(self, final_response)
 
     def log_message(self, format, *args):
         pass
