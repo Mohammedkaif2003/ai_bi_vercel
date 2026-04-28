@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +10,7 @@ import {
   LogOut,
   Database,
   Upload,
+  ChevronLeft,
   ChevronRight,
   Info,
   Library, 
@@ -23,6 +24,11 @@ import {
   Bell,
   BookOpen,
   Share2,
+  Sparkles,
+  HelpCircle,
+  Table as TableIcon,
+  Filter,
+  Loader2,
 } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
 import {
@@ -30,7 +36,8 @@ import {
   loadDataset,
   uploadCsv,
   fileToBase64,
-  generateReport
+  generateReport,
+  searchDataset
 } from "@/lib/api";
 import type { DatasetPayload, User, DatasetInfo, ChatSession } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
@@ -41,6 +48,7 @@ import { useChat } from "@/hooks/useChat";
 import ReportsTab from "@/components/Reports";
 import LiveBoard from "@/components/LiveBoard";
 import LogoMark from "@/components/LogoMark";
+import { CommandPalette } from "@/components/CommandPalette";
 
 type Tab = "overview" | "analyst" | "forecast" | "reports" | "board";
 
@@ -255,8 +263,17 @@ export default function DashboardPage() {
   return (
     <>
       <Head><title>{`Nexlytics | Dashboard`}</title></Head>
+      <CommandPalette 
+        onSelectTab={(tab) => setActiveTab(tab as Tab)}
+        datasets={availableDatasets}
+        onSelectDataset={(key) => {
+          setSelectedKeys([key]);
+          handleLoadSelected();
+        }}
+      />
       <div className="min-h-screen flex flex-col bg-mesh">
         <header className="bg-[#030712]/60 backdrop-blur-2xl border-b border-white/[0.05] px-8 py-5 flex items-center gap-6 sticky top-0 z-50">
+          <div className="max-w-[1920px] mx-auto w-full flex items-center gap-6">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
@@ -288,9 +305,10 @@ export default function DashboardPage() {
               <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
+          </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden max-w-[1920px] mx-auto w-full">
           <aside className="w-72 bg-[#0B0F19]/50 border-r border-white/[0.08] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 hidden md:flex backdrop-blur-md">
             <motion.div
               initial={{ x: -20, opacity: 0 }}
@@ -329,21 +347,22 @@ export default function DashboardPage() {
                         key={d.key} 
                         className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
                           selectedKeys.includes(d.key) 
-                            ? "bg-indigo-600/10 border-indigo-500/30 text-indigo-300" 
-                            : "bg-white/[0.03] border-white/[0.05] text-slate-400 hover:bg-white/[0.06]"
+                            ? "bg-indigo-600/15 border-indigo-500/40 text-white" 
+                            : "bg-white/[0.02] border-white/[0.05] text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"
                         }`}
                       >
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 rounded border-white/10 bg-black/40 text-indigo-600 focus:ring-indigo-500/20"
-                          checked={selectedKeys.includes(d.key)}
-                          onChange={(e) => {
-                            if (e.target.checked) setSelectedKeys([d.key]);
-                            else setSelectedKeys([]);
-                          }}
-                        />
+                        <div className="relative flex items-center justify-center">
+                          <input
+                            type="radio"
+                            name="dataset-selection"
+                            className="peer appearance-none w-4 h-4 rounded-full border-2 border-white/10 bg-black/20 checked:border-indigo-500 transition-all cursor-pointer"
+                            checked={selectedKeys.includes(d.key)}
+                            onChange={() => setSelectedKeys([d.key])}
+                          />
+                          <div className="absolute w-1.5 h-1.5 rounded-full bg-indigo-400 opacity-0 peer-checked:opacity-100 transition-opacity" />
+                        </div>
                         <div className="flex-1 truncate">
-                          <p className="text-[11px] font-bold truncate uppercase tracking-wider">{d.label}</p>
+                          <p className="text-[10px] font-black truncate uppercase tracking-widest">{d.label}</p>
                         </div>
                       </label>
                     ))}
@@ -520,6 +539,39 @@ export default function DashboardPage() {
               </div>
             </div>
             )}
+            {/* Discovery Section */}
+            {datasetPayload && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-4 pt-6 border-t border-white/[0.05]"
+              >
+                <div className="flex items-center gap-2 text-indigo-400 font-black text-[9px] uppercase tracking-[0.2em] mb-4 px-2">
+                  <Sparkles size={12} /> Intelligence Discovery
+                </div>
+                <div className="space-y-4 px-2">
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Key Keywords</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {datasetPayload.schema.column_names.slice(0, 8).map(col => (
+                        <span key={col} className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-[10px] text-slate-400 hover:text-white transition-colors cursor-default">
+                          {col}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {datasetPayload.schema.categorical_columns.length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Categorical Context</p>
+                      <p className="text-[11px] text-slate-400 leading-relaxed italic">
+                        Try asking about distributions across <span className="text-indigo-400">{datasetPayload.schema.categorical_columns[0]}</span> or <span className="text-indigo-400">{datasetPayload.schema.categorical_columns[1] || 'segments'}</span>.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </aside>
 
           <main className="flex-1 overflow-y-auto p-5">
@@ -659,93 +711,409 @@ export default function DashboardPage() {
   );
 }
 
+import { DataQualityGauge } from "@/components/DataQualityGauge";
+import PlotlyChart from "@/components/PlotlyChart";
+
 function OverviewTab({ payload }: { payload: DatasetPayload }) {
   const [showAll, setShowAll] = useState(false);
-  const { schema, kpis, insights, preview_rows: previewRows = [] } = payload;
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  const { schema, kpis, insights, health_score, correlations, preview_rows: previewRows = [] } = payload;
+
+  // Reset state and detect columns when dataset changes
+  useEffect(() => {
+    setVisibleColumns(schema.column_names);
+    setPreviewData(previewRows);
+    setPage(1);
+    setTotalPages(Math.ceil(schema.rows / 100));
+  }, [payload.dataset_key, schema.column_names, previewRows, schema.rows]);
+
+  const [showColPicker, setShowColPicker] = useState(false);
+
   const displayedInsights = showAll ? insights : insights.slice(0, 4);
 
-  return (
-    <div className="space-y-5">
-      <KPICards kpis={kpis} />
+  // Derive human-readable insights from the correlation matrix
+  const topRelationships = useMemo(() => {
+    if (!correlations || !correlations.values) return [];
+    const rels: { a: string; b: string; val: number; type: string }[] = [];
+    const cols = correlations.columns;
+    const vals = correlations.values;
 
-      {insights.length > 0 && (
-        <section className="card">
-          <h3 className="section-title">Auto Insights</h3>
-          <ul className="space-y-1.5">
-            {displayedInsights.map((ins, i) => (
-              <li key={i} className="text-sm text-[#CBD5E1] flex gap-2">
-                <span className="text-[#4F46E5] mt-0.5">•</span>
-                <span>{ins}</span>
-              </li>
-            ))}
-          </ul>
-          {insights.length > 4 && (
-            <button
-              className="text-xs text-[#818CF8] mt-2 hover:underline"
-              onClick={() => setShowAll((v) => !v)}
-            >
-              {showAll ? "Show less" : `Show ${insights.length - 4} more...`}
-            </button>
+    for (let i = 0; i < cols.length; i++) {
+      for (let j = i + 1; j < vals[i].length; j++) {
+        const v = vals[i][j];
+        if (Math.abs(v) > 0.6) {
+          rels.push({
+            a: cols[i],
+            b: cols[j],
+            val: v,
+            type: v > 0 ? "positive" : "negative"
+          });
+        }
+      }
+    }
+    return rels.sort((a, b) => Math.abs(b.val) - Math.abs(a.val)).slice(0, 3);
+  }, [correlations]);
+
+  const toggleColumn = (col: string) => {
+    setVisibleColumns(prev => 
+      prev.includes(col) 
+        ? prev.filter(c => c !== col) 
+        : [...prev, col]
+    );
+  };
+
+  // Server-side search & pagination
+  const fetchPage = useCallback(async (p: number) => {
+    setIsLoadingData(true);
+    try {
+      const { results, total_pages } = await searchDataset(payload.dataset_key, "", p, 100, {});
+      setPreviewData(results);
+      setTotalPages(total_pages);
+    } catch (err) {
+      console.error("Fetch page failed:", err);
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, [payload.dataset_key]);
+
+
+
+  useEffect(() => {
+    if (page > 1) {
+       fetchPage(page);
+    }
+  }, [page, fetchPage]); 
+
+  const filteredRows = previewData;
+  const currentMatchCount = schema.rows;
+
+  const getRowValue = (row: any, col: string) => {
+    if (row[col] !== undefined && row[col] !== null) return String(row[col]);
+    const key = Object.keys(row).find(k => k.toLowerCase() === col.toLowerCase());
+    return (key && row[key] !== null) ? String(row[key]) : "";
+  };
+
+return (
+    <div className="space-y-8">
+      {/* Top Row: AI Narrative & Health */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+        <div className="xl:col-span-9 space-y-8">
+          <KPICards kpis={kpis} />
+          
+          {insights.length > 0 && (
+            <section className="card p-8">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">
+                <Sparkles size={14} /> Intelligence Briefing
+              </div>
+              <ul className="space-y-4">
+                {displayedInsights.map((ins, i) => (
+                  <motion.li 
+                    key={i} 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className="text-[15px] text-slate-300 flex gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-xs font-bold shrink-0">
+                      {i + 1}
+                    </div>
+                    <span>{ins}</span>
+                  </motion.li>
+                ))}
+              </ul>
+              {insights.length > 4 && (
+                <button
+                  className="text-xs font-bold text-indigo-400 mt-6 hover:text-white transition-colors uppercase tracking-widest flex items-center gap-2"
+                  onClick={() => setShowAll((v) => !v)}
+                >
+                  {showAll ? "Show less" : `+ View ${insights.length - 4} more insights`}
+                </button>
+              )}
+            </section>
           )}
-        </section>
+        </div>
+
+        <div className="xl:col-span-3 space-y-8">
+          <DataQualityGauge 
+            score={health_score ?? 98} 
+            label="Dataset Health" 
+          />
+          
+          <section className="card p-6">
+             <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em] mb-4">
+               <Info size={14} /> Quick Stats
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                 <p className="text-2xl font-bold text-white">{schema.rows.toLocaleString()}</p>
+                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Rows</p>
+               </div>
+               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                 <p className="text-2xl font-bold text-white">{schema.columns}</p>
+                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Columns</p>
+               </div>
+             </div>
+          </section>
+        </div>
+      </div>
+
+      {/* Relationships & Heatmap */}
+      {correlations && correlations.columns.length > 1 && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <section className="lg:col-span-7 card p-8">
+            <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">
+              <LayoutDashboard size={14} /> Relationship Heatmap
+            </div>
+            <div className="h-[400px] w-full bg-black/20 rounded-[2rem] overflow-hidden border border-white/5">
+              <PlotlyChart 
+                spec={{
+                  data: [{
+                    z: correlations.values,
+                    x: correlations.columns,
+                    y: correlations.columns,
+                    type: 'heatmap',
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    hovertemplate: 'X: %{x}<br>Y: %{y}<br>Correlation: %{z:.2f}<extra></extra>',
+                  }],
+                  layout: {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#64748B', size: 10 },
+                    margin: { l: 80, r: 20, t: 20, b: 80 },
+                    xaxis: { gridcolor: 'rgba(255,255,255,0.05)' },
+                    yaxis: { gridcolor: 'rgba(255,255,255,0.05)' }
+                  }
+                }}
+                height={400}
+              />
+            </div>
+          </section>
+
+          <section className="lg:col-span-5 card p-8">
+            <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">
+              <TrendingUp size={14} /> Key Relationships
+            </div>
+            <div className="space-y-4">
+              {topRelationships.length > 0 ? (
+                topRelationships.map((rel, idx) => (
+                  <div key={idx} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                    <p className="text-sm font-bold text-white mb-1">
+                      {rel.a} & {rel.b}
+                    </p>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      These two metrics have a <span className={rel.type === 'positive' ? 'text-emerald-400' : 'text-rose-400'}>
+                        {Math.abs(rel.val) > 0.8 ? 'very strong' : 'strong'} {rel.type}
+                      </span> relationship. When one changes, the other tends to follow.
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500 italic">No strong linear relationships detected in this sample.</p>
+              )}
+            </div>
+            <div className="mt-8 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-[11px] text-slate-400 leading-relaxed">
+              <p className="font-bold text-indigo-400 mb-1 flex items-center gap-1">
+                <HelpCircle size={12} /> Understanding Correlations
+              </p>
+              Correlation values range from -1 to +1. A value of +1 means perfect synchronization, while 0 means no relationship at all.
+            </div>
+          </section>
+        </div>
       )}
 
-      <section className="card">
-        <h3 className="section-title">Dataset Schema</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          {[
-            { label: "Rows", value: schema.rows.toLocaleString() },
-            { label: "Columns", value: schema.columns },
-            { label: "Numeric", value: schema.numeric_columns.length },
-            { label: "Categorical", value: schema.categorical_columns.length },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-[#0F172A] rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-white">{stat.value}</p>
-              <p className="text-xs text-[#64748B] mt-0.5">{stat.label}</p>
-            </div>
-          ))}
+      {/* Column Explorer */}
+      <section className="card p-8">
+        <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">
+          <Library size={14} /> Data Dictionary
         </div>
-        <div className="flex flex-wrap gap-2">
-          {schema.column_names.map((col) => (
-            <span
-              key={col}
-              className="text-xs bg-[#1E293B] border border-[#334155] text-[#94A3B8] px-2 py-0.5 rounded"
-            >
-              {col}
-            </span>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {schema.column_names.map((col) => {
+            const isNumeric = schema.numeric_columns.includes(col);
+            const isCat = schema.categorical_columns.includes(col);
+            const isTime = schema.datetime_columns.includes(col);
+            const sample = previewRows[0]?.[col];
+            
+            return (
+              <div key={col} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-white truncate mr-2">{col}</span>
+                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                    isNumeric ? "bg-emerald-500/10 text-emerald-400" :
+                    isCat ? "bg-indigo-500/10 text-indigo-400" :
+                    isTime ? "bg-amber-500/10 text-amber-400" :
+                    "bg-white/5 text-slate-500"
+                  }`}>
+                    {isNumeric ? "Numeric" : isCat ? "Category" : isTime ? "Date/Time" : "Text"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 truncate">
+                  Example: <span className="text-slate-400">{String(sample ?? "N/A")}</span>
+                </p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
-      {previewRows.length > 0 && (
-        <section className="card overflow-hidden">
-          <h3 className="section-title">Data Preview (first 20 rows)</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-[#334155]">
-                  {schema.column_names.map((col) => (
-                    <th key={col} className="text-left py-2 px-3 text-[#64748B] font-semibold whitespace-nowrap">
-                      {col}
+      {/* Advanced Data Explorer */}
+      <section className="card overflow-hidden border border-white/10 shadow-2xl relative">
+        {/* Progress Bar */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-white/5 z-30">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(100, (page * 100 * 100) / schema.rows)}%` }}
+            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+          />
+        </div>
+
+        <div className="p-8 border-b border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-20">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-1">
+              <Database size={14} /> Professional Data Preview
+            </div>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              Live Preview · {schema.rows.toLocaleString()} Rows · {visibleColumns.length} columns · Page {page} of {totalPages}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-2 py-1 mr-2">
+                <button 
+                  disabled={page <= 1 || isLoadingData}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  className="p-1.5 hover:bg-white/10 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-slate-400"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-[11px] font-bold text-slate-400 min-w-[3rem] text-center">
+                  {page} / {totalPages}
+                </span>
+                <button 
+                  disabled={page >= totalPages || isLoadingData}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  className="p-1.5 hover:bg-white/10 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-slate-400"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+
+            <div className="relative">
+              <button 
+                onClick={() => setShowColPicker(!showColPicker)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all ${
+                  showColPicker 
+                    ? "bg-indigo-500 border-indigo-400 text-white shadow-lg shadow-indigo-500/20" 
+                    : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+                }`}
+              >
+                <Filter size={14} />
+                Column Manager
+              </button>
+
+              <AnimatePresence>
+                {showColPicker && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 top-full mt-2 w-64 bg-[#0F172A] border border-white/10 rounded-2xl shadow-2xl z-50 p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Select Columns</span>
+                      <button 
+                        onClick={() => setVisibleColumns(schema.column_names)}
+                        className="text-[9px] font-bold text-indigo-400 hover:text-white"
+                      >
+                        Select All
+                      </button>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto scrollbar-hide space-y-1">
+                      {schema.column_names.map(col => (
+                        <label 
+                          key={col} 
+                          className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors"
+                        >
+                          <input 
+                            type="checkbox" 
+                            checked={visibleColumns.includes(col)}
+                            onChange={() => toggleColumn(col)}
+                            className="w-3.5 h-3.5 rounded border-white/20 bg-transparent text-indigo-500 focus:ring-0 focus:ring-offset-0"
+                          />
+                          <span className="text-[11px] text-slate-300 font-medium truncate">{col}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+
+          </div>
+        </div>
+        
+        <div className="max-h-[600px] overflow-x-auto overflow-y-auto border-t border-white/5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          {filteredRows.length > 0 && visibleColumns.length > 0 ? (
+            <table className="w-full text-[11px] text-left border-collapse table-auto">
+              <thead className="sticky top-0 z-10 bg-[#0F172A] shadow-xl">
+                <tr className="bg-white/[0.02]">
+                  {visibleColumns.map((col) => (
+                    <th key={col} className="py-4 px-6 text-slate-500 font-bold uppercase tracking-widest border-b border-white/10 whitespace-nowrap min-w-[150px] bg-[#0F172A]">
+                      <span className="text-white font-black">{col}</span>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {previewRows.map((row, ri) => (
-                  <tr key={ri} className="border-b border-[#1E293B] hover:bg-[#1E293B]/50 transition-colors">
-                    {schema.column_names.map((col) => (
-                      <td key={col} className="py-1.5 px-3 text-[#CBD5E1] whitespace-nowrap">
-                        {String(row[col] ?? "")}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {filteredRows.map((row, ri) => (
+                    <motion.tr 
+                      key={`${page}-${ri}`} 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors group"
+                    >
+                      {visibleColumns.map((col) => (
+                        <td key={col} className="py-3 px-6 text-slate-300 whitespace-nowrap border-r border-white/[0.05] last:border-0 font-medium bg-[#0F172A]/30">
+                          <span className="group-hover:text-indigo-300 transition-colors">
+                            {getRowValue(row, col)}
+                          </span>
+                        </td>
+                      ))}
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
               </tbody>
             </table>
-          </div>
-        </section>
-      )}
+          ) : (
+            <div className="py-40 text-center text-slate-500 italic text-sm">
+              {isLoadingData ? (
+                <div className="flex flex-col items-center gap-6">
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+                    <Database className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-400" size={16} />
+                  </div>
+                  <p className="text-slate-400 font-bold tracking-widest uppercase text-xs">Loading data...</p>
+                </div>
+              ) : visibleColumns.length === 0 ? (
+                "Open the Column Manager to select data fields."
+              ) : (
+                "No records to display."
+              )}
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

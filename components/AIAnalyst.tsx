@@ -14,14 +14,18 @@ import {
   Pin,
   PinOff,
   Mic,
-  MicOff
+  MicOff,
+  Zap
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { DatasetPayload, User, ChatMessage } from "@/lib/types";
-import { pinInsight } from "@/lib/api";
+import { pinInsight, unpinInsight, listPinnedInsights } from "@/lib/api";
 import { useChat } from "@/hooks/useChat";
 import PlotlyChart from "./PlotlyChart";
 import ConfirmModal from "./ConfirmModal";
+import { toast } from "sonner";
+import { MessageSkeleton } from "./Skeleton";
+import { Volume2, Edit3, Save, X } from "lucide-react";
 
 interface Props {
   payload: DatasetPayload | null;
@@ -49,13 +53,84 @@ export default function AIAnalyst({
   const [showClearModal, setShowClearModal] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
-  const [pinnedIndices, setPinnedIndices] = useState<Set<number>>(new Set());
+  const [pinnedMap, setPinnedMap] = useState<Record<number, string>>({});
   const [isListening, setIsListening] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [cursorPos, setCursorPos] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isAnalyzing]);
+
+  // Autocomplete logic
+  useEffect(() => {
+    if (!input.trim() || !payload) {
+      setShowAutocomplete(false);
+      return;
+    }
+
+    const words = input.split(/\s+/);
+    const lastWord = words[words.length - 1].toLowerCase();
+
+    if (lastWord.length < 1) {
+      setShowAutocomplete(false);
+      return;
+    }
+
+    const keywords = [
+      ...payload.schema.column_names,
+      ...payload.schema.categorical_columns.flatMap(col => {
+        // In a real app, we'd fetch unique values. For now, we suggest columns.
+        return []; 
+      }),
+      "total", "average", "mean", "sum", "count", "trend", "compare", "distribution", "top 5", "ranking"
+    ];
+
+    const matches = keywords.filter(k => k.toLowerCase().includes(lastWord) && k.toLowerCase() !== lastWord);
+    setAutocompleteItems(matches.slice(0, 5));
+    setShowAutocomplete(matches.length > 0);
+  }, [input, payload]);
+
+  const applyAutocomplete = (item: string) => {
+    const words = input.split(/\s+/);
+    words[words.length - 1] = item;
+    setInput(words.join(" ") + " ");
+    setShowAutocomplete(false);
+  };
+
+  // Synchronize pinned status when messages change
+  useEffect(() => {
+    async function syncPins() {
+      if (!payload) return;
+      try {
+        const pins = await listPinnedInsights();
+        const newMap: Record<number, string> = {};
+        
+        messages.forEach((msg, idx) => {
+          if (msg.role === 'assistant' && msg.chart) {
+            const query = messages[idx-1]?.role === 'user' ? messages[idx-1].content : "Analysis";
+            // Match by dataset, query and narration
+            const existing = pins.find((p: any) => 
+              p.dataset_key === payload.dataset_key && 
+              p.query === query &&
+              p.narration === msg.content
+            );
+            if (existing) {
+              newMap[idx] = existing.id;
+            }
+          }
+        });
+        setPinnedMap(newMap);
+      } catch (err) {
+        console.error("Failed to sync pins:", err);
+      }
+    }
+    syncPins();
+  }, [messages, payload]);
 
   const handleSend = async (text?: string) => {
     const q = (text || input).trim();
@@ -98,22 +173,55 @@ export default function AIAnalyst({
 
   const handlePin = async (msg: ChatMessage, idx: number) => {
     if (!payload || !msg.chart) return;
+    
+    // Toggle Logic
+    if (pinnedMap[idx]) {
+      const pinId = pinnedMap[idx];
+      try {
+        // Optimistic update
+        setPinnedMap(prev => {
+          const next = { ...prev };
+          delete next[idx];
+          return next;
+        });
+
+        await unpinInsight(pinId);
+        toast.success("Insight removed from dashboard");
+        
+        // Notify other UI (LiveBoard)
+        window.dispatchEvent(new CustomEvent("pinned_insights:changed"));
+      } catch (err) {
+        console.error("Failed to unpin insight:", err);
+        toast.error("Failed to unpin insight");
+        // Rollback
+        setPinnedMap(prev => ({ ...prev, [idx]: pinId }));
+      }
+      return;
+    }
+
     try {
-      setPinnedIndices(prev => new Set(prev).add(idx));
-      await pinInsight({
+      const query = messages[idx-1]?.role === 'user' ? messages[idx-1].content : "Analysis";
+      const result = await pinInsight({
         dataset_key: payload.dataset_key,
         filename: payload.filename,
-        query: messages[idx-1]?.role === 'user' ? messages[idx-1].content : "Analysis",
+        query: query,
         chart_spec: msg.chart,
         narration: msg.content
       });
+      
+      setPinnedMap(prev => ({ ...prev, [idx]: result.id }));
+      toast.success("Insight pinned to dashboard!");
+
+      // Notify other UI (LiveBoard) that pins changed so it can refresh live
+      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+        try {
+          window.dispatchEvent(new CustomEvent("pinned_insights:changed"));
+        } catch (e) {
+          // ignore
+        }
+      }
     } catch (err) {
       console.error("Failed to pin insight:", err);
-      setPinnedIndices(prev => {
-        const next = new Set(prev);
-        next.delete(idx);
-        return next;
-      });
     }
   };
 
@@ -145,6 +253,24 @@ export default function AIAnalyst({
     };
 
     recognition.start();
+  };
+
+  const speak = (text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.1;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+    toast.info("Speaking analysis...", { icon: <Volume2 size={16} /> });
+  };
+
+  const handleSaveEdit = (idx: number) => {
+    // Note: In a real app, you might want to persist this change to the backend too.
+    // For now, we update the local message object.
+    messages[idx].content = editingContent;
+    setEditingIndex(null);
+    toast.success("Narration updated locally");
   };
 
   return (
@@ -200,17 +326,34 @@ export default function AIAnalyst({
                       >
                         {copiedIndex === idx ? <Check size={12} /> : <Copy size={12} />}
                       </button>
+                      <button 
+                        onClick={() => speak(msg.content)}
+                        className="p-1.5 bg-slate-800 border border-white/10 rounded-lg text-slate-400 hover:text-white shadow-xl"
+                        title="Read Aloud"
+                      >
+                        <Volume2 size={12} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setEditingIndex(idx);
+                          setEditingContent(msg.content);
+                        }}
+                        className="p-1.5 bg-slate-800 border border-white/10 rounded-lg text-slate-400 hover:text-white shadow-xl"
+                        title="Edit Narration"
+                      >
+                        <Edit3 size={12} />
+                      </button>
                       {msg.chart && (
                         <button 
                           onClick={() => handlePin(msg, idx)}
                           className={`p-1.5 border rounded-lg shadow-xl transition-all ${
-                            pinnedIndices.has(idx) 
+                            pinnedMap[idx] 
                               ? "bg-indigo-600 border-indigo-500 text-white" 
                               : "bg-slate-800 border-white/10 text-slate-400 hover:text-white"
                           }`}
-                          title={pinnedIndices.has(idx) ? "Pinned to Dashboard" : "Pin to Dashboard"}
+                          title={pinnedMap[idx] ? "Pinned to Dashboard" : "Pin to Dashboard"}
                         >
-                          <Pin size={12} className={pinnedIndices.has(idx) ? "fill-current" : ""} />
+                          <Pin size={12} className={pinnedMap[idx] ? "fill-current" : ""} />
                         </button>
                       )}
                       {msg.query_type !== 'irrelevant' && (
@@ -230,13 +373,38 @@ export default function AIAnalyst({
                   )}
                   
                   <div className="leading-relaxed prose prose-invert prose-sm max-w-none">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    {editingIndex === idx ? (
+                      <div className="space-y-3">
+                        <textarea
+                          className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 min-h-[100px]"
+                          value={editingContent}
+                          onChange={(e) => setEditingContent(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleSaveEdit(idx)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold"
+                          >
+                            <Save size={12} /> Save
+                          </button>
+                          <button 
+                            onClick={() => setEditingIndex(null)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold"
+                          >
+                            <X size={12} /> Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    )}
                   </div>
 
                   {msg.chart && msg.query_type !== "irrelevant" && (
                     <motion.div 
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                      initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+                      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
                       className="mt-4 -mx-2 bg-black/20 rounded-xl overflow-hidden border border-white/5 shadow-inner"
                     >
                       <PlotlyChart 
@@ -293,24 +461,14 @@ export default function AIAnalyst({
         </AnimatePresence>
 
         {isAnalyzing && (
-          <div className="flex justify-start items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0 border border-indigo-500/20">
-              <Bot size={18} className="animate-pulse" />
-            </div>
-            <div className="chat-bubble-ai flex items-center gap-3">
-              <div className="flex gap-1.5">
-                {[0, 1, 2].map((i) => (
-                  <motion.span
-                    key={i}
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.3, 1, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-                    className="w-1.5 h-1.5 bg-indigo-400 rounded-full"
-                  />
-                ))}
-              </div>
-              <span className="text-slate-400 font-medium italic">Analyzing...</span>
-            </div>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex justify-start items-start gap-3 w-full relative group"
+          >
+            <div className="absolute -inset-4 bg-indigo-500/5 blur-2xl rounded-full animate-pulse pointer-events-none" />
+            <MessageSkeleton />
+          </motion.div>
         )}
 
         <div ref={bottomRef} className="h-4" />
@@ -346,6 +504,32 @@ export default function AIAnalyst({
               onKeyDown={handleKeyDown}
               disabled={isAnalyzing || !payload}
             />
+
+            {/* Autocomplete Dropdown */}
+            <AnimatePresence>
+              {showAutocomplete && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute bottom-full mb-3 left-0 w-64 bg-[#0B0F19] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50"
+                >
+                  <div className="p-2 border-b border-white/5 bg-white/5">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2">Suggestions</span>
+                  </div>
+                  {autocompleteItems.map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => applyAutocomplete(item)}
+                      className="w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors flex items-center justify-between group"
+                    >
+                      <span className="truncate">{item}</span>
+                      <Zap size={10} className="text-slate-600 group-hover:text-indigo-200" />
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
             <div className="flex items-center gap-2 pr-2">
               <button
                 onClick={toggleVoice}

@@ -117,8 +117,30 @@ RULES:
             max_tokens=400,
         )
 
-        return response.choices[0].message.content
-
+        candidate = response.choices[0].message.content if response and getattr(response, "choices", None) else None
+        if candidate:
+            return candidate
     except Exception as e:
-        return f"AI suggestion failed: {str(e)}"
+        print(f"[Groq suggestion error]: {e}")
+
+    # Fallback to Google Gemini if Groq failed or returned no content
+    try:
+        from google import genai  # type: ignore
+        from google.genai import types  # type: ignore
+        from modules.app_secrets import get_secret
+        gkey = get_secret("GOOGLE_API_KEY")
+        if not gkey:
+            return f"AI suggestion failed: Groq error and GOOGLE_API_KEY not configured."
+
+        gclient = genai.Client(api_key=gkey)
+        gres = gclient.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=GROQ_SUGGESTION_TEMPERATURE, max_output_tokens=400)
+        )
+        if gres and getattr(gres, "text", None):
+            return gres.text
+        return "AI suggestion failed: empty response from Gemini"
+    except Exception as e2:
+        return f"AI suggestion failed: {str(e2)}"
 

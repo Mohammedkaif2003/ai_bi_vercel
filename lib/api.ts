@@ -101,7 +101,10 @@ export async function generateReport(
   dataset_name: string,
   user_name: string,
   report_title?: string,
-  report_intro?: string
+  report_intro?: string,
+  theme?: string,
+  brand_logo_b64?: string,
+  brand_color?: string
 ): Promise<{ pdf_b64: string }> {
   return post<{ pdf_b64: string }>("/api/report", {
     analysis_history,
@@ -109,6 +112,9 @@ export async function generateReport(
     user_name,
     report_title,
     report_intro,
+    theme,
+    brand_logo_b64,
+    brand_color,
   });
 }
 
@@ -163,6 +169,16 @@ export async function inspectData(dataset_key: string): Promise<any> {
 
 export async function cleanData(dataset_key: string): Promise<any> {
   return post("/api/wrangle", { dataset_key, action: "clean" });
+}
+
+export async function searchDataset(
+  dataset_key: string, 
+  query: string, 
+  page: number = 1, 
+  page_size: number = 20,
+  filters: Record<string, string> = {}
+): Promise<{ results: any[], total_matches: number, total_pages: number, page: number }> {
+  return post("/api/search", { dataset_key, query, page, page_size, filters });
 }
 
 

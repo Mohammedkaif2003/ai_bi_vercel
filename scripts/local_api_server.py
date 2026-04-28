@@ -35,6 +35,7 @@ from api.datasets import handler as DatasetsHandler
 from api.forecast import handler as ForecastHandler
 from api.report import handler as ReportHandler
 from api.upload import handler as UploadHandler
+from api.search import handler as SearchHandler
 from api._utils import send_error
 
 
@@ -44,6 +45,7 @@ ROUTES = {
     "/api/forecast": ForecastHandler,
     "/api/report": ReportHandler,
     "/api/upload": UploadHandler,
+    "/api/search": SearchHandler,
 }
 
 

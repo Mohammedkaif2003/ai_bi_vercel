@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import sys
 from http.server import BaseHTTPRequestHandler
+import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -106,11 +107,29 @@ class handler(BaseHTTPRequestHandler):
         except Exception as exc:
             print(f"Failed to save to Supabase: {exc}")
 
+        # Calculate Data Health Score
+        total_cells = df.size
+        missing_cells = df.isnull().sum().sum()
+        health_score = int(((total_cells - missing_cells) / total_cells) * 100) if total_cells > 0 else 100
+
+        # Calculate Correlation Matrix (for numeric columns)
+        correlations = {}
+        import pandas as pd
+        numeric_df = df.select_dtypes(include=['number'])
+        if not numeric_df.empty and len(numeric_df.columns) > 1:
+            corr_matrix = numeric_df.corr().round(2)
+            correlations = {
+                "columns": list(corr_matrix.columns),
+                "values": corr_matrix.values.tolist()
+            }
+
         send_json(self, {
             "dataset_key": dataset_id,
             "schema":      schema,
             "kpis":        kpis,
             "insights":    insights,
+            "health_score": health_score,
+            "correlations": correlations,
             "preview_rows": df_to_records(df.head(20)),
             "filename":    filename,
             "shape":       list(df.shape),

@@ -216,8 +216,31 @@ Analyze this data using your senior analyst framework. Be specific to THIS data 
 
     raw_response = None
 
-    # Try Google Gemini first
-    if GOOGLE_API_KEY and genai is not None:
+    # Prefer Groq first (user's preferred LLM). If it fails or is rate-limited,
+    # fall back to Google Gemini so the AI response keeps working.
+    if GROQ_API_KEY:
+        try:
+            from groq import Groq
+            client = Groq(api_key=GROQ_API_KEY)
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=max_tokens_groq
+            )
+            # Defensive: ensure response has content
+            if response and getattr(response, "choices", None):
+                candidate = response.choices[0].message.content
+                if candidate:
+                    raw_response = candidate
+        except Exception as e:
+            print(f"[Groq Error]: {e}")
+
+    # If Groq didn't produce a response, try Google Gemini as a fallback
+    if raw_response is None and GOOGLE_API_KEY and genai is not None:
         try:
             client = genai.Client(api_key=GOOGLE_API_KEY)
             response = client.models.generate_content(
@@ -233,25 +256,6 @@ Analyze this data using your senior analyst framework. Be specific to THIS data 
                 raw_response = response.text
         except Exception as e:
             print(f"[Gemini Error]: {e}")
-            pass  # fallback
-
-    # Fallback: Groq
-    if raw_response is None and GROQ_API_KEY:
-        try:
-            from groq import Groq
-            client = Groq(api_key=GROQ_API_KEY)
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
-                max_tokens=max_tokens_groq
-            )
-            raw_response = response.choices[0].message.content
-        except Exception as e:
-            print(f"[Groq Error]: {e}")
             pass
 
     if raw_response is None:

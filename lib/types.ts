@@ -37,6 +37,11 @@ export interface DatasetPayload {
   schema: Schema;
   kpis: KPI[];
   insights: string[];
+  health_score?: number;
+  correlations?: {
+    columns: string[];
+    values: number[][];
+  };
   preview_rows: Record<string, unknown>[];
   filename: string;
   shape: [number, number];

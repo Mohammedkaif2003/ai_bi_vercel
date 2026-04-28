@@ -33,7 +33,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from _utils import handle_options, read_json_body, require_auth, send_error, send_json  # noqa: E402
+from _utils import handle_options, read_json_body, require_auth, send_error, send_json, log_audit  # noqa: E402
 from modules.report_generator import generate_pdf  # noqa: E402
 
 
@@ -64,6 +64,7 @@ class handler(BaseHTTPRequestHandler):
 
         brand_logo_b64 = data.get("brand_logo_b64")
         brand_color = data.get("brand_color") or "#2563EB"
+        theme = data.get("theme") or "light"
 
         try:
             generate_pdf(
@@ -74,7 +75,8 @@ class handler(BaseHTTPRequestHandler):
                 report_title=report_title,
                 report_intro=report_intro,
                 brand_logo_b64=brand_logo_b64,
-                brand_color=brand_color
+                brand_color=brand_color,
+                theme=theme
             )
         except Exception as exc:
             send_error(self, f"PDF generation failed: {exc}", 500)

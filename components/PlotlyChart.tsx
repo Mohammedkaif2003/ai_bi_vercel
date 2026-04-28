@@ -3,6 +3,7 @@
  * Uses dynamic import to avoid SSR issues with plotly.js.
  */
 import dynamic from "next/dynamic";
+import { useEffect, useRef, useState } from "react";
 
 const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
@@ -19,6 +20,37 @@ interface Props {
 }
 
 export default function PlotlyChart({ spec, height = 420 }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    // If IntersectionObserver isn't available, load immediately.
+    if (typeof window === "undefined" || !('IntersectionObserver' in window)) {
+      setInView(true);
+      return;
+    }
+
+    const el = containerRef.current;
+    if (!el) {
+      setInView(true);
+      return;
+    }
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setInView(true);
+            obs.disconnect();
+          }
+        });
+      },
+      { rootMargin: '200px', threshold: 0.01 }
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
   const figure = spec as {
     data?: any[];
     layout?: any;
@@ -98,20 +130,24 @@ export default function PlotlyChart({ spec, height = 420 }: Props) {
   };
 
   return (
-    <div className="relative group/chart">
-      <Plot
-        data={enhancedData}
-        layout={layout}
-        config={{
-          displayModeBar: false,
-          responsive: true,
-          ...figure.config,
-        }}
-        style={{ width: "100%", height: `${height}px` }}
-        useResizeHandler
-        
-      />
-      
+    <div className="relative group/chart" ref={containerRef}>
+      {!inView ? (
+        <div className="h-80 flex items-center justify-center text-[#64748B] text-sm">
+          Loading chart…
+        </div>
+      ) : (
+        <Plot
+          data={enhancedData}
+          layout={layout}
+          config={{
+            displayModeBar: false,
+            responsive: true,
+            ...figure.config,
+          }}
+          style={{ width: "100%", height: `${height}px` }}
+          useResizeHandler
+        />
+      )}
     </div>
   );
 }

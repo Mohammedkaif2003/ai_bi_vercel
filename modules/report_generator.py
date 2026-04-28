@@ -45,7 +45,7 @@ from modules.app_logging import get_logger
 logger = get_logger("report_generator")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Brand palette
+# Brand palette (Defaults - overridden by theme)
 # ─────────────────────────────────────────────────────────────────────────────
 C_INK      = colors.HexColor("#0F172A")
 C_BODY     = colors.HexColor("#1F2937")
@@ -53,14 +53,52 @@ C_MUTED    = colors.HexColor("#64748B")
 C_ACCENT   = colors.HexColor("#2563EB")
 C_ACCENT2  = colors.HexColor("#4F46E5")
 C_ACCENT3  = colors.HexColor("#7C3AED")
-C_GOLD     = colors.HexColor("#B45309")
 C_HAIRLINE = colors.HexColor("#E2E8F0")
-C_QUOTE_BG = colors.HexColor("#F8FAFC")
 C_TH_BG    = colors.HexColor("#1E3A5F")
 C_ROW_ALT  = colors.HexColor("#F1F5F9")
 C_ROW_BORDER = colors.HexColor("#CBD5E1")
 C_COVER_BAND = colors.HexColor("#0B1B3A")
-C_FOOTER_BG  = colors.HexColor("#0F172A")
+C_PAGE_BG    = colors.white
+
+def _apply_theme(theme_name: str = "light"):
+    global C_INK, C_BODY, C_MUTED, C_ACCENT, C_ACCENT2, C_HAIRLINE, C_TH_BG, C_ROW_ALT, C_ROW_BORDER, C_COVER_BAND, C_PAGE_BG
+    
+    if theme_name == "dark":
+        C_INK = colors.white
+        C_BODY = colors.HexColor("#E2E8F0")
+        C_MUTED = colors.HexColor("#94A3B8")
+        C_ACCENT = colors.HexColor("#6366F1")
+        C_ACCENT2 = colors.HexColor("#818CF8")
+        C_HAIRLINE = colors.HexColor("#1E293B")
+        C_TH_BG = colors.HexColor("#312E81")
+        C_ROW_ALT = colors.HexColor("#0F172A")
+        C_ROW_BORDER = colors.HexColor("#1E293B")
+        C_COVER_BAND = colors.HexColor("#030712")
+        C_PAGE_BG = colors.HexColor("#030712")
+    elif theme_name == "blue":
+        C_INK = colors.HexColor("#1E3A8A")
+        C_BODY = colors.HexColor("#1E40AF")
+        C_MUTED = colors.HexColor("#3B82F6")
+        C_ACCENT = colors.HexColor("#2563EB")
+        C_ACCENT2 = colors.HexColor("#1D4ED8")
+        C_HAIRLINE = colors.HexColor("#DBEAFE")
+        C_TH_BG = colors.HexColor("#1E3A8A")
+        C_ROW_ALT = colors.HexColor("#EFF6FF")
+        C_ROW_BORDER = colors.HexColor("#BFDBFE")
+        C_COVER_BAND = colors.HexColor("#1E3A8A")
+        C_PAGE_BG = colors.white
+    else: # light / corporate
+        C_INK = colors.HexColor("#0F172A")
+        C_BODY = colors.HexColor("#1F2937")
+        C_MUTED = colors.HexColor("#64748B")
+        C_ACCENT = colors.HexColor("#2563EB")
+        C_ACCENT2 = colors.HexColor("#4F46E5")
+        C_HAIRLINE = colors.HexColor("#E2E8F0")
+        C_TH_BG = colors.HexColor("#1E3A5F")
+        C_ROW_ALT = colors.HexColor("#F1F5F9")
+        C_ROW_BORDER = colors.HexColor("#CBD5E1")
+        C_COVER_BAND = colors.HexColor("#0B1B3A")
+        C_PAGE_BG = colors.white
 
 HX_ACCENT = "#2563EB"
 HX_MUTED  = "#64748B"
@@ -126,6 +164,10 @@ def _build_styles():
 # ─────────────────────────────────────────────────────────────────────────────
 def _decorate_cover(canvas, doc, logo_b64=None):
     canvas.saveState()
+    # Background
+    canvas.setFillColor(C_PAGE_BG)
+    canvas.rect(0, 0, PAGE_W, PAGE_H, fill=True, stroke=False)
+    
     # Full-bleed top band in deep brand navy
     canvas.setFillColor(C_COVER_BAND)
     canvas.rect(0, PAGE_H - 1.2 * inch, PAGE_W, 1.2 * inch, fill=True, stroke=False)
@@ -173,6 +215,9 @@ def _decorate_cover(canvas, doc, logo_b64=None):
 
 def _decorate_page(canvas, doc):
     canvas.saveState()
+    # Background
+    canvas.setFillColor(C_PAGE_BG)
+    canvas.rect(0, 0, PAGE_W, PAGE_H, fill=True, stroke=False)
 
     # ── Header band ────────────────────────────────────────────────────
     header_h = 0.50 * inch
@@ -948,20 +993,29 @@ def generate_pdf(
     user_name: str | None = None,
     file_path: str | None = None,
     report_title: str | None = None,
-    report_intro: str | None = None
+    report_intro: str | None = None,
+    theme: str = "light",
+    brand_logo_b64: str | None = None,
+    brand_color: str | None = None
 ) -> str:
     """
     Generate a narrative-first PDF report.
-
-    - Pass `analysis_history` (list of dicts) for a multi-analysis document.
-    - Or pass `query` + `summary_text` + `dataframe` for a single-query report.
-    - Pass ``file_path`` to control where the PDF is written (defaults to
-      ``AI_Executive_Report.pdf`` in the current directory; use ``/tmp/...``
-      for serverless environments where the working directory is read-only).
-    Returns the path of the written PDF.
     """
     if file_path is None:
         file_path = "AI_Executive_Report.pdf"
+    
+    # Apply theme colors
+    _apply_theme(theme)
+    
+    # Override accent color if brand_color is provided
+    if brand_color:
+        global C_ACCENT, HX_ACCENT
+        try:
+            C_ACCENT = colors.HexColor(brand_color)
+            HX_ACCENT = brand_color
+        except:
+            pass
+
     timestamp = datetime.now().strftime("%B %d, %Y · %H:%M")
 
     # Resolve defaults from session state if available

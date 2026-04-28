@@ -25,6 +25,8 @@ export function useChat({
   
   const historyRef = useRef<ChatMessage[]>([]);
   const lastLoadedSessionId = useRef<string | null>(initialSessionId || null);
+  const pageRef = useRef(0);
+  const MESSAGE_PAGE_SIZE = 200;
 
   // Sync session ID if prop changes
   useEffect(() => {
@@ -39,15 +41,20 @@ export function useChat({
     setIsLoading(true);
     setError(null);
     try {
+      // Load only the most recent page of messages by default to avoid
+      // fetching extremely long histories on initial open. Older messages
+      // can be fetched with `loadMoreMessages` or `loadAllMessages`.
+      pageRef.current = 0;
       const { data, error: err } = await supabase
         .from("chat_messages")
         .select("*")
         .eq("session_id", sid)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false })
+        .range(0, MESSAGE_PAGE_SIZE - 1);
 
       if (err) throw err;
 
-      const msgs: ChatMessage[] = (data || []).map(m => ({
+      const msgsDesc: ChatMessage[] = (data || []).map(m => ({
         role: m.role as "user" | "assistant",
         content: m.content,
         result: m.result_data,
@@ -56,8 +63,76 @@ export function useChat({
         timestamp: new Date(m.created_at).getTime()
       }));
 
+      // Reverse to chronological order (oldest -> newest)
+      const msgs = msgsDesc.reverse();
       setMessages(msgs);
       historyRef.current = msgs;
+    } catch (err: any) {
+      setError(err.message || "Failed to load chat history.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch one more (older) page of messages and prepend them to the current
+  // history. Returns true if more messages were loaded.
+  const loadMoreMessages = useCallback(async (sid: string) => {
+    if (!sid) return false;
+    try {
+      pageRef.current += 1;
+      const start = pageRef.current * MESSAGE_PAGE_SIZE;
+      const end = start + MESSAGE_PAGE_SIZE - 1;
+      const { data, error: err } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("session_id", sid)
+        .order("created_at", { ascending: false })
+        .range(start, end);
+
+      if (err) throw err;
+
+      const msgsDesc: ChatMessage[] = (data || []).map(m => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        result: m.result_data,
+        chart: m.chart_spec,
+        query_type: m.query_type,
+        timestamp: new Date(m.created_at).getTime()
+      }));
+
+      if (!msgsDesc || msgsDesc.length === 0) return false;
+
+      const msgs = msgsDesc.reverse();
+      setMessages(prev => [...msgs, ...prev]);
+      historyRef.current = [...msgs, ...historyRef.current];
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }, []);
+
+  // Load the entire session history (use sparingly)
+  const loadAllMessages = useCallback(async (sid: string) => {
+    if (!sid) return;
+    setIsLoading(true);
+    try {
+      const { data, error: err } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("session_id", sid)
+        .order("created_at", { ascending: true });
+      if (err) throw err;
+      const msgs: ChatMessage[] = (data || []).map(m => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        result: m.result_data,
+        chart: m.chart_spec,
+        query_type: m.query_type,
+        timestamp: new Date(m.created_at).getTime()
+      }));
+      setMessages(msgs);
+      historyRef.current = msgs;
+      pageRef.current = Math.ceil((msgs.length || 0) / MESSAGE_PAGE_SIZE) - 1;
     } catch (err: any) {
       setError(err.message || "Failed to load chat history.");
     } finally {

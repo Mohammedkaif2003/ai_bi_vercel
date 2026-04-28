@@ -13,10 +13,13 @@ import {
   FileText
 } from "lucide-react";
 import LogoMark from "@/components/LogoMark";
+import LandingDemo from "@/components/LandingDemo";
+import { AnimatePresence } from "framer-motion";
 
 export default function LandingPage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
 
   useEffect(() => {
     import("@/lib/supabase").then(({ supabase }) => {
@@ -140,12 +143,22 @@ export default function LandingPage() {
                 {isLoggedIn ? "Go to Dashboard" : "Launch Dashboard"}
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
-              <button className="px-8 py-4 rounded-2xl font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all text-lg">
+              <button 
+                onClick={() => setIsDemoOpen(true)}
+                className="px-8 py-4 rounded-2xl font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all text-lg"
+              >
                 View Demo
               </button>
             </motion.div>
           </div>
         </section>
+
+        {/* Demo Showcase Overlay */}
+        <AnimatePresence>
+          {isDemoOpen && (
+            <LandingDemo isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
+          )}
+        </AnimatePresence>
 
         {/* Features Section */}
         <section className="py-24 px-6 border-t border-white/[0.05]">

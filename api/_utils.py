@@ -70,7 +70,8 @@ def handle_options(handler) -> None:
 def log_audit(user, action: str, details: dict = None):
     """Silently log an action to the audit_logs table."""
     try:
-        from lib.supabase_client import supabase
+        from supabase_client import get_supabase
+        supabase = get_supabase()
         supabase.table("audit_logs").insert({
             "user_id": user.get("id"),
             "action": action,
