@@ -116,7 +116,7 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
               <div className="flex flex-col gap-6">
                 <div className="bg-white/5 p-5 rounded-3xl rounded-tl-none max-w-md border border-white/5 backdrop-blur-md">
                   <p className="text-sm text-slate-300 leading-relaxed">
-                    Hello! I've analyzed your <b className="text-white">Global Sales</b> dataset. What specific insights are you looking for today?
+                    Hello! {"I've"} analyzed your <b className="text-white">Global Sales</b> dataset. What specific insights are you looking for today?
                   </p>
                 </div>
                 
