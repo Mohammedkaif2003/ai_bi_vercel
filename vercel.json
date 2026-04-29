@@ -3,8 +3,7 @@
   "framework": "nextjs",
   "functions": {
     "api/*.py": {
-      "maxDuration": 60,
-      "memory": 1024
+      "maxDuration": 60
     }
   }
 }
