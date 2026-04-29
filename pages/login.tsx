@@ -2,7 +2,7 @@ import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, User, LogIn, Info, UserPlus, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Lock, User, LogIn, Info, UserPlus, ArrowLeft, Eye, EyeOff, Send, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import LogoMark from "@/components/LogoMark";
 
@@ -11,19 +11,41 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgot, setIsForgot] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
 
   // Check if already logged in
+  // Check if already logged in or in recovery mode
   useEffect(() => {
-    async function checkUser() {
+    async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession();
+      
+      // Check for recovery mode in URL hash or search params
+      const isRecoveryMode = window.location.hash.includes("type=recovery") || 
+                             window.location.search.includes("type=recovery");
+                             
+      if (isRecoveryMode) {
+        setIsRecovery(true);
+        return;
+      }
+
       if (session) {
         router.push("/dashboard");
       }
     }
-    checkUser();
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsRecovery(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [router]);
 
   async function handleSubmit(e: FormEvent) {
@@ -32,13 +54,36 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error: signUpError } = await supabase.auth.signUp({
+      if (isRecovery) {
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+        if (updateError) throw updateError;
+        setError("Password updated! Redirecting to login...");
+        setTimeout(() => {
+          setIsRecovery(false);
+          setError("");
+          router.push("/login");
+        }, 2000);
+      } else if (isForgot) {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/login`,
+        });
+        if (resetError) throw resetError;
+        setError("Check your email for the reset link!");
+      } else if (isSignUp) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
         });
         if (signUpError) throw signUpError;
-        setError("Check your email for the confirmation link!");
+        
+        if (signUpData.session) {
+          router.push("/dashboard");
+        } else {
+          setError("Account created! You can now sign in.");
+          setIsSignUp(false);
+        }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -57,7 +102,7 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>{`Nexlytics | ${isSignUp ? "Create Account" : "Sign In"}`}</title>
+        <title>{`Nexlytics | ${isRecovery ? "Reset Password" : isForgot ? "Forgot Password" : isSignUp ? "Create Account" : "Sign In"}`}</title>
       </Head>
       <div className="min-h-screen flex items-center justify-center bg-mesh px-4">
         <motion.div 
@@ -90,50 +135,68 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="email">
-                  Email Address
-                </label>
-                <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
-                  <input
-                    id="email"
-                    type="email"
-                    className="input pl-12"
-                    placeholder="name@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+              {!isRecovery && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="email">
+                    Email Address
+                  </label>
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
+                    <input
+                      id="email"
+                      type="email"
+                      className="input pl-12"
+                      placeholder="name@company.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="password">
-                  Password
-                </label>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    className="input pl-12 pr-12"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-400 transition-colors focus:outline-none"
-                    title={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+              {!isForgot && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="password">
+                    {isRecovery ? "New Password" : "Password"}
+                  </label>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      className="input pl-12 pr-12"
+                      placeholder="••••••••"
+                      value={isRecovery ? newPassword : password}
+                      onChange={(e) => isRecovery ? setNewPassword(e.target.value) : setPassword(e.target.value)}
+                      autoComplete={isRecovery ? "new-password" : "current-password"}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-400 transition-colors focus:outline-none"
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {!isSignUp && !isRecovery && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsForgot(true);
+                          setError("");
+                        }}
+                        className="text-[10px] text-slate-500 hover:text-indigo-400 transition-colors font-bold uppercase tracking-widest"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
 
               {error && (
                 <motion.div 
@@ -159,20 +222,29 @@ export default function LoginPage() {
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    {isSignUp ? <UserPlus size={20} /> : <LogIn size={20} />}
-                    <span>{isSignUp ? "Create Account" : "Access Dashboard"}</span>
+                    {isRecovery ? <CheckCircle size={20} /> : isForgot ? <Send size={20} /> : isSignUp ? <UserPlus size={20} /> : <LogIn size={20} />}
+                    <span>{isRecovery ? "Update Password" : isForgot ? "Send Reset Link" : isSignUp ? "Create Account" : "Access Dashboard"}</span>
                   </>
                 )}
               </button>
             </form>
 
             <div className="mt-8 text-center space-y-4">
-              <button 
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-xs text-slate-500 hover:text-indigo-400 transition-colors"
-              >
-                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
-              </button>
+              {!isRecovery && (
+                <button 
+                  onClick={() => {
+                    if (isForgot) {
+                      setIsForgot(false);
+                    } else {
+                      setIsSignUp(!isSignUp);
+                    }
+                    setError("");
+                  }}
+                  className="text-xs text-slate-500 hover:text-indigo-400 transition-colors font-medium"
+                >
+                  {isForgot ? "Back to Sign In" : isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+                </button>
+              )}
             </div>
           </div>
           

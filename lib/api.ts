@@ -64,9 +64,10 @@ export async function loadDataset(dataset_key: string): Promise<DatasetPayload> 
 
 export async function uploadCsv(
   csv_b64: string,
-  filename: string
+  filename: string,
+  storage_path?: string
 ): Promise<DatasetPayload> {
-  return post<DatasetPayload>("/api/upload", { csv_b64, filename });
+  return post<DatasetPayload>("/api/upload", { csv_b64, filename, storage_path });
 }
 
 // ---------------------------------------------------------------------------

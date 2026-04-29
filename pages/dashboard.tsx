@@ -78,6 +78,15 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Check for recovery mode in URL (hash or query)
+    const isRecovery = window.location.hash.includes("type=recovery") || 
+                       window.location.search.includes("type=recovery");
+    
+    if (isRecovery) {
+      router.push(`/login${window.location.hash}${window.location.search}`);
+      return;
+    }
+
     async function getSession() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -95,7 +104,11 @@ export default function DashboardPage() {
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        router.push("/login#type=recovery");
+        return;
+      }
       if (!session) {
         router.replace("/login");
       }
@@ -189,8 +202,25 @@ export default function DashboardPage() {
     setLoadingDataset(true);
     setDatasetError("");
     try {
-      const b64 = await fileToBase64(file);
-      const payload = await uploadCsv(b64, file.name);
+      let storagePath = undefined;
+      let b64 = "";
+
+      // If file > 2MB, upload to storage first to avoid Vercel body limits
+      if (file.size > 2 * 1024 * 1024 && user) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+        storagePath = `temp/${user.id}/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('user_datasets')
+          .upload(storagePath, file);
+          
+        if (uploadError) throw uploadError;
+      } else {
+        b64 = await fileToBase64(file);
+      }
+
+      const payload = await uploadCsv(b64, file.name, storagePath);
       setDatasetPayload(payload);
       setSessionDataset(payload);
       setActiveSessionId(null);

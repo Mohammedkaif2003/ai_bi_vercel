@@ -53,16 +53,28 @@ class handler(BaseHTTPRequestHandler):
 
         data = read_json_body(self)
         csv_b64 = data.get("csv_b64", "")
+        storage_path = data.get("storage_path")
         filename = str(data.get("filename", "upload.csv"))
 
-        if not csv_b64:
-            send_error(self, "csv_b64 is required.", 400)
+        if not csv_b64 and not storage_path:
+            send_error(self, "Either csv_b64 or storage_path is required.", 400)
             return
 
         try:
+            if storage_path:
+                # 1. Download from Supabase Storage (Bypasses Vercel payload limit)
+                from supabase_client import get_supabase_for_user
+                import base64
+                supabase = get_supabase_for_user(user.get("token"))
+                if not supabase:
+                    raise ValueError("Could not connect to Supabase.")
+                
+                content = supabase.storage.from_("user_datasets").download(storage_path)
+                csv_b64 = base64.b64encode(content).decode("utf-8")
+
             df = df_from_csv_b64(csv_b64)
         except Exception as exc:
-            send_error(self, f"Could not parse CSV: {exc}", 422)
+            send_error(self, f"Could not load/parse CSV: {exc}", 422)
             return
 
         try:
@@ -82,30 +94,39 @@ class handler(BaseHTTPRequestHandler):
             return
             
         # 2. Persistent Storage (Supabase) - used for reloading sessions later
+        final_storage_path = storage_path # fallback to original if re-upload fails
         try:
             supabase = get_supabase_for_user(user.get("token"))
             if supabase and user.get("id") != "demo-user-id":
                 user_id = user.get("id")
                 import base64
                 csv_bytes = base64.b64decode(normalised_csv_b64.encode("utf-8"))
-                storage_path = f"{user_id}/{dataset_id}_{filename}"
+                final_storage_path = f"{user_id}/{dataset_id}_{filename}"
                 
+                # We always re-upload the NORMALISED version for persistence
                 supabase.storage.from_("user_datasets").upload(
-                    path=storage_path,
+                    path=final_storage_path,
                     file=csv_bytes,
                     file_options={"content-type": "text/csv"}
                 )
-                
+        except Exception as exc:
+            print(f"Failed to save to Supabase storage: {exc}")
+            # If we already have a storage_path from the frontend, we are still okay
+            if not final_storage_path:
+                print("No storage path available for database entry.")
+
+        try:
+            if supabase and user.get("id") != "demo-user-id" and final_storage_path:
                 supabase.table("datasets").insert({
                     "id": dataset_id,
-                    "user_id": user_id,
+                    "user_id": user.get("id"),
                     "filename": filename,
-                    "storage_path": storage_path,
+                    "storage_path": final_storage_path,
                     "row_count": df.shape[0],
                     "column_count": df.shape[1]
                 }).execute()
         except Exception as exc:
-            print(f"Failed to save to Supabase: {exc}")
+            print(f"Failed to save to Supabase table: {exc}")
 
         # Calculate Data Health Score
         total_cells = df.size

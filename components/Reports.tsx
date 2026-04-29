@@ -130,8 +130,15 @@ export default function ReportsTab({
               height: 450
             });
             
+            // Wait a moment for layout/animations to settle
+            await new Promise(r => setTimeout(r, 200));
+            
             const imgData = await Plotly.toImage(div, { format: 'png', width: 800, height: 450 });
-            entry.chart_b64 = imgData.split(',')[1];
+            if (imgData && imgData.length > 1000) {
+              entry.chart_b64 = imgData.split(',')[1];
+            } else {
+              console.warn("Captured chart image was suspiciously small/empty.");
+            }
           } catch (chartErr) {
             console.error("Failed to capture chart image:", chartErr);
           } finally {

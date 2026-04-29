@@ -22,12 +22,29 @@ export default function LandingPage() {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
 
   useEffect(() => {
+    // Check for recovery mode in URL (hash or query)
+    const isRecovery = window.location.hash.includes("type=recovery") || 
+                       window.location.search.includes("type=recovery");
+    
+    if (isRecovery) {
+      router.push(`/login${window.location.hash}${window.location.search}`);
+      return;
+    }
+
     import("@/lib/supabase").then(({ supabase }) => {
       supabase.auth.getSession().then(({ data: { session } }) => {
         setIsLoggedIn(!!session);
       });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          router.push("/login#type=recovery");
+        }
+      });
+
+      return () => subscription.unsubscribe();
     });
-  }, []);
+  }, [router]);
 
   const handleAction = () => {
     if (isLoggedIn) {
