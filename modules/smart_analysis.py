@@ -74,6 +74,10 @@ _AGGREGATE_TOKENS = (
     "total", "sum", "average", "mean", "count", "how many",
     "median", "overall",
 )
+_WHATIF_TOKENS = (
+    "what if", "scenario", "suppose", "increase", "decrease",
+    "percent", "%", "change", "impact", "effect",
+)
 
 
 def _detect_query_type(q: str) -> str:
@@ -93,6 +97,8 @@ def _detect_query_type(q: str) -> str:
         return "trend"
     if any(t in q for t in _AGGREGATE_TOKENS):
         return "aggregate"
+    if any(t in q for t in _WHATIF_TOKENS) and re.search(r"\d+[%]|percent", q):
+        return "whatif"
     return "general"
 
 
@@ -534,6 +540,73 @@ def _analyze_aggregate(df, metrics, group_col, query_lc):
     return {"result": val, "chart": None, "summary": summary, "query_type": "aggregate"}
 
 
+def _analyze_whatif(df: pd.DataFrame, metrics: list[str], query_lc: str):
+    """Simulate a 'What-If' scenario based on a percentage change."""
+    # 1. Extract percentage
+    pct_match = re.search(r"(\d+)", query_lc)
+    if not pct_match: return None
+    pct_val = float(pct_match.group(1)) / 100.0
+    
+    is_decrease = any(t in query_lc for t in ("decrease", "lower", "drop", "less", "reduce"))
+    multiplier = 1 - pct_val if is_decrease else 1 + pct_val
+    
+    # 2. Identify variables
+    # We need at least one metric to change. 
+    # If two metrics: 1st is the independent (change), 2nd is dependent (target)
+    if len(metrics) < 1: return None
+    
+    indep = metrics[0]
+    dep = metrics[1] if len(metrics) > 1 else metrics[0]
+    
+    current_indep_total = df[indep].sum()
+    sim_indep_total = current_indep_total * multiplier
+    
+    # Simple simulation: 
+    # If they are different, calculate correlation. 
+    # If same, just scale the metric.
+    if indep == dep:
+        current_dep_total = current_indep_total
+        sim_dep_total = sim_indep_total
+    else:
+        current_dep_total = df[dep].sum()
+        correlation = df[[indep, dep]].corr().iloc[0, 1]
+        # We assume a linear impact weighted by correlation
+        # Change in Dep = Change in Indep * Correlation (oversimplified but effective for BI)
+        impact_factor = 1 + ((multiplier - 1) * correlation)
+        sim_dep_total = current_dep_total * impact_factor
+
+    change_pct = ((sim_dep_total / current_dep_total) - 1) * 100
+    
+    summary = (
+        f"What-If Scenario: {pct_val*100:.0f}% {'decrease' if is_decrease else 'increase'} in {indep}. "
+        f"Predicted impact on {dep}: "
+        f"{'up' if change_pct > 0 else 'down'} {abs(change_pct):.1f}% "
+        f"(from {_fmt(current_dep_total, dep)} to {_fmt(sim_dep_total, dep)})."
+    )
+
+    plot_df = pd.DataFrame([
+        {"Scenario": "Current", "Value": current_dep_total},
+        {"Scenario": "Simulated", "Value": sim_dep_total}
+    ])
+
+    fig = px.bar(
+        plot_df, x="Scenario", y="Value",
+        color="Scenario",
+        color_discrete_map={"Current": PRIMARY_SOFT, "Simulated": TERTIARY},
+        title=f"Predictive Impact on {dep}"
+    )
+    fig.update_traces(texttemplate="%{y:,.0f}", textposition="outside")
+    _polish(fig)
+    fig.update_layout(showlegend=False, xaxis_title="")
+
+    return {
+        "result": plot_df, 
+        "chart": fig, 
+        "summary": summary, 
+        "query_type": "whatif"
+    }
+
+
 def _analyze_general(df, metrics, group_col, date_col, query_lc):
     """Catch-all: group by the best dimension, pick the best chart."""
     metric = metrics[0]
@@ -628,6 +701,8 @@ def run_smart_analysis(query: str, df: pd.DataFrame) -> dict | None:
             return _analyze_forecast(df, metrics, date_col) if date_col else None
         if qtype == "aggregate":
             return _analyze_aggregate(df, metrics, group_col, query_lc)
+        if qtype == "whatif":
+            return _analyze_whatif(df, metrics, query_lc)
         # general
         return _analyze_general(df, metrics, group_col, date_col, query_lc)
     except Exception as exc:

@@ -1,5 +1,5 @@
 /**
- * API client for Apex Analytics Vercel backend.
+ * API client for Nexlytics Vercel backend.
  *
  * Each function talks to the corresponding Python serverless endpoint
  * in api/*.py.  The base URL is empty so that calls are relative — this
@@ -16,12 +16,23 @@ import type {
   AnalysisHistoryEntry,
 } from "./types";
 
+import { supabase } from "./supabase";
+
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
+async function getAuthToken(): Promise<string | undefined> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token;
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
+  const token = await getAuthToken();
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   const json = await res.json();
@@ -30,18 +41,13 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+  const token = await getAuthToken();
+  const res = await fetch(`${BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
   const json = await res.json();
   if (!res.ok) throw new Error((json as { error?: string }).error ?? "Request failed");
   return json as T;
-}
-
-// ---------------------------------------------------------------------------
-// Auth
-// ---------------------------------------------------------------------------
-
-export async function login(username: string, password: string): Promise<User> {
-  return post<User>("/api/auth", { username, password });
 }
 
 // ---------------------------------------------------------------------------
@@ -58,9 +64,10 @@ export async function loadDataset(dataset_key: string): Promise<DatasetPayload> 
 
 export async function uploadCsv(
   csv_b64: string,
-  filename: string
+  filename: string,
+  storage_path?: string
 ): Promise<DatasetPayload> {
-  return post<DatasetPayload>("/api/upload", { csv_b64, filename });
+  return post<DatasetPayload>("/api/upload", { csv_b64, filename, storage_path });
 }
 
 // ---------------------------------------------------------------------------
@@ -69,10 +76,10 @@ export async function uploadCsv(
 
 export async function analyze(
   query: string,
-  csv_b64: string,
+  dataset_key: string,
   dataset_name?: string
 ): Promise<AnalysisResult> {
-  return post<AnalysisResult>("/api/analyze", { query, csv_b64, dataset_name });
+  return post<AnalysisResult>("/api/analyze", { query, dataset_key, dataset_name });
 }
 
 // ---------------------------------------------------------------------------
@@ -80,10 +87,10 @@ export async function analyze(
 // ---------------------------------------------------------------------------
 
 export async function forecast(
-  csv_b64: string,
+  dataset_key: string,
   periods: number = 6
 ): Promise<ForecastResult> {
-  return post<ForecastResult>("/api/forecast", { csv_b64, periods });
+  return post<ForecastResult>("/api/forecast", { dataset_key, periods });
 }
 
 // ---------------------------------------------------------------------------
@@ -93,14 +100,106 @@ export async function forecast(
 export async function generateReport(
   analysis_history: AnalysisHistoryEntry[],
   dataset_name: string,
-  user_name: string
+  user_name: string,
+  report_title?: string,
+  report_intro?: string,
+  theme?: string,
+  brand_logo_b64?: string,
+  brand_color?: string
 ): Promise<{ pdf_b64: string }> {
   return post<{ pdf_b64: string }>("/api/report", {
     analysis_history,
     dataset_name,
     user_name,
+    report_title,
+    report_intro,
+    theme,
+    brand_logo_b64,
+    brand_color,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Pinned Insights (Live Dashboard)
+// ---------------------------------------------------------------------------
+
+export async function pinInsight(data: {
+  dataset_key: string;
+  filename: string;
+  query: string;
+  chart_spec: any;
+  narration?: string;
+}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Authentication required");
+
+  const { data: result, error } = await supabase
+    .from("pinned_insights")
+    .insert({
+      ...data,
+      user_id: user.id
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return result;
+}
+
+export async function unpinInsight(id: string) {
+  const { error } = await supabase
+    .from("pinned_insights")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function listPinnedInsights() {
+  const { data, error } = await supabase
+    .from("pinned_insights")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+
+export async function inspectData(dataset_key: string): Promise<any> {
+  return post("/api/wrangle", { dataset_key, action: "inspect" });
+}
+
+export async function cleanData(dataset_key: string): Promise<any> {
+  return post("/api/wrangle", { dataset_key, action: "clean" });
+}
+
+export async function searchDataset(
+  dataset_key: string, 
+  query: string, 
+  page: number = 1, 
+  page_size: number = 20,
+  filters: Record<string, string> = {}
+): Promise<{ results: any[], total_matches: number, total_pages: number, page: number }> {
+  return post("/api/search", { dataset_key, query, page, page_size, filters });
+}
+
+
+export async function createAlert(alert: any) {
+  const { data, error } = await supabase.from("alerts").insert([alert]).select();
+  if (error) throw error;
+  return data[0];
+}
+
+export async function listAlerts() {
+  const { data, error } = await supabase.from("alerts").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAlert(id: string) {
+  const { error } = await supabase.from("alerts").delete().eq("id", id);
+  if (error) throw error;
+}
+
 
 // ---------------------------------------------------------------------------
 // Helpers

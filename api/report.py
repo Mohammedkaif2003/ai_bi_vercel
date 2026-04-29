@@ -33,7 +33,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from _utils import handle_options, read_json_body, send_error, send_json  # noqa: E402
+from _utils import handle_options, read_json_body, require_auth, send_error, send_json, log_audit  # noqa: E402
 from modules.report_generator import generate_pdf  # noqa: E402
 
 
@@ -42,17 +42,29 @@ class handler(BaseHTTPRequestHandler):
         handle_options(self)
 
     def do_POST(self):
+        user = require_auth(self)
+        if user is None:
+            return
+
         data = read_json_body(self)
         analysis_history = data.get("analysis_history") or []
         dataset_name = data.get("dataset_name") or "Active Dataset"
-        user_name = data.get("user_name") or "Apex Analytics User"
+        
+        log_audit(user, "report_gen", {"dataset_name": dataset_name, "n_analyses": len(analysis_history)})
+        user_name = data.get("user_name") or "Nexlytics User"
+        report_title = data.get("report_title") or "AI-Assisted Executive Briefing"
+        report_intro = data.get("report_intro") or ""
 
         if not isinstance(analysis_history, list):
             send_error(self, "analysis_history must be a list.", 400)
             return
 
         # Write the PDF to /tmp (only writable location in Vercel)
-        tmp_path = os.path.join(tempfile.gettempdir(), "apex_report.pdf")
+        tmp_path = os.path.join(tempfile.gettempdir(), "nexlytics_report.pdf")
+
+        brand_logo_b64 = data.get("brand_logo_b64")
+        brand_color = data.get("brand_color") or "#2563EB"
+        theme = data.get("theme") or "light"
 
         try:
             generate_pdf(
@@ -60,6 +72,11 @@ class handler(BaseHTTPRequestHandler):
                 dataset_name=dataset_name,
                 user_name=user_name,
                 file_path=tmp_path,
+                report_title=report_title,
+                report_intro=report_intro,
+                brand_logo_b64=brand_logo_b64,
+                brand_color=brand_color,
+                theme=theme
             )
         except Exception as exc:
             send_error(self, f"PDF generation failed: {exc}", 500)

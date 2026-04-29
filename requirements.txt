@@ -4,4 +4,7 @@ plotly
 groq
 python-dotenv
 reportlab
-google-generativeai
+google-genai
+supabase==2.10.0
+redis
+upstash-redis

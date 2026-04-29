@@ -7,6 +7,7 @@ document reads like an executive briefing, not a dashboard printout.
 """
 from __future__ import annotations
 
+import base64
 import copy
 import os
 import re
@@ -36,6 +37,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    KeepTogether,
 )
 
 from modules.app_logging import get_logger
@@ -43,7 +45,7 @@ from modules.app_logging import get_logger
 logger = get_logger("report_generator")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Brand palette
+# Brand palette (Defaults - overridden by theme)
 # ─────────────────────────────────────────────────────────────────────────────
 C_INK      = colors.HexColor("#0F172A")
 C_BODY     = colors.HexColor("#1F2937")
@@ -51,14 +53,52 @@ C_MUTED    = colors.HexColor("#64748B")
 C_ACCENT   = colors.HexColor("#2563EB")
 C_ACCENT2  = colors.HexColor("#4F46E5")
 C_ACCENT3  = colors.HexColor("#7C3AED")
-C_GOLD     = colors.HexColor("#B45309")
 C_HAIRLINE = colors.HexColor("#E2E8F0")
-C_QUOTE_BG = colors.HexColor("#F8FAFC")
 C_TH_BG    = colors.HexColor("#1E3A5F")
 C_ROW_ALT  = colors.HexColor("#F1F5F9")
 C_ROW_BORDER = colors.HexColor("#CBD5E1")
 C_COVER_BAND = colors.HexColor("#0B1B3A")
-C_FOOTER_BG  = colors.HexColor("#0F172A")
+C_PAGE_BG    = colors.white
+
+def _apply_theme(theme_name: str = "light"):
+    global C_INK, C_BODY, C_MUTED, C_ACCENT, C_ACCENT2, C_HAIRLINE, C_TH_BG, C_ROW_ALT, C_ROW_BORDER, C_COVER_BAND, C_PAGE_BG
+    
+    if theme_name == "dark":
+        C_INK = colors.white
+        C_BODY = colors.HexColor("#E2E8F0")
+        C_MUTED = colors.HexColor("#94A3B8")
+        C_ACCENT = colors.HexColor("#6366F1")
+        C_ACCENT2 = colors.HexColor("#818CF8")
+        C_HAIRLINE = colors.HexColor("#1E293B")
+        C_TH_BG = colors.HexColor("#312E81")
+        C_ROW_ALT = colors.HexColor("#0F172A")
+        C_ROW_BORDER = colors.HexColor("#1E293B")
+        C_COVER_BAND = colors.HexColor("#030712")
+        C_PAGE_BG = colors.HexColor("#030712")
+    elif theme_name == "blue":
+        C_INK = colors.HexColor("#1E3A8A")
+        C_BODY = colors.HexColor("#1E40AF")
+        C_MUTED = colors.HexColor("#3B82F6")
+        C_ACCENT = colors.HexColor("#2563EB")
+        C_ACCENT2 = colors.HexColor("#1D4ED8")
+        C_HAIRLINE = colors.HexColor("#DBEAFE")
+        C_TH_BG = colors.HexColor("#1E3A8A")
+        C_ROW_ALT = colors.HexColor("#EFF6FF")
+        C_ROW_BORDER = colors.HexColor("#BFDBFE")
+        C_COVER_BAND = colors.HexColor("#1E3A8A")
+        C_PAGE_BG = colors.white
+    else: # light / corporate
+        C_INK = colors.HexColor("#0F172A")
+        C_BODY = colors.HexColor("#1F2937")
+        C_MUTED = colors.HexColor("#64748B")
+        C_ACCENT = colors.HexColor("#2563EB")
+        C_ACCENT2 = colors.HexColor("#4F46E5")
+        C_HAIRLINE = colors.HexColor("#E2E8F0")
+        C_TH_BG = colors.HexColor("#1E3A5F")
+        C_ROW_ALT = colors.HexColor("#F1F5F9")
+        C_ROW_BORDER = colors.HexColor("#CBD5E1")
+        C_COVER_BAND = colors.HexColor("#0B1B3A")
+        C_PAGE_BG = colors.white
 
 HX_ACCENT = "#2563EB"
 HX_MUTED  = "#64748B"
@@ -93,29 +133,28 @@ def _build_styles():
     add(name="CoverValue",   fontName="Helvetica",      fontSize=11, textColor=C_INK,
         leading=14, alignment=TA_LEFT, spaceAfter=6)
 
-    add(name="H1",   fontName="Helvetica-Bold", fontSize=18, textColor=C_INK,
-        spaceBefore=0, spaceAfter=4, leading=22)
-    add(name="H2",   fontName="Helvetica-Bold", fontSize=13, textColor=C_ACCENT,
-        spaceBefore=10, spaceAfter=5, leading=17)
-    add(name="Eyebrow", fontName="Helvetica-Bold", fontSize=8, textColor=C_MUTED,
-        spaceBefore=12, spaceAfter=3, leading=11)
+    add(name="H1",   fontName="Helvetica-Bold", fontSize=22, textColor=C_INK,
+        spaceBefore=0, spaceAfter=8, leading=26)
+    add(name="H2",   fontName="Helvetica-Bold", fontSize=14, textColor=C_ACCENT2,
+        spaceBefore=14, spaceAfter=8, leading=18)
+    add(name="Eyebrow", fontName="Helvetica-Bold", fontSize=8.5, textColor=C_MUTED,
+        spaceBefore=16, spaceAfter=4, leading=12, leftIndent=0)
 
     add(name="Body", fontName="Helvetica", fontSize=10.5, textColor=C_BODY,
-        spaceAfter=8, leading=16, alignment=TA_JUSTIFY)
+        spaceAfter=10, leading=17, alignment=TA_LEFT)
     add(name="BodyTight", fontName="Helvetica", fontSize=10.5, textColor=C_BODY,
-        spaceAfter=4, leading=16, alignment=TA_JUSTIFY)
-    add(name="Quote", fontName="Helvetica-Oblique", fontSize=12, textColor=C_INK,
-        leading=18, spaceBefore=4, spaceAfter=12,
-        leftIndent=14, rightIndent=10,
-        borderColor=C_ACCENT, borderWidth=0, borderPadding=0)
+        spaceAfter=6, leading=17, alignment=TA_LEFT)
+    add(name="Quote", fontName="Helvetica-BoldOblique", fontSize=12, textColor=C_INK,
+        leading=18, spaceBefore=6, spaceAfter=14,
+        leftIndent=14, rightIndent=10)
     add(name="BulletItem", fontName="Helvetica", fontSize=10.5, textColor=C_BODY,
-        spaceAfter=4, leading=15, leftIndent=16, bulletIndent=4)
+        spaceAfter=6, leading=16, leftIndent=24, bulletIndent=10)
     add(name="Caption", fontName="Helvetica-Oblique", fontSize=9, textColor=C_MUTED,
-        spaceBefore=2, spaceAfter=10, leading=12, alignment=TA_CENTER)
+        spaceBefore=4, spaceAfter=12, leading=13, alignment=TA_CENTER)
     add(name="Small", fontName="Helvetica", fontSize=9, textColor=C_MUTED,
-        spaceAfter=4, leading=12)
+        spaceAfter=6, leading=13)
     add(name="TOCItem", fontName="Helvetica", fontSize=11, textColor=C_INK,
-        spaceBefore=3, spaceAfter=3, leading=16)
+        spaceBefore=4, spaceAfter=4, leading=18)
 
     return base
 
@@ -123,22 +162,39 @@ def _build_styles():
 # ─────────────────────────────────────────────────────────────────────────────
 # Page decorators
 # ─────────────────────────────────────────────────────────────────────────────
-def _decorate_cover(canvas, doc):
+def _decorate_cover(canvas, doc, logo_b64=None):
     canvas.saveState()
+    # Background
+    canvas.setFillColor(C_PAGE_BG)
+    canvas.rect(0, 0, PAGE_W, PAGE_H, fill=True, stroke=False)
+    
     # Full-bleed top band in deep brand navy
     canvas.setFillColor(C_COVER_BAND)
     canvas.rect(0, PAGE_H - 1.2 * inch, PAGE_W, 1.2 * inch, fill=True, stroke=False)
-    # Accent bar along the top edge (indigo → violet)
-    canvas.setFillColor(C_ACCENT2)
-    canvas.rect(0, PAGE_H - 0.10 * inch, PAGE_W * 0.62, 0.10 * inch, fill=True, stroke=False)
-    canvas.setFillColor(C_ACCENT3)
-    canvas.rect(PAGE_W * 0.62, PAGE_H - 0.10 * inch, PAGE_W * 0.38, 0.10 * inch,
-                fill=True, stroke=False)
+    # Accent bar along the top edge (using brand color)
+    canvas.setFillColor(C_ACCENT)
+    canvas.rect(0, PAGE_H - 0.10 * inch, PAGE_W, 0.10 * inch, fill=True, stroke=False)
 
-    # Company/project wordmark inside the band
-    canvas.setFillColor(colors.white)
-    canvas.setFont("Helvetica-Bold", 18)
-    canvas.drawString(LEFT_MARGIN, PAGE_H - 0.70 * inch, "APEX ANALYTICS")
+    # Logo or Wordmark
+    if logo_b64:
+        try:
+            from io import BytesIO
+            img_data = base64.b64decode(logo_b64)
+            img = Image(BytesIO(img_data))
+            # Fit in a 1.5x0.6 area
+            aspect = img.imageWidth / img.imageHeight
+            h = 0.4 * inch
+            w = h * aspect
+            canvas.drawImage(BytesIO(img_data), LEFT_MARGIN, PAGE_H - 0.85 * inch, width=w, height=h, preserveAspectRatio=True, mask='auto')
+        except:
+            canvas.setFillColor(colors.white)
+            canvas.setFont("Helvetica-Bold", 18)
+            canvas.drawString(LEFT_MARGIN, PAGE_H - 0.70 * inch, "NEXLYTICS")
+    else:
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 18)
+        canvas.drawString(LEFT_MARGIN, PAGE_H - 0.70 * inch, "NEXLYTICS")
+
     canvas.setFont("Helvetica", 9)
     canvas.setFillColor(colors.HexColor("#C7D2FE"))
     canvas.drawString(LEFT_MARGIN, PAGE_H - 0.92 * inch,
@@ -153,12 +209,15 @@ def _decorate_cover(canvas, doc):
     canvas.setFillColor(C_MUTED)
     canvas.setFont("Helvetica", 8)
     canvas.drawCentredString(PAGE_W / 2, 32,
-                             "APEX ANALYTICS  ·  EXECUTIVE REPORT  ·  CONFIDENTIAL")
+                             "NEXLYTICS  ·  EXECUTIVE REPORT  ·  CONFIDENTIAL")
     canvas.restoreState()
 
 
 def _decorate_page(canvas, doc):
     canvas.saveState()
+    # Background
+    canvas.setFillColor(C_PAGE_BG)
+    canvas.rect(0, 0, PAGE_W, PAGE_H, fill=True, stroke=False)
 
     # ── Header band ────────────────────────────────────────────────────
     header_h = 0.50 * inch
@@ -173,7 +232,7 @@ def _decorate_page(canvas, doc):
     # Left: brand wordmark
     canvas.setFillColor(colors.white)
     canvas.setFont("Helvetica-Bold", 10)
-    canvas.drawString(LEFT_MARGIN, header_y + 0.18 * inch, "APEX ANALYTICS")
+    canvas.drawString(LEFT_MARGIN, header_y + 0.18 * inch, "NEXLYTICS")
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(colors.HexColor("#C7D2FE"))
     canvas.drawString(LEFT_MARGIN, header_y + 0.06 * inch,
@@ -366,19 +425,7 @@ def _section_divider() -> Table:
     return tbl
 
 
-def _quote_box(text: str, styles) -> Table:
-    """Blue-bar quote block for the user's question."""
-    p = Paragraph(f"&#8220;{_safe_xml(text, max_len=500)}&#8221;", styles["Quote"])
-    tbl = Table([[p]], colWidths=[BODY_W])
-    tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, -1), C_QUOTE_BG),
-        ("LINEBEFORE",    (0, 0), (0, -1), 3, C_ACCENT),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 16),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 14),
-        ("TOPPADDING",    (0, 0), (-1, -1), 12),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-    ]))
-    return tbl
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -669,12 +716,12 @@ def _compact_table(df, max_rows: int = 6) -> Optional[Table]:
 # ─────────────────────────────────────────────────────────────────────────────
 def _build_cover(elements, styles, timestamp: str, n_analyses: int,
                  dataset_name: str, user_name: str, overview_text: str,
-                 toc_entries: list[str]):
+                 toc_entries: list[str], report_title: str = ""):
     # The cover's decorative navy band is drawn by _decorate_cover. The
     # first page content begins below the band.
     elements.append(_gap(1.4 * inch))
-    elements.append(Paragraph("APEX ANALYTICS", styles["CoverEyebrow"]))
-    elements.append(Paragraph("AI-Assisted Executive Report", styles["CoverTitle"]))
+    elements.append(Paragraph("NEXLYTICS", styles["CoverEyebrow"]))
+    elements.append(Paragraph(report_title or "AI-Assisted Executive Report", styles["CoverTitle"]))
     elements.append(Paragraph(
         "A narrative briefing compiled from this session's AI analyses.",
         styles["CoverSub"],
@@ -742,22 +789,28 @@ def _build_cover(elements, styles, timestamp: str, n_analyses: int,
 
     # TOC
     if toc_entries:
-        elements.append(Paragraph("CONTENTS", styles["Eyebrow"]))
-        elements.append(_accent_rule())
+        toc_elements = []
+        toc_elements.append(Paragraph("CONTENTS", styles["Eyebrow"]))
+        toc_elements.append(_accent_rule())
         for entry in toc_entries:
-            elements.append(Paragraph(entry, styles["TOCItem"]))
+            toc_elements.append(Paragraph(entry, styles["TOCItem"]))
+        elements.append(KeepTogether(toc_elements))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Executive summary (prose from AI responses)
 # ─────────────────────────────────────────────────────────────────────────────
-def _build_executive_summary(elements, history: list, styles):
+def _build_executive_summary(elements, history: list, styles, report_intro: str = ""):
     elements.append(PageBreak())
     elements.append(Paragraph("Executive Summary", styles["H1"]))
     elements.append(_accent_rule())
     elements.append(_section_divider())
     elements.append(_gap(10))
 
+    if report_intro:
+        elements.append(Paragraph(report_intro, styles["Body"]))
+        elements.append(_gap(12))
+    
     n = len(history)
     label = "analyses" if n != 1 else "analysis"
     intro = (
@@ -785,12 +838,12 @@ def _build_executive_summary(elements, history: list, styles):
 
     if takeaways:
         elements.append(Paragraph("Key Takeaways", styles["H2"]))
-        for t in takeaways[:5]:
+        for t in takeaways[:6]:
             elements.append(Paragraph(
-                f'<font color="{HX_ACCENT}">&#9679;</font>&#160;&#160;{_safe_xml(t, max_len=500)}',
+                f'<font color="{HX_ACCENT}" size="12">&#8226;</font>&#160;&#160;{_safe_xml(t, max_len=500)}',
                 styles["BulletItem"],
             ))
-        elements.append(_gap(6))
+        elements.append(_gap(10))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -825,19 +878,17 @@ def _build_analysis_section(elements, entry: dict, num: int, styles):
     insight   = str(entry.get("insight") or "").strip()
     charts    = entry.get("charts") or []
     dataframe = entry.get("result")
+    chart_b64 = entry.get("chart_b64") # Base64 chart image from frontend
 
     # Section title + divider — the divider is a full-width hairline with a
     # thick indigo left-accent block so each analysis visibly breaks from
     # the previous one.
     elements.append(Paragraph(f"Analysis {num:02d}", styles["Eyebrow"]))
-    short_q = re.sub(r"\s+", " ", query).strip()[:90]
-    elements.append(Paragraph(_safe_xml(short_q, max_len=160), styles["H1"]))
-    elements.append(_accent_rule())
+    short_q = re.sub(r"\s+", " ", query).strip()[:100]
+    elements.append(Paragraph(_safe_xml(short_q, max_len=180), styles["H1"]))
+    elements.append(_gap(2))
     elements.append(_section_divider())
-    elements.append(_gap(10))
-
-    # Question quote
-    elements.append(_quote_box(query, styles))
+    elements.append(_gap(12))
 
     # AI response as prose
     sections = _split_ai_response(ai_resp)
@@ -864,6 +915,14 @@ def _build_analysis_section(elements, entry: dict, num: int, styles):
         img_bytes = _plotly_to_bytes(fig)
         if img_bytes:
             break
+    if not img_bytes and chart_b64:
+        try:
+            # Fix incorrect padding if it exists
+            padded_b64 = chart_b64 + "=" * ((4 - len(chart_b64) % 4) % 4)
+            img_bytes = base64.b64decode(padded_b64)
+        except Exception as e:
+            logger.warning(f"Failed to decode chart_b64: {e}")
+
     if not img_bytes and isinstance(dataframe, (pd.DataFrame, pd.Series)):
         img_bytes = _chart_from_dataframe(dataframe, title=query[:60])
 
@@ -905,7 +964,7 @@ def _build_disclaimer(elements, styles, timestamp: str):
     elements.append(_section_divider())
     elements.append(_gap(10))
     elements.append(Paragraph(
-        "This document was produced by the Apex Analytics AI assistant. All narrative "
+        "This document was produced by the Nexlytics AI assistant. All narrative "
         "content, findings, and supporting visualizations were generated from automated "
         "analysis of the dataset the user supplied during the session. While the system "
         "performs validation and sanity checks, AI-generated insights should always be "
@@ -916,7 +975,7 @@ def _build_disclaimer(elements, styles, timestamp: str):
     ))
     elements.append(_gap(16))
     elements.append(Paragraph(
-        f"Generated {timestamp} &nbsp;·&nbsp; Apex Analytics",
+        f"Generated {timestamp} &nbsp;·&nbsp; Nexlytics",
         styles["Small"],
     ))
 
@@ -933,19 +992,30 @@ def generate_pdf(
     dataset_name: str | None = None,
     user_name: str | None = None,
     file_path: str | None = None,
+    report_title: str | None = None,
+    report_intro: str | None = None,
+    theme: str = "light",
+    brand_logo_b64: str | None = None,
+    brand_color: str | None = None
 ) -> str:
     """
     Generate a narrative-first PDF report.
-
-    - Pass `analysis_history` (list of dicts) for a multi-analysis document.
-    - Or pass `query` + `summary_text` + `dataframe` for a single-query report.
-    - Pass ``file_path`` to control where the PDF is written (defaults to
-      ``AI_Executive_Report.pdf`` in the current directory; use ``/tmp/...``
-      for serverless environments where the working directory is read-only).
-    Returns the path of the written PDF.
     """
     if file_path is None:
         file_path = "AI_Executive_Report.pdf"
+    
+    # Apply theme colors
+    _apply_theme(theme)
+    
+    # Override accent color if brand_color is provided
+    if brand_color:
+        global C_ACCENT, HX_ACCENT
+        try:
+            C_ACCENT = colors.HexColor(brand_color)
+            HX_ACCENT = brand_color
+        except:
+            pass
+
     timestamp = datetime.now().strftime("%B %d, %Y · %H:%M")
 
     # Resolve defaults from session state if available
@@ -955,10 +1025,10 @@ def generate_pdf(
             if dataset_name is None:
                 dataset_name = st.session_state.get("dataset_name", "Active Dataset")
             if user_name is None:
-                user_name = st.session_state.get("auth_display_name", "Apex Analytics User")
+                user_name = st.session_state.get("auth_display_name", "Nexlytics User")
         except Exception:
             dataset_name = dataset_name or "Active Dataset"
-            user_name = user_name or "Apex Analytics User"
+            user_name = user_name or "Nexlytics User"
 
     logger.info(
         "Generating narrative PDF: history_len=%s single=%s",
@@ -973,8 +1043,8 @@ def generate_pdf(
         bottomMargin=BOTTOM_MARGIN,
         leftMargin=LEFT_MARGIN,
         rightMargin=RIGHT_MARGIN,
-        title="Apex Analytics – Executive Report",
-        author="Apex Analytics",
+        title="Nexlytics – Executive Report",
+        author="Nexlytics",
     )
 
     styles   = _build_styles()
@@ -1011,7 +1081,7 @@ def generate_pdf(
 
     # ── Cover ─────────────────────────────────────────────────────────────────
     _build_cover(elements, styles, timestamp, n, dataset_name, user_name,
-                 overview, toc_entries)
+                 overview, toc_entries, report_title=report_title)
 
     if n == 0:
         elements.append(PageBreak())
@@ -1023,7 +1093,7 @@ def generate_pdf(
             styles["Body"],
         ))
     else:
-        _build_executive_summary(elements, history, styles)
+        _build_executive_summary(elements, history, styles, report_intro=report_intro)
 
         for i, entry in enumerate(history, 1):
             elements.append(PageBreak())

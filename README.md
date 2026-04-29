@@ -1,309 +1,207 @@
-# Apex Analytics
+# Nexlytics
 
-AI-powered business intelligence assistant built with Streamlit, Pandas, Plotly, and Groq. Upload any CSV and get KPI cards, auto-insights, deterministic analytics, 10+ chart types, revenue forecasts, and a narrative executive PDF — all through a chat-style analyst interface.
+Nexlytics is an AI-powered business intelligence app for exploring CSV data with KPI cards, automated insights, plain-English analysis, forecasting, and executive PDF reports.
 
-## What This Project Does
+The repository currently includes:
 
-`Apex Analytics` is designed for analysts, founders, and business teams who want to explore tabular data without writing SQL or Python for every question.
+- A production-oriented Next.js front end with Python serverless API routes for Vercel.
+- A legacy Streamlit app for local Python development and experimentation.
 
-Core workflows:
+## Features
 
-- Sign in (hashed-credential demo auth, per-user sidebar badge)
-- Upload a CSV or choose a bundled sample dataset (Sales, HR, Finance)
-- Review KPIs with trend deltas, statistics, and auto-generated insights
-- Ask business questions in plain English — get tables, charts, and prose answers
-- Charts are generated deterministically using pandas + plotly (no unreliable LLM code)
-- Run a linear revenue or sales forecast with confidence intervals
-- Export a narrative-style executive PDF report written from the AI's replies
-
-## Why It Stands Out
-
-- **Compute-first architecture** — pandas does all computation, Groq only narrates pre-computed results. No unreliable LLM code generation for standard analytical patterns.
-- **10+ chart types** — bar, grouped bar, stacked bar, pie, line with markers, scatter, boxplot, correlation heatmap, outlier detection, and linear forecast overlay — all selected automatically based on query intent.
-- **Strong dark-mode dashboard UI** with polished interactions and session-persistent tab navigation.
-- **Narrative executive PDF** — cover page, exec summary, per-question prose, supporting visuals — not a dashboard dump.
-- Built-in business insight generation, forecasting, and PDF reporting in the same product flow.
-
-## Feature Overview
-
-### Dashboard
-
-- KPI cards with period-over-period trend deltas and dataset-aware quick insights
-- Dataset preview, column details, descriptive statistics
-- Hero chart for the loaded dataset when suitable dimensions are available
-- Search, sort, and filter controls for table views
-
-### AI Analyst
-
-- Chat-style interface for dataset questions
-- **Smart Analysis Engine**: deterministic pandas computation for 9 query patterns (ranking, comparison, trend, distribution, correlation, outlier, forecast, aggregate, general)
-- Python selects the chart type based on query intent — no LLM code generation needed
-- Groq narrates results in natural prose using a focused narration-only prompt
-- Falls back to AI code generation only for truly novel queries
-- Follow-up suggestions rendered as clickable buttons
-- Charts persist in session state across reruns
-
-### Supported Chart Types
-
-| Query Pattern | Chart Type | Example Query |
-|---|---|---|
-| Ranking | Horizontal bar | "Which routes have the highest ridership?" |
-| Comparison | Grouped bar | "How does ridership vary by day type?" |
-| Trend | Line with markers | "Show ridership over time" |
-| Distribution | Boxplot | "Show spread of rides by route" |
-| Correlation | Heatmap (RdBu_r) | "Show correlation heatmap" |
-| Outlier | Scatter with highlights | "Detect outliers in rides" |
-| Forecast | Line + dashed overlay | "Forecast ridership for next year" |
-| Aggregate | Bar | "Total revenue by region" |
-| General | Auto-selected | Any analytical question |
-
-### Forecasting
-
-- Trend projection from date-like and numeric columns
-- Forecast table, confidence bounds, and chart output
-- Works best with monthly or date-driven revenue and sales data
-
-### Reports
-
-- Narrative executive briefing exported as PDF (not a dashboard printout)
-- Cover page with dataset, analyst, and timestamp metadata
-- Executive summary drafted from the AI's own replies
-- Per-question sections: original question quote, AI analyst prose, supporting chart, compact reference table
-- Bright, print-safe chart palette so bars and heatmaps read clearly on white paper
-- Page numbers, proper typography, and confidentiality disclaimer
-
-### Login & Session
-
-- Hashed-credential login gate (SHA-256)
-- Default demo users: `admin / admin123` and `analyst / analyst123`
-- Sidebar user badge with sign-out
-- `users.json` is local-only and git-ignored
+- Sign in with demo users or environment-configured credentials.
+- Upload a CSV or load one of the bundled sample datasets.
+- Review KPI cards, schema details, preview rows, and automated insights.
+- Ask plain-English questions and get tables, charts, and narrated answers.
+- Generate simple revenue or sales forecasts.
+- Export a narrative executive PDF from analysis history.
+- Use deterministic pandas/Plotly analysis for common business questions, with AI used primarily for narration.
 
 ## Tech Stack
 
-- Python 3.10+
-- Streamlit
-- Pandas / NumPy
-- Plotly Express / Plotly Graph Objects
-- Groq API (LLaMA 3.3 70B)
-- ReportLab / Kaleido (PDF + chart export)
-- scikit-learn / statsmodels (forecasting)
+- Next.js 14, React 18, TypeScript, Tailwind CSS
+- Python serverless functions under `api/`
+- Pandas, NumPy, Plotly
+- Groq and optional Google Generative AI integrations
+- ReportLab for PDF generation
+- Streamlit legacy app support
 
 ## Project Structure
 
 ```text
 .
-|-- app.py                    # Main Streamlit application
-|-- auth.py                   # Login gate (SHA-256 hashed credentials)
-|-- config.py                 # App constants, layout, branding
-|-- requirements.txt
-|-- styles.py                 # Custom CSS injections
-|-- ui_components.py          # Reusable UI elements (cards, chat bubbles)
-|-- PROJECT_DOCUMENTATION.md  # Full technical architecture docs
-|-- CHANGELOG.md              # Version history
-|-- data/
-|   `-- raw/
-|       |-- finance_data.csv
-|       |-- hr_data.csv
-|       `-- sales_data.csv
-|-- modules/
-|   |-- smart_analysis.py     # Deterministic pandas analysis engine (NEW)
-|   |-- ai_code_generator.py  # AI-powered code generation (fallback)
-|   |-- ai_conversation.py    # Conversational AI + narrate_result()
-|   |-- app_tabs.py           # Tab rendering + orchestration
-|   |-- app_views.py          # UI view components
-|   |-- app_state.py          # Session state management
-|   |-- app_perf.py           # Performance tracking
-|   |-- app_logging.py        # Structured logging
-|   |-- app_secrets.py        # API key management
-|   |-- auto_insights.py      # Automated business insight detection
-|   |-- auto_visualizer.py    # Chart builders (10+ types)
-|   |-- code_executor.py      # Sandboxed Python code execution
-|   |-- data_loader.py        # Loading & column normalization
-|   |-- dataset_analyzer.py   # Dataset schema analysis
-|   |-- executive_summary.py  # Executive summary bullets
-|   |-- forecasting.py        # Revenue/sales forecasting
-|   |-- groq_ai.py            # Groq API integration
-|   |-- insight_engine.py     # Business insight generation
-|   |-- kpi_engine.py         # KPI extraction engine
-|   |-- query_utils.py        # Query classification & relevance
-|   |-- report_generator.py   # Professional PDF report generator
-|   `-- text_utils.py         # Text cleaning & structuring
-`-- tests/
-    |-- test_auto_insights.py
-    |-- test_forecasting.py
-    |-- test_kpi_engine.py
-    `-- test_query_utils.py
+|-- pages/                    # Next.js pages
+|   |-- index.tsx             # Sign-in page
+|   `-- dashboard.tsx         # Main BI dashboard
+|-- components/               # React dashboard components
+|-- lib/                      # Front-end API client and shared types
+|-- api/                      # Python API routes for Vercel
+|   |-- auth.py
+|   |-- datasets.py
+|   |-- upload.py
+|   |-- analyze.py
+|   |-- forecast.py
+|   `-- report.py
+|-- modules/                  # Shared Python analytics/reporting logic
+|-- data/raw/                 # Sample CSV datasets
+|-- tests/                    # Python tests
+|-- app.py                    # Legacy Streamlit app
+|-- requirements.txt          # Python dependencies for Vercel/API routes
+|-- requirements-streamlit.txt # Full Streamlit development dependencies
+|-- package.json              # Next.js dependencies and scripts
+|-- vercel.json               # Vercel configuration
+`-- PROJECT_DOCUMENTATION.md  # Detailed technical documentation
 ```
 
-## Architecture — Compute First, Narrate Second
+## Environment Variables
 
-```
-User Query
-    │
-    ├─① smart_analysis.py      Deterministic pandas computation (handles ~90% of queries)
-    │   ├─ Classify intent       ranking / comparison / trend / distribution / etc.
-    │   ├─ Match columns         exact name, substring, stem matching
-    │   ├─ Compute with pandas   groupby, sort, mean, quantile, corr, IQR
-    │   ├─ Pick chart in Python  bar, line, boxplot, heatmap, scatter, etc.
-    │   └─ narrate_result()      Groq explains the pre-computed numbers (narration only)
-    │
-    ├─② detect_simple_query()   Pattern-matched code for simple aggregations
-    │
-    └─③ generate_analysis_code() LLM code generation (last resort for novel queries)
-```
-
-## Quick Start
-
-This repository contains two runnable front-ends:
-
-- A legacy Streamlit app (local development, see "Streamlit" below)
-- A modern Next.js front-end with Python serverless APIs (Vercel deployment, recommended)
-
-Choose the workflow you want to run locally.
-
-### Option A — Streamlit (local development)
-
-1. Create a Python virtual environment and activate it:
+Copy `.env.example` to `.env.local` for the Next.js/Vercel workflow:
 
 ```powershell
-python -m venv venv
-venv\Scripts\Activate.ps1
+Copy-Item .env.example .env.local
 ```
 
-2. Install the full Streamlit development dependencies:
+At minimum, set one AI provider key:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
+AUTH_SECRET=change-this-to-a-long-random-value
+```
+
+Useful optional settings:
+
+```env
+ALLOW_DEMO_USERS=true
+NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=true
+ALLOWED_ORIGINS=http://localhost:3000
+```
+
+For production, configure these variables in Vercel under Project Settings -> Environment Variables. Do not commit real secrets.
+
+## Quick Start: Next.js + Python APIs
+
+Install Node dependencies:
 
 ```powershell
+npm install
+```
+
+Install Python dependencies:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Run the full local Vercel environment:
+
+```powershell
+npm i -g vercel
+vercel dev
+```
+
+Open the local URL shown by Vercel, usually `http://localhost:3000`.
+
+Demo credentials are available when demo users are enabled:
+
+- `admin / admin123`
+- `analyst / analyst123`
+
+You can also run only the Next.js front end:
+
+```powershell
+npm run dev
+```
+
+Use `vercel dev` when you need the Python API routes under `/api`.
+
+## Deploy to Vercel
+
+1. Push the repository to GitHub.
+2. Import the project in Vercel.
+3. Add the required environment variables.
+4. Deploy.
+
+The included `vercel.json` declares the Next.js framework and configures Python API route execution.
+
+You can also deploy from the CLI:
+
+```powershell
+vercel --prod
+```
+
+## Legacy Streamlit App
+
+The original Streamlit app is still available for local Python development.
+
+Install the Streamlit dependencies:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements-streamlit.txt
 ```
 
-3. Add your Groq API key to a `.env` file in the project root:
+Add a `.env` file:
 
 ```env
-GROQ_API_KEY=your_groq_key_here
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-4. Run the Streamlit app:
+Run Streamlit:
 
 ```powershell
 streamlit run app.py
 ```
 
-Open `http://localhost:8501` and sign in with the demo users:
-
-- `admin / admin123`
-- `analyst / analyst123`
-
-### Option B — Next.js + Vercel (full-stack, recommended for production)
-
-This project ships a Next.js front-end in `pages/` that talks to Python serverless endpoints in `api/*.py`.
-Vercel will build the Next.js app and install Python dependencies listed in `requirements.txt` for the serverless functions.
-
-1. Install Node.js (v18+ recommended) and dependencies:
-
-```bash
-npm install
-```
-
-2. Local development options:
-
-- Front-end only (no Python serverless functions):
-
-    ```bash
-    npm run dev
-    ```
-
-- Full-stack local development (Next.js + Python serverless functions): install the Vercel CLI and run the local dev server which emulates Vercel's environment:
-
-    ```bash
-    npm i -g vercel
-    vercel dev
-    ```
-
-    `vercel dev` will serve both the Next.js front-end and the Python functions under `/api`.
-
-3. Set environment variables for development and production:
-
-- Locally you can create a `.env.local` file for Next.js or a `.env` for Python-based functions used by `vercel dev`.
-- For production, set `GROQ_API_KEY`, `GOOGLE_API_KEY` (if used), and `AUTH_SECRET` via the Vercel dashboard (Project › Settings › Environment Variables).
-
-Example `.env.local` (only for local testing):
-
-```env
-NEXT_PUBLIC_API_BASE=""
-GROQ_API_KEY=your_groq_key_here
-AUTH_SECRET=change-this-secret
-```
-
-4. Build and deploy to Vercel:
-
-```bash
-npm run build
-vercel --prod
-```
-
-Or push the repository to GitHub and import it into Vercel (the `vercel.json` config already maps `api/*.py` to a Python runtime and uses `requirements.txt` for serverless dependencies).
-
-## Demo Flow
-
-Recommended walkthrough for a recruiter, teammate, or portfolio review:
-
-1. Sign in (demo credentials above).
-2. Load `Sales Data` from the sidebar.
-3. Show the KPI row, quick insights panel, and hero chart.
-4. Open `AI Analyst` and ask:
-   - `Which routes have the highest and lowest average ridership?`
-   - `How does ridership vary by day type?`
-   - `Show a boxplot of rides by route`
-   - `Detect outliers in revenue`
-   - `Show correlation heatmap`
-   Click a follow-up suggestion — the nav stays on AI Analyst (session-persistent).
-5. Open `Forecasting` and generate a 6-month forecast.
-6. Open `Reports` and generate the narrative PDF — download and open it to show the cover page, executive summary, and per-question prose sections.
+Open `http://localhost:8501`.
 
 ## Sample Datasets
 
-- `sales_data.csv`: revenue-style business analytics
-- `hr_data.csv`: workforce and attrition analytics
-- `finance_data.csv`: budget and variance analysis
+Bundled datasets live in `data/raw/`:
+
+- `sales_data.csv`
+- `hr_data.csv`
+- `finance_data.csv`
+
+These are useful for demos and local testing without uploading your own data.
+
+## Demo Script
+
+For a quick walkthrough:
+
+1. Sign in with `admin / admin123` or another configured user.
+2. Load the Sales sample dataset.
+3. Review the KPI cards, schema summary, preview rows, and automatic insights.
+4. Open AI Analyst and ask: `What are the top regions by revenue?`
+5. Ask: `Show revenue trend over time.`
+6. Open Forecasting and generate a six-period forecast.
+7. Open Reports and export the analysis history as a PDF.
 
 ## Testing
 
-Run the automated tests from the project root:
+Run the Python test suite:
 
 ```powershell
 python -m pytest -q
 ```
 
-Current coverage focuses on:
+Run the Next.js production build:
 
-- KPI generation
-- Auto-insight generation
-- Forecasting behavior
-- Dataset query routing helpers
+```powershell
+npm run build
+```
 
-## Security and Guardrails
+## Security Notes
 
-- API keys are read from environment variables or `.env`
-- AI-generated code is filtered before execution (import stripping, forbidden keyword scanner)
-- Smart analysis engine uses deterministic pandas — no code generation for standard patterns
-- Irrelevant questions are rejected before code generation
-- Result rendering falls back safely for unsupported outputs
-
-## Known Limitations
-
-- Forecasting is intentionally simple and trend-based, not a full ARIMA/Prophet pipeline
-- AI narration quality depends on Groq API availability (429 rate limits handled gracefully)
-- PDF output is optimized for summary reporting, not raw data export
-- Code execution is guarded, but this is still a local prototype application
-
-## Recommended Next Improvements
-
-- Add deployment instructions for Streamlit Community Cloud or Render
-- Expand tests around report generation and chart builders
-- Add screenshots or a GIF demo to the repository
-- Add user-configurable chart preferences (color themes, default chart types)
+- Secrets should live in `.env.local`, `.env`, or Vercel environment variables.
+- `AUTH_SECRET` should be a long random value in production.
+- Disable demo users in production with `ALLOW_DEMO_USERS=false`.
+- Hide demo credentials in production with `NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=false`.
+- Uploaded CSVs are validated with size, row, and column limits from the environment configuration.
 
 ## Documentation
 
-See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) for the full technical walkthrough.
+See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) for deeper architecture notes and implementation details.

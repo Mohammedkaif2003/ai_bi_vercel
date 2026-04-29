@@ -31,12 +31,15 @@ from _utils import (  # noqa: E402
     df_to_records,
     fig_to_json,
     handle_options,
+    load_dataset_b64,
+    log_audit,
     read_json_body,
+    require_auth,
     send_error,
     send_json,
 )
 from modules.ai_conversation import narrate_result  # noqa: E402
-from modules.data_loader import normalize_columns  # noqa: E402
+from modules.data_loader import mask_sensitive_columns, normalize_columns  # noqa: E402
 from modules.query_utils import is_dataset_related_query  # noqa: E402
 from modules.smart_analysis import run_smart_analysis  # noqa: E402
 
@@ -58,21 +61,37 @@ class handler(BaseHTTPRequestHandler):
         handle_options(self)
 
     def do_POST(self):
+        user = require_auth(self)
+        if user is None:
+            return
+
         data = read_json_body(self)
         query = str(data.get("query", "")).strip()
-        csv_b64 = data.get("csv_b64", "")
+        dataset_key = data.get("dataset_key", "")
         dataset_name = str(data.get("dataset_name", ""))
 
         if not query:
             send_error(self, "query is required.", 400)
             return
-        if not csv_b64:
-            send_error(self, "csv_b64 is required.", 400)
+        if not dataset_key:
+            send_error(self, "dataset_key is required.", 400)
+            return
+
+        # Load dataset content robustly
+        try:
+            csv_b64 = load_dataset_b64(dataset_key, user)
+        except ValueError as e:
+            send_error(self, str(e), 404)
+            return
+        except Exception as e:
+            send_error(self, f"Unexpected error loading dataset: {e}", 500)
             return
 
         try:
             df = df_from_csv_b64(csv_b64)
             df = normalize_columns(df)
+            # Apply Column-Level Security
+            df = mask_sensitive_columns(df, user.get("role", "viewer"))
         except Exception as exc:
             send_error(self, f"Could not load dataset: {exc}", 422)
             return
@@ -93,6 +112,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         # Deterministic smart analysis
+        log_audit(user, "analyze", {"query": query, "dataset_key": dataset_key})
         analysis = run_smart_analysis(query, df)
         if analysis is None:
             send_json(self, {

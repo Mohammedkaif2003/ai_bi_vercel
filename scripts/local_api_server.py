@@ -15,22 +15,37 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+# Load environment variables from .env or .env.local
+try:
+    from dotenv import load_dotenv
+    # Load .env first (base)
+    base_env = os.path.join(ROOT, ".env")
+    if os.path.exists(base_env):
+        load_dotenv(base_env)
+    
+    # Then load .env.local (overrides)
+    local_env = os.path.join(ROOT, ".env.local")
+    if os.path.exists(local_env):
+        load_dotenv(local_env, override=True)
+except ImportError:
+    pass # If python-dotenv is not installed, assume env vars are set manually
+
 from api.analyze import handler as AnalyzeHandler
-from api.auth import handler as AuthHandler
 from api.datasets import handler as DatasetsHandler
 from api.forecast import handler as ForecastHandler
 from api.report import handler as ReportHandler
 from api.upload import handler as UploadHandler
+from api.search import handler as SearchHandler
 from api._utils import send_error
 
 
 ROUTES = {
     "/api/analyze": AnalyzeHandler,
-    "/api/auth": AuthHandler,
     "/api/datasets": DatasetsHandler,
     "/api/forecast": ForecastHandler,
     "/api/report": ReportHandler,
     "/api/upload": UploadHandler,
+    "/api/search": SearchHandler,
 }
 
 
@@ -60,6 +75,9 @@ class DispatchHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+    def address_string(self):
+        return self.client_address[0]
+
 
 class NotFoundHandler(DispatchHandler):
     def do_GET(self):
@@ -73,6 +91,7 @@ class NotFoundHandler(DispatchHandler):
 
 
 if __name__ == "__main__":
-    server = HTTPServer(("localhost", 8000), DispatchHandler)
-    print("Local Python API listening on http://localhost:8000")
+    port = int(os.getenv("PORT", "8000"))
+    server = HTTPServer(("127.0.0.1", port), DispatchHandler)
+    print(f"Local Python API listening on http://127.0.0.1:{port}")
     server.serve_forever()

@@ -1,16 +1,23 @@
 import os
 import re
 
-import streamlit as st
+try:
+    import streamlit as st
+    st_cache = st.cache_data(show_spinner=False)
+except ImportError:
+    def st_cache(func):
+        return func
+
 from groq import Groq
 
 from modules.app_secrets import get_secret
 from modules.code_executor import validate_generated_code
 
 api_key = get_secret("GROQ_API_KEY")
+google_key = get_secret("GOOGLE_API_KEY")
 
 
-@st.cache_data(show_spinner=False)
+@st_cache
 def generate_analysis_code(api_key, query, df, dataset_context):
     client = Groq(api_key=api_key)
 
@@ -139,4 +146,24 @@ Always perform aggregation, filtering, or calculation.
         return code
 
     except Exception as e:
-        return f"charts = []\nresult = 'AI code generation failed: {str(e)}'"
+        # Groq failed; try Google Gemini as a fallback so code generation
+        # remains available when Groq is rate-limited.
+        try:
+            from google import genai  # type: ignore
+            from modules.app_secrets import get_secret
+            gkey = google_key or get_secret("GOOGLE_API_KEY")
+            if gkey:
+                client2 = genai.Client(api_key=gkey)
+                response2 = client2.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=prompt,
+                    config=None
+                )
+                raw_output = response2.text if response2 and getattr(response2, "text", None) else ""
+            else:
+                raw_output = ""
+        except Exception as e2:
+            return f"charts = []\nresult = 'AI code generation failed: {str(e)}; fallback error: {str(e2)}'"
+
+        if not raw_output:
+            return f"charts = []\nresult = 'AI code generation failed: {str(e)}'"

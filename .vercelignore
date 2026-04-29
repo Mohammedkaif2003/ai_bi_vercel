@@ -1,7 +1,33 @@
+# ── Secrets ──────────────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
+
+# ── Local Development ────────────────────────────────────────────────────
 .venv
+venv
+env
 node_modules
 .next
+.vercel
 *.log
+.vscode
+.idea
+
+# ── Python Build Artifacts ───────────────────────────────────────────────
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# ── Project Clutter ──────────────────────────────────────────────────────
+tests
+scripts
+scratch
+data
+CHANGELOG.md
+PROJECT_DOCUMENTATION.md
+remote.txt
+changes.txt
+desktop.ini
+tsconfig.tsbuildinfo
