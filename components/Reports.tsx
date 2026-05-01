@@ -31,8 +31,13 @@ interface Props {
   sendMessage: (content: string) => Promise<void>;
   isAnalyzing: boolean;
   chatError: string | null;
+  selectedReportIndices: Set<number>;
+  setSelectedReportIndices: React.Dispatch<React.SetStateAction<Set<number>>>;
 }
 
+interface AnalysisHistoryEntryExtended extends AnalysisHistoryEntry {
+  originalIdx: number;
+}
 const THEMES = [
   { id: "light", name: "Clean Light", color: "#2563EB", bg: "bg-white", text: "text-slate-900" },
   { id: "dark", name: "Executive Dark", color: "#6366F1", bg: "bg-slate-950", text: "text-white" },
@@ -45,10 +50,11 @@ export default function ReportsTab({
   messages, 
   sendMessage, 
   isAnalyzing, 
-  chatError 
+  chatError,
+  selectedReportIndices,
+  setSelectedReportIndices,
 }: Props) {
-  const [history, setHistory] = useState<AnalysisHistoryEntry[]>([]);
-  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [history, setHistory] = useState<AnalysisHistoryEntryExtended[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [chatInput, setChatInput] = useState("");
@@ -61,8 +67,10 @@ export default function ReportsTab({
   const [isReady, setIsReady] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
+  const selectedThemeData = THEMES.find(t => t.id === selectedTheme) || THEMES[0];
+
   useEffect(() => {
-    const analysisEntries: AnalysisHistoryEntry[] = [];
+    const analysisEntries: AnalysisHistoryEntryExtended[] = [];
     for (let i = 0; i < messages.length; i++) {
       if (messages[i].role === 'assistant' && messages[i].query_type !== 'irrelevant') {
         const prevMsg = i > 0 && messages[i - 1].role === 'user' ? messages[i - 1].content : "Insight";
@@ -71,21 +79,22 @@ export default function ReportsTab({
           ai_response: messages[i].content,
           insight: messages[i].content,
           result: messages[i].result || [],
-          chart: messages[i].chart
+          chart: messages[i].chart,
+          originalIdx: i
         });
       }
     }
     setHistory(analysisEntries);
-
-    setSelectedIndices(prev => {
-      if (analysisEntries.length > 0 && prev.length === 0) {
-        return analysisEntries.map((_, i) => i);
-      } else if (analysisEntries.length > prev.length) {
-        return [...prev, analysisEntries.length - 1];
-      }
-      return prev;
-    });
   }, [messages]);
+
+  const toggleSelection = (msgIdx: number) => {
+    setSelectedReportIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(msgIdx)) next.delete(msgIdx);
+      else next.add(msgIdx);
+      return next;
+    });
+  };
 
   async function handleAskQuestion() {
     if (!payload) return;
@@ -96,7 +105,7 @@ export default function ReportsTab({
   }
 
   async function handleGenerateReport() {
-    if (selectedIndices.length === 0) {
+    if (selectedReportIndices.size === 0) {
       setError("Please select at least one insight for the report.");
       return;
     }
@@ -106,7 +115,7 @@ export default function ReportsTab({
     setIsReady(false);
     
     try {
-      const selectedHistory = history.filter((_, i) => selectedIndices.includes(i));
+      const selectedHistory = history.filter((h) => selectedReportIndices.has(h.originalIdx));
       const PlotlyModule = await import("plotly.js/dist/plotly.js" as any);
       const Plotly = PlotlyModule.default || PlotlyModule;
       
@@ -179,8 +188,6 @@ export default function ReportsTab({
     a.click();
   };
 
-  const selectedThemeData = THEMES.find(t => t.id === selectedTheme) || THEMES[0];
-
   return (
     <div className="space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -209,11 +216,11 @@ export default function ReportsTab({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between mb-4">
-             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Insights ({selectedIndices.length})</h3>
+             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Insights ({selectedReportIndices.size})</h3>
              <div className="flex gap-2">
-               <button onClick={() => setSelectedIndices(history.map((_, i) => i))} className="text-[10px] text-indigo-400 hover:underline">Select All</button>
+               <button onClick={() => setSelectedReportIndices(new Set(history.map(h => h.originalIdx)))} className="text-[10px] text-indigo-400 hover:underline">Select All</button>
                <span className="text-slate-700">/</span>
-               <button onClick={() => setSelectedIndices([])} className="text-[10px] text-slate-500 hover:underline">Clear</button>
+               <button onClick={() => setSelectedReportIndices(new Set())} className="text-[10px] text-slate-500 hover:underline">Clear</button>
              </div>
           </div>
           
@@ -231,23 +238,23 @@ export default function ReportsTab({
                     key={i}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    onClick={() => setSelectedIndices(prev => prev.includes(i) ? prev.filter(idx => idx !== i) : [...prev, i])}
+                    onClick={() => toggleSelection(entry.originalIdx)}
                     className={`group p-6 rounded-[2rem] border transition-all cursor-pointer relative overflow-hidden ${
-                      selectedIndices.includes(i) ? "bg-indigo-600/10 border-indigo-500/40" : "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04]"
+                      selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-600/10 border-indigo-500/40" : "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04]"
                     }`}
                   >
-                    {selectedIndices.includes(i) && (
+                    {selectedReportIndices.has(entry.originalIdx) && (
                       <motion.div layoutId="selection-border" className="absolute inset-0 border-2 border-indigo-500/50 rounded-[2rem] pointer-events-none" />
                     )}
                     <div className="flex items-start gap-4">
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black ${
-                        selectedIndices.includes(i) ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-500"
+                        selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-500"
                       }`}>{i + 1}</div>
                       <div className="flex-1">
-                        <p className={`text-sm font-bold mb-2 ${selectedIndices.includes(i) ? "text-white" : "text-slate-300"}`}>{entry.query}</p>
+                        <p className={`text-sm font-bold mb-2 ${selectedReportIndices.has(entry.originalIdx) ? "text-white" : "text-slate-300"}`}>{entry.query}</p>
                         <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{entry.ai_response}</p>
                       </div>
-                      {selectedIndices.includes(i) ? <CheckCircle2 className="text-indigo-500" size={18} /> : <div className="w-4 h-4 rounded-full border border-white/10" />}
+                      {selectedReportIndices.has(entry.originalIdx) ? <CheckCircle2 className="text-indigo-500" size={18} /> : <div className="w-4 h-4 rounded-full border border-white/10" />}
                     </div>
                   </motion.div>
                 ))
@@ -277,20 +284,20 @@ export default function ReportsTab({
                        {reportIntro && <p className={`text-[11px] italic leading-relaxed opacity-70 ${selectedThemeData.text}`}>{reportIntro}</p>}
                        
                        <div className="space-y-4">
-                          {selectedIndices.map(idx => (
-                            <div key={idx} className="space-y-2">
-                               <h5 className={`text-[12px] font-bold ${selectedThemeData.text}`}>{history[idx]?.query}</h5>
-                               <p className={`text-[10px] leading-relaxed opacity-60 ${selectedThemeData.text}`}>{history[idx]?.ai_response}</p>
-                               {history[idx]?.chart && (
-                                 <div className="h-20 rounded-xl bg-slate-500/5 border border-slate-500/10" />
-                               )}
-                            </div>
-                          ))}
+                           {history.filter(h => selectedReportIndices.has(h.originalIdx)).map((entry, idx) => (
+                             <div key={idx} className="space-y-2">
+                                <h5 className={`text-[12px] font-bold ${selectedThemeData.text}`}>{entry.query}</h5>
+                                <p className={`text-[10px] leading-relaxed opacity-60 ${selectedThemeData.text}`}>{entry.ai_response}</p>
+                                {entry.chart && (
+                                  <div className="h-20 rounded-xl bg-slate-500/5 border border-slate-500/10" />
+                                )}
+                             </div>
+                           ))}
                        </div>
                     </div>
                  </div>
                  
-                 <button onClick={handleGenerateReport} disabled={loading || selectedIndices.length === 0} className="btn-primary w-full py-5 rounded-2xl font-bold uppercase text-xs tracking-widest flex items-center justify-center gap-3">
+                 <button onClick={handleGenerateReport} disabled={loading || selectedReportIndices.size === 0} className="btn-primary w-full py-5 rounded-2xl font-bold uppercase text-xs tracking-widest flex items-center justify-center gap-3">
                    {loading ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
                    {isReady ? "Regenerate" : "Confirm & Build PDF"}
                  </button>
@@ -345,7 +352,7 @@ export default function ReportsTab({
                     {!isReady ? (
                       <button
                         onClick={handleGenerateReport}
-                        disabled={loading || selectedIndices.length === 0}
+                        disabled={loading || selectedReportIndices.size === 0}
                         className="btn-primary w-full py-5 flex items-center justify-center gap-3 rounded-2xl shadow-xl shadow-indigo-600/20 transition-transform hover:scale-[1.02] active:scale-[0.98]"
                       >
                         {loading ? <Loader2 size={18} className="animate-spin" /> : <Layout size={18} />}

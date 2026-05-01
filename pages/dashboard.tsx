@@ -25,6 +25,7 @@ import {
   BookOpen,
   Share2,
   Sparkles,
+  History as HistoryIcon,
   HelpCircle,
   Table as TableIcon,
   Filter,
@@ -77,6 +78,10 @@ export default function DashboardPage() {
   const [newChatKey, setNewChatKey] = useState("new");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   useEffect(() => {
     // Check for recovery mode in URL (hash or query)
     const isRecovery = window.location.hash.includes("type=recovery") || 
@@ -121,7 +126,6 @@ export default function DashboardPage() {
     listDatasets()
       .then((r) => {
         setAvailableDatasets(r.datasets);
-        if (r.datasets.length > 0) setSelectedKeys([r.datasets[0].key]);
       })
       .catch((err: unknown) => {
         setDatasetError(err instanceof Error ? err.message : "Failed to load dataset list.");
@@ -161,6 +165,8 @@ export default function DashboardPage() {
     }
   });
 
+  const [selectedReportIndices, setSelectedReportIndices] = useState<Set<number>>(new Set());
+
   // Optionally refresh sessions periodically or when tab changes
   useEffect(() => {
     if (activeTab === "analyst") {
@@ -173,12 +179,13 @@ export default function DashboardPage() {
     router.replace("/login");
   }
 
-  async function handleLoadSelected() {
-    if (selectedKeys.length === 0) return;
+  async function handleLoadSelected(keysOverride?: string[]) {
+    const keys = keysOverride || selectedKeys;
+    if (keys.length === 0) return;
     setLoadingDataset(true);
     setDatasetError("");
     try {
-      const payload = await loadDataset(selectedKeys[0]);
+      const payload = await loadDataset(keys[0]);
       setDatasetPayload(payload);
       setSessionDataset(payload);
       setActiveSessionId(null);
@@ -187,6 +194,7 @@ export default function DashboardPage() {
         description: `${payload.shape[0].toLocaleString()} rows and ${payload.shape[1]} columns processed.`,
         icon: <Database size={16} className="text-emerald-400" />
       });
+      setShowMobileMenu(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load dataset.";
       setDatasetError(msg);
@@ -196,20 +204,22 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function processFile(file: File) {
     if (!file) return;
+    if (!file.name.endsWith('.csv')) {
+      toast.error("Invalid file type", { description: "Please upload a CSV file." });
+      return;
+    }
     setLoadingDataset(true);
     setDatasetError("");
     try {
       let storagePath = undefined;
       let b64 = "";
 
-      // If file > 2MB, upload to storage first to avoid Vercel body limits
       if (file.size > 2 * 1024 * 1024 && user) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-        storagePath = `temp/${user.id}/${fileName}`;
+        storagePath = `${user.id}/${fileName}`;
         
         const { error: uploadError } = await supabase.storage
           .from('user_datasets')
@@ -224,19 +234,26 @@ export default function DashboardPage() {
       setDatasetPayload(payload);
       setSessionDataset(payload);
       setActiveSessionId(null);
+      setSelectedKeys([]);
       setNewChatKey(Date.now().toString());
-      toast.success("File uploaded successfully", {
+      toast.success("File processed successfully", {
         description: `${file.name} is now active.`,
         icon: <Upload size={16} className="text-emerald-400" />
       });
+      setShowMobileMenu(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to upload file.";
+      const msg = err instanceof Error ? err.message : "Failed to process file.";
       setDatasetError(msg);
       toast.error("Upload failed", { description: msg });
     } finally {
       setLoadingDataset(false);
-      e.target.value = "";
     }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) await processFile(file);
+    e.target.value = "";
   }
 
   function handleNewChat() {
@@ -244,6 +261,7 @@ export default function DashboardPage() {
     setActiveSessionId(null);
     setNewChatKey(Date.now().toString());
     setActiveTab("analyst");
+    setShowMobileMenu(false);
   }
 
   async function handleLoadSession(session: ChatSession) {
@@ -271,6 +289,7 @@ export default function DashboardPage() {
     setActiveSessionId(session.id);
     setActiveTab("analyst");
     setLoadingDataset(false);
+    setShowMobileMenu(false);
   }
 
   async function handleDeleteSession(sessionId: string, e: React.MouseEvent) {
@@ -295,6 +314,12 @@ export default function DashboardPage() {
     setChatSessions((prev) => prev.map((s) => s.id === session.id ? { ...s, title: newTitle } : s));
   }
 
+  const handleDiscoveryClick = (query: string) => {
+    setActiveTab("analyst");
+    sendMessage(query);
+    setShowMobileMenu(false);
+  };
+
   const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: "overview", label: "Data Overview", icon: Database },
     { id: "analyst", label: "AI Analyst", icon: MessageSquare },
@@ -303,78 +328,75 @@ export default function DashboardPage() {
     { id: "board", label: "Live Board", icon: LayoutDashboard },
   ];
 
-  return (
-    <>
-      <Head><title>{`Nexlytics | Dashboard`}</title></Head>
-      <CommandPalette 
-        onSelectTab={(tab) => setActiveTab(tab as Tab)}
-        datasets={availableDatasets}
-        onSelectDataset={(key) => {
-          setSelectedKeys([key]);
-          handleLoadSelected();
-        }}
-      />
-      <Toaster position="top-right" theme="dark" closeButton richColors />
-      <div className="h-screen flex flex-col bg-mesh overflow-hidden">
-        <header className="h-[80px] bg-[#030712]/60 backdrop-blur-2xl border-b border-white/[0.05] px-8 flex items-center gap-6 z-50 shrink-0">
-          <div className="max-w-[1920px] mx-auto w-full flex items-center gap-6">
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4 cursor-pointer"
-            onClick={() => router.push("/")}
-          >
-            <LogoMark size={36} />
-            <span className="font-bold text-white text-2xl tracking-tighter">Nexlytics</span>
-          </motion.div>
-          <div className="flex items-center gap-2 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 hidden sm:flex">
-            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-            <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-widest">
-              v2.0 PRO
-            </span>
-          </div>
-          <div className="ml-auto flex items-center gap-6">
-            {user && (
-              <div className="hidden md:flex flex-col items-end gap-0.5">
-                <span className="text-white text-sm font-bold tracking-tight">{user.display_name}</span>
-                <span className="text-indigo-400/80 text-[10px] font-bold uppercase tracking-[0.15em]">{user.role}</span>
+  const sidebarContent = (
+    <div className={`flex flex-col h-full transition-all duration-300 ${sidebarCollapsed ? "items-center py-6" : ""}`}>
+      {/* Fixed Top Section */}
+      <div className={`shrink-0 w-full ${sidebarCollapsed ? "flex flex-col items-center" : ""}`}>
+        {/* Logo and Toggle Header */}
+        <div className={`flex items-center mb-8 px-2 relative ${sidebarCollapsed ? "justify-center" : "justify-between"}`}>
+          <div className="flex items-center">
+            <div className="relative group/logo">
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0 transition-all duration-300 ${sidebarCollapsed ? "group-hover/logo:opacity-20 group-hover/logo:scale-90" : ""}`}>
+                <LogoMark className="w-6 h-6" />
               </div>
+              
+              {sidebarCollapsed && (
+                <button 
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="absolute inset-0 flex items-center justify-center text-white opacity-0 group-hover/logo:opacity-100 transition-all duration-300"
+                  title="Expand Sidebar"
+                >
+                  <ChevronRight size={20} className="drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
+                </button>
+              )}
+            </div>
+
+            {!sidebarCollapsed && (
+              <span className="text-xl font-black text-white tracking-tighter uppercase italic ml-3">
+                Nexlytics
+              </span>
             )}
+          </div>
 
-            <button
-              onClick={handleSignOut}
-              className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/20 transition-all active:scale-95 text-sm font-semibold"
+          {!sidebarCollapsed && (
+            <button 
+              onClick={() => setSidebarCollapsed(true)}
+              className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+              title="Collapse Sidebar"
             >
-              <LogOut size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-              <span className="hidden sm:inline">Sign Out</span>
+              <ChevronLeft size={18} />
             </button>
-          </div>
-          </div>
-        </header>
+          )}
+        </div>
 
-        <div className="flex flex-1 overflow-hidden max-w-[1920px] mx-auto w-full h-[calc(100vh-80px)]">
-          <aside className="w-72 bg-[#0B0F19]/50 border-r border-white/[0.08] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 hidden md:flex backdrop-blur-md custom-scrollbar">
-            <motion.div
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-            >
+        {!sidebarCollapsed && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6 px-2"
+          >
+            <div>
               <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4">
                 Data Management
               </p>
-              <div className="flex p-1 bg-white/[0.05] rounded-xl mb-4">
-                <button
+              
+              <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 mb-4">
+                <button 
                   onClick={() => setDataSource("preloaded")}
-                  className={`flex-1 text-xs py-2 rounded-lg font-semibold transition-all ${dataSource === "preloaded"
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                  className={`flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    dataSource === "preloaded" 
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
                       : "text-slate-400 hover:text-white"
                     }`}
                 >
-                  Library
+                  <Library size={14} className="inline-block mr-2 relative" />
+                  <span className="align-middle">Library</span>
                 </button>
-                <button
+                <button 
                   onClick={() => setDataSource("upload")}
-                  className={`flex-1 text-xs py-2 rounded-lg font-semibold transition-all ${dataSource === "upload"
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                  className={`flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    dataSource === "upload" 
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
                       : "text-slate-400 hover:text-white"
                     }`}
                 >
@@ -384,50 +406,44 @@ export default function DashboardPage() {
               </div>
 
               {dataSource === "preloaded" ? (
-                <div className="space-y-3">
-                  <div className="max-h-48 overflow-y-auto space-y-2 pr-1 scrollbar-hide">
-                    {availableDatasets.map((d) => (
-                      <label 
-                        key={d.key} 
-                        className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
-                          selectedKeys.includes(d.key) 
-                            ? "bg-indigo-600/15 border-indigo-500/40 text-white" 
-                            : "bg-white/[0.02] border-white/[0.05] text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"
-                        }`}
-                      >
-                        <div className="relative flex items-center justify-center">
-                          <input
-                            type="radio"
-                            name="dataset-selection"
-                            className="peer appearance-none w-4 h-4 rounded-full border-2 border-white/10 bg-black/20 checked:border-indigo-500 transition-all cursor-pointer"
-                            checked={selectedKeys.includes(d.key)}
-                            onChange={() => setSelectedKeys([d.key])}
-                          />
-                          <div className="absolute w-1.5 h-1.5 rounded-full bg-indigo-400 opacity-0 peer-checked:opacity-100 transition-opacity" />
-                        </div>
-                        <div className="flex-1 truncate">
-                          <p className="text-[10px] font-black truncate uppercase tracking-widest">{d.label}</p>
-                        </div>
-                      </label>
-                    ))}
+                <div className="relative group/select">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400/50 group-hover/select:text-indigo-400 transition-colors">
+                    <Library size={14} />
                   </div>
-                  <button
-                    className="btn-primary w-full text-sm py-3 flex items-center justify-center gap-2"
-                    onClick={handleLoadSelected}
-                    disabled={loadingDataset || selectedKeys.length === 0}
+                  <select
+                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-3 pl-11 pr-10 text-xs font-bold uppercase tracking-widest text-slate-300 appearance-none focus:outline-none focus:border-indigo-500/50 transition-all cursor-pointer"
+                    value={selectedKeys[0] || ""}
+                    onChange={(e) => {
+                      const key = e.target.value;
+                      if (key) {
+                        setSelectedKeys([key]);
+                        handleLoadSelected([key]);
+                      }
+                    }}
                   >
-                    {loadingDataset ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        Load Dataset
-                        <ChevronRight size={16} />
-                      </>
-                    )}
-                  </button>
+                    <option value="" disabled className="bg-[#0B0F19]">Select Source...</option>
+                    {availableDatasets.map((d) => (
+                      <option key={d.key} value={d.key} className="bg-[#0B0F19] py-2 text-[10px]">
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover/select:text-indigo-400 transition-colors">
+                    <ChevronDown size={14} />
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div 
+                  className="space-y-3"
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) await processFile(file);
+                  }}
+                >
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -436,14 +452,23 @@ export default function DashboardPage() {
                     onChange={handleFileUpload}
                   />
                   <button
-                    className="btn-secondary w-full text-sm py-3 flex items-center justify-center gap-2"
+                    className={`w-full bg-white/[0.03] border border-white/10 rounded-xl py-3 px-4 flex items-center gap-3 transition-all relative ${
+                      isDragging 
+                        ? "bg-indigo-600/10 border-indigo-500 border-dashed shadow-lg shadow-indigo-500/10 scale-[0.98]" 
+                        : "hover:bg-white/[0.06] hover:border-white/20 border-dashed"
+                    }`}
                     onClick={() => fileInputRef.current?.click()}
                     disabled={loadingDataset}
                   >
                     {loadingDataset ? (
-                      <div className="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin ml-1" />
                     ) : (
-                      <><Upload size={16} /> Choose CSV file</>
+                      <>
+                        <Upload size={14} className={`text-indigo-400/50 ${isDragging ? "animate-bounce" : ""}`} />
+                        <span className="text-xs font-bold uppercase tracking-widest text-slate-300 truncate">
+                          {isDragging ? "Drop to Load" : "Choose CSV File"}
+                        </span>
+                      </>
                     )}
                   </button>
                 </div>
@@ -453,12 +478,46 @@ export default function DashboardPage() {
                 <motion.p
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-rose-400 text-xs mt-3 flex items-center gap-1.5"
+                  className="text-rose-400 text-[10px] font-bold mt-3 flex items-center gap-1.5"
                 >
                   <Info size={12} /> {datasetError}
                 </motion.p>
               )}
+            </div>
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={`glass-card p-4 text-xs transition-all duration-500 ${!datasetPayload ? "border-dashed border-white/5 opacity-60" : "border-emerald-500/20"}`}
+            >
+              {datasetPayload ? (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Active Dataset
+                    </div>
+                    <div className="flex items-center gap-1 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                      <span className="text-[10px] font-black text-indigo-400">{datasetPayload.health_score ?? 98}%</span>
+                      <span className="text-[9px] text-indigo-500/60 font-bold uppercase">Health</span>
+                    </div>
+                  </div>
+                  <p className="text-white font-medium truncate mb-1">{datasetPayload.filename}</p>
+                  <p className="text-slate-400">{datasetPayload.shape[0].toLocaleString()} rows • {datasetPayload.shape[1]} cols</p>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-1">
+                  <div className="flex items-center gap-2 text-slate-400 font-bold mb-1.5 uppercase tracking-tighter">
+                    <Database size={14} className="text-slate-500" />
+                    Awaiting Intelligence
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-[0.1em] text-center">
+                    Select or drop a source to begin
+                  </p>
+                </div>
+              )}
             </motion.div>
+
             <button
               onClick={handleNewChat}
               className="w-full bg-white/[0.03] hover:bg-white/[0.08] text-white border border-white/10 rounded-xl py-3 px-4 font-semibold transition-all flex items-center justify-between group/chat"
@@ -480,162 +539,222 @@ export default function DashboardPage() {
                 className="w-full bg-black/40 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-slate-300 focus:outline-none focus:border-indigo-500/50 transition-colors"
               />
             </div>
+          </motion.div>
+        )}
+      </div>
 
-            {chatSessions.length > 0 && (
-              <motion.div
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="flex flex-col"
-              >
-                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4 mt-2 border-t border-white/[0.05] pt-6">
-                  Chat History
-                </p>
-                <div className="flex-1 overflow-y-auto space-y-1 scrollbar-hide pr-1 mt-2">
-                  {chatSessions
-                    .filter(s => s.title?.toLowerCase().includes(searchQuery.toLowerCase()) || s.dataset_name.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((session) => (
-                    <div
-                      key={session.id}
-                      onClick={() => !renamingId && handleLoadSession(session)}
-                      className={`group flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${
-                        activeSessionId === session.id
-                          ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
-                          : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 border border-transparent"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate flex-1">
-                        <MessageSquare size={14} className={activeSessionId === session.id ? "text-indigo-400" : "text-slate-500"} />
-                        {renamingId === session.id ? (
-                          <input
-                            autoFocus
-                            className="bg-slate-800 text-xs text-white px-1 py-0.5 rounded outline-none border border-indigo-500 w-full"
-                            value={renamingTitle}
-                            onChange={(e) => setRenamingTitle(e.target.value)}
-                            onBlur={() => {
-                              handleRenameSession(session, renamingTitle);
-                              setRenamingId(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleRenameSession(session, renamingTitle);
-                                setRenamingId(null);
-                              } else if (e.key === 'Escape') {
-                                setRenamingId(null);
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : (
-                          <span className="text-xs truncate font-medium">
-                            {session.title || session.dataset_name}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRenamingId(session.id);
-                            setRenamingTitle(session.title || session.dataset_name);
-                          }}
-                          className="p-1 text-slate-500 hover:text-indigo-400"
-                          title="Rename Session"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteSession(session.id, e)}
-                          className="p-1 text-slate-500 hover:text-rose-400"
-                          title="Delete Session"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-              {datasetPayload && (
-                <motion.div
-                  initial={{ scale: 0.95, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="mt-6 glass-card p-4 text-xs"
+      {/* Scrollable Chat History */}
+      {!sidebarCollapsed && (
+        <div className="flex-1 overflow-y-auto mt-6 space-y-1 scrollbar-hide pr-1 w-full px-2">
+          <div className="flex items-center gap-2 mb-4 mt-2 px-1 opacity-80">
+            <HistoryIcon size={12} className="text-indigo-400" />
+            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em]">
+              Chat History
+            </p>
+          </div>
+          {chatSessions
+            .filter(s => s.title?.toLowerCase().includes(searchQuery.toLowerCase()) || s.dataset_name.toLowerCase().includes(searchQuery.toLowerCase()))
+            .map((session) => (
+            <div
+              key={session.id}
+              onClick={() => !renamingId && handleLoadSession(session)}
+              className={`group flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${
+                activeSessionId === session.id
+                  ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-lg shadow-indigo-500/5"
+                  : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate flex-1">
+                <MessageSquare size={14} className={activeSessionId === session.id ? "text-indigo-400" : "text-slate-600"} />
+                {renamingId === session.id ? (
+                  <input
+                    autoFocus
+                    className="bg-black/40 border border-indigo-500/50 rounded px-1.5 py-0.5 text-xs text-white outline-none w-full"
+                    value={renamingTitle}
+                    onChange={(e) => setRenamingTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleRenameSession(session, renamingTitle);
+                        setRenamingId(null);
+                      } else if (e.key === 'Escape') {
+                        setRenamingId(null);
+                      }
+                    }}
+                    onBlur={() => handleRenameSession(session, renamingTitle).then(() => setRenamingId(null))}
+                  />
+                ) : (
+                  <span className="text-xs truncate font-medium">{session.title || session.dataset_name}</span>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setRenamingId(session.id); setRenamingTitle(session.title || ""); }}
+                  className="p-1 hover:text-indigo-400 transition-colors"
                 >
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold mb-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    Active Dataset
-                  </div>
-                  <p className="text-white font-medium truncate mb-1">{datasetPayload.filename}</p>
-                  <p className="text-slate-400">{datasetPayload.shape[0].toLocaleString()} rows • {datasetPayload.shape[1]} cols</p>
-                </motion.div>
-              )}
-
-            {user && (
-            <div className="mt-auto pt-6 border-t border-white/[0.05] space-y-2">
-              <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/20">
-                  {user?.display_name?.charAt(0) || "U"}
-                </div>
-                <div className="flex-1 truncate">
-                  <p className="text-xs font-bold text-white truncate">{user?.display_name}</p>
-                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">{user?.role}</p>
-                </div>
+                  <Edit2 size={12} />
+                </button>
+                <button 
+                  onClick={(e) => handleDeleteSession(session.id, e)}
+                  className="p-1 hover:text-rose-400 transition-colors"
+                >
+                  <Trash2 size={12} />
+                </button>
               </div>
             </div>
-            )}
-            {/* Discovery Section */}
-            {datasetPayload && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-4 pt-6 border-t border-white/[0.05]"
+          ))}
+        </div>
+      )}
+
+      {/* Fixed User Section */}
+      {user && (
+      <div className="shrink-0 mt-auto pt-6 border-t border-white/[0.05] w-full px-2">
+        <div className={`flex items-center gap-3 transition-all duration-300 ${sidebarCollapsed ? "justify-center p-0" : "p-3 bg-white/[0.03] rounded-2xl border border-white/10 shadow-inner group/user"}`}>
+          <div className="relative group/avatar">
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/20 shrink-0 border border-white/10 transition-all duration-300 ${sidebarCollapsed ? "group-hover/avatar:opacity-20 group-hover/avatar:scale-90" : ""}`}>
+              {user?.display_name?.charAt(0) || "U"}
+            </div>
+
+            {sidebarCollapsed && (
+              <button 
+                onClick={handleSignOut}
+                className="absolute inset-0 flex items-center justify-center text-rose-400 opacity-0 group-hover/avatar:opacity-100 transition-all duration-300"
+                title="Sign Out"
               >
-                <div className="flex items-center gap-2 text-indigo-400 font-black text-[9px] uppercase tracking-[0.2em] mb-4 px-2">
-                  <Sparkles size={12} /> Intelligence Discovery
-                </div>
-                <div className="space-y-4 px-2 pb-20">
-                  <div>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Key Keywords</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {datasetPayload.schema.column_names.slice(0, 8).map(col => (
-                        <span key={col} className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-[10px] text-slate-400 hover:text-white transition-colors cursor-default">
-                          {col}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {datasetPayload.schema.categorical_columns.length > 0 && (
-                    <div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Categorical Context</p>
-                      <p className="text-[11px] text-slate-400 leading-relaxed italic">
-                        Try asking about distributions across <span className="text-indigo-400">{datasetPayload.schema.categorical_columns[0]}</span> or <span className="text-indigo-400">{datasetPayload.schema.categorical_columns[1] || 'segments'}</span>.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+                <LogOut size={20} className="drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
+              </button>
             )}
+          </div>
+
+          {!sidebarCollapsed && (
+            <>
+              <div className="flex-1 truncate">
+                <p className="text-xs font-bold text-white truncate">{user?.display_name}</p>
+                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">{user?.role}</p>
+              </div>
+              <button 
+                onClick={handleSignOut}
+                className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                title="Sign Out"
+              >
+                <LogOut size={16} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      )}
+    </div>
+  );
+
+
+  return (
+    <div 
+      className="h-screen flex flex-col bg-mesh overflow-hidden relative"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        // Prevent flickering when dragging over children
+        if (e.relatedTarget === null) setIsDragging(false);
+      }}
+      onDrop={async (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) await processFile(file);
+      }}
+    >
+      <Head><title>{`Nexlytics | Dashboard`}</title></Head>
+
+      <Toaster position="top-right" theme="dark" closeButton richColors />
+      <AnimatePresence>
+        {isDragging && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-indigo-900/20 backdrop-blur-xl border-[6px] border-dashed border-indigo-500/30 flex flex-col items-center justify-center pointer-events-none"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="p-16 rounded-[4rem] bg-[#030712]/90 border border-white/10 shadow-[0_0_100px_rgba(79,70,229,0.2)] flex flex-col items-center gap-8 text-center"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 animate-pulse" />
+                <div className="relative w-28 h-28 rounded-3xl bg-indigo-600/20 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                  <Upload size={48} className="animate-bounce" />
+                </div>
+              </div>
+              <div>
+                <h2 className="text-4xl font-bold text-white mb-3 tracking-tight">Drop to Analyze</h2>
+                <p className="text-lg text-slate-400 font-medium max-w-xs">
+                  Release your CSV anywhere to start the intelligence engine
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {[1,2,3].map(i => (
+                  <div key={i} className="w-2 h-2 rounded-full bg-indigo-500/40 animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <CommandPalette 
+        onSelectTab={(tab) => setActiveTab(tab as Tab)}
+        datasets={availableDatasets}
+        onSelectDataset={(key) => {
+          setSelectedKeys([key]);
+          handleLoadSelected([key]);
+        }}
+      />
+        <div className="flex flex-1 overflow-hidden max-w-[1920px] mx-auto w-full h-full relative">
+          {/* Mobile Overlay Sidebar */}
+          <AnimatePresence>
+            {showMobileMenu && (
+              <>
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowMobileMenu(false)}
+                  className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[60] md:hidden"
+                />
+                <motion.aside 
+                  initial={{ x: -300 }}
+                  animate={{ x: 0 }}
+                  exit={{ x: -300 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                  className="absolute top-0 left-0 bottom-0 w-72 bg-[#0B0F19] border-r border-white/[0.08] p-4 z-[70] md:hidden shadow-2xl"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <LogoMark size={24} />
+                    <button onClick={() => setShowMobileMenu(false)} className="text-slate-500 hover:text-white p-1">
+                       <Plus size={20} className="rotate-45" />
+                    </button>
+                  </div>
+                  {sidebarContent}
+                </motion.aside>
+              </>
+            )}
+          </AnimatePresence>
+
+          <aside className={`${sidebarCollapsed ? "w-20" : "w-72"} bg-[#0B0F19]/50 border-r border-white/[0.08] p-4 shrink-0 hidden md:block backdrop-blur-md transition-all duration-300 relative`}>
+             {sidebarContent}
           </aside>
 
-          <main className="flex-1 overflow-y-auto p-5 custom-scrollbar">
-            {datasetPayload && (
-              <div className="mb-4 flex items-center gap-3">
-                <h2 className="text-xl font-bold text-white">{datasetPayload.filename}</h2>
-                <span className="text-[#64748B] text-sm">
-                  {datasetPayload.shape[0].toLocaleString()} rows, {datasetPayload.shape[1]} columns
-                </span>
-              </div>
-            )}
+          <main className="flex-1 h-full flex flex-col overflow-hidden p-4 md:p-5 custom-scrollbar">
 
-            <div className="flex gap-2 mb-10 bg-black/40 p-1.5 rounded-2xl w-fit border border-white/5 backdrop-blur-xl shadow-2xl">
+            <div className="flex gap-2 mb-10 bg-black/40 p-1.5 rounded-2xl w-full border border-white/5 backdrop-blur-xl shadow-2xl">
               {tabs.map((t) => (
                 <button
                   key={t.id}
-                  className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-sm font-bold tracking-tight transition-all duration-300 relative ${activeTab === t.id
+                  className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl text-sm font-bold tracking-tight transition-all duration-300 relative ${activeTab === t.id
                       ? "text-white"
                       : "text-slate-500 hover:text-slate-200"
                     }`}
@@ -654,13 +773,16 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="flex-1 relative">
+            <div className="flex-1 relative overflow-hidden">
               {/* Data Overview Tab */}
-              <div className={activeTab === "overview" ? "block" : "hidden"}>
+              <div className={activeTab === "overview" ? "block h-full overflow-y-auto custom-scrollbar pr-2" : "hidden"}>
                 {datasetPayload ? (
                   <div className="space-y-6">
                 
-                    <OverviewTab payload={datasetPayload} />
+                    <OverviewTab 
+                      payload={datasetPayload} 
+                      onSwitchTab={setActiveTab} 
+                    />
                   </div>
                 ) : (
                   <motion.div
@@ -678,7 +800,7 @@ export default function DashboardPage() {
               </div>
 
               {/* AI Analyst Tab (Always alive to preserve state) */}
-              <div className={activeTab === "analyst" ? "block" : "hidden"}>
+              <div className={activeTab === "analyst" ? "block h-full" : "hidden"}>
                 {(!datasetPayload && !sessionDataset) ? (
                    <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -705,17 +827,19 @@ export default function DashboardPage() {
                       setSessionDataset(newPayload);
                       setDatasetPayload(newPayload);
                     }}
+                    selectedReportIndices={selectedReportIndices}
+                    setSelectedReportIndices={setSelectedReportIndices}
                   />
                 )}
               </div>
 
               {/* Forecasting Tab */}
-              <div className={activeTab === "forecast" ? "block" : "hidden"}>
+              <div className={activeTab === "forecast" ? "block h-full overflow-y-auto custom-scrollbar pr-2" : "hidden"}>
                 {datasetPayload ? <ForecastingTab payload={datasetPayload} /> : <p className="text-slate-400 text-center py-20">Load a dataset to use forecasting.</p>}
               </div>
 
               {/* Reports Tab */}
-              <div className={activeTab === "reports" ? "block" : "hidden"}>
+              <div className={activeTab === "reports" ? "block h-full overflow-y-auto custom-scrollbar pr-2" : "hidden"}>
                 <ReportsTab 
                   payload={datasetPayload} 
                   user={user} 
@@ -724,6 +848,8 @@ export default function DashboardPage() {
                   isAnalyzing={isAnalyzing}
                   chatError={chatError}
                   activeSessionId={activeSessionId}
+                  selectedReportIndices={selectedReportIndices}
+                  setSelectedReportIndices={setSelectedReportIndices}
                 />
               </div>
 
@@ -740,28 +866,29 @@ export default function DashboardPage() {
           </main>
         </div>
 
-        
+        <ConfirmModal 
+          isOpen={!!deleteSessionId}
+          onClose={() => setDeleteSessionId(null)}
+          onConfirm={performDeleteSession}
+          title="Delete Chat Session"
+          message="Are you sure you want to delete this conversation? This action cannot be undone and all insights will be permanently removed."
+          confirmLabel="Delete Permanently"
+          type="danger"
+        />
       </div>
-
-      
-
-      <ConfirmModal 
-        isOpen={!!deleteSessionId}
-        onClose={() => setDeleteSessionId(null)}
-        onConfirm={performDeleteSession}
-        title="Delete Chat Session"
-        message="Are you sure you want to delete this conversation? This action cannot be undone and all insights will be permanently removed."
-        confirmLabel="Delete Permanently"
-        type="danger"
-      />
-    </>
   );
 }
 
 import { DataQualityGauge } from "@/components/DataQualityGauge";
 import PlotlyChart from "@/components/PlotlyChart";
 
-function OverviewTab({ payload }: { payload: DatasetPayload }) {
+function OverviewTab({ 
+  payload, 
+  onSwitchTab 
+}: { 
+  payload: DatasetPayload, 
+  onSwitchTab: (tab: Tab) => void 
+}) {
   const [showAll, setShowAll] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -849,7 +976,7 @@ return (
     <div className="space-y-8">
       {/* Top Row: AI Narrative & Health */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        <div className="xl:col-span-9 space-y-8">
+        <div className="xl:col-span-12 space-y-8">
           <KPICards kpis={kpis} />
           
           {insights.length > 0 && (
@@ -857,14 +984,14 @@ return (
               <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">
                 <Sparkles size={14} /> Intelligence Briefing
               </div>
-              <ul className="space-y-4">
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {displayedInsights.map((ins, i) => (
                   <motion.li 
                     key={i} 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className="text-[15px] text-slate-300 flex gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors"
+                    className="text-[15px] text-slate-300 flex gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors"
                   >
                     <div className="w-6 h-6 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-xs font-bold shrink-0">
                       {i + 1}
@@ -883,29 +1010,6 @@ return (
               )}
             </section>
           )}
-        </div>
-
-        <div className="xl:col-span-3 space-y-8">
-          <DataQualityGauge 
-            score={health_score ?? 98} 
-            label="Dataset Health" 
-          />
-          
-          <section className="card p-6">
-             <div className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em] mb-4">
-               <Info size={14} /> Quick Stats
-             </div>
-             <div className="grid grid-cols-2 gap-4">
-               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                 <p className="text-2xl font-bold text-white">{schema.rows.toLocaleString()}</p>
-                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Rows</p>
-               </div>
-               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                 <p className="text-2xl font-bold text-white">{schema.columns}</p>
-                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Columns</p>
-               </div>
-             </div>
-          </section>
         </div>
       </div>
 

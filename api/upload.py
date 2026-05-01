@@ -60,6 +60,7 @@ class handler(BaseHTTPRequestHandler):
             send_error(self, "Either csv_b64 or storage_path is required.", 400)
             return
 
+        supabase = None
         try:
             if storage_path:
                 # 1. Download from Supabase Storage (Bypasses Vercel payload limit)
@@ -85,9 +86,11 @@ class handler(BaseHTTPRequestHandler):
             normalised_csv_b64 = df_to_csv_b64(df)
             
             # 1. Generate a unique key and store in Redis for high-speed chat access
+            # We prefix with 'sb_' to indicate it's a cloud-backed dataset
             dataset_id = str(uuid.uuid4())
+            full_key = f"sb_{dataset_id}"
             from redis_client import store_dataset
-            store_dataset(dataset_id, normalised_csv_b64, ttl=3600) # 1 hour TTL
+            store_dataset(full_key, normalised_csv_b64, ttl=3600) # 1 hour TTL
             
         except Exception as exc:
             send_error(self, f"Processing error: {exc}", 500)
@@ -96,7 +99,10 @@ class handler(BaseHTTPRequestHandler):
         # 2. Persistent Storage (Supabase) - used for reloading sessions later
         final_storage_path = storage_path # fallback to original if re-upload fails
         try:
-            supabase = get_supabase_for_user(user.get("token"))
+            if not supabase:
+                from supabase_client import get_supabase_for_user
+                supabase = get_supabase_for_user(user.get("token"))
+
             if supabase and user.get("id") != "demo-user-id":
                 user_id = user.get("id")
                 import base64
@@ -136,16 +142,19 @@ class handler(BaseHTTPRequestHandler):
         # Calculate Correlation Matrix (for numeric columns)
         correlations = {}
         import pandas as pd
+        import numpy as np
         numeric_df = df.select_dtypes(include=['number'])
         if not numeric_df.empty and len(numeric_df.columns) > 1:
             corr_matrix = numeric_df.corr().round(2)
+            # Replace NaN with None for valid JSON serialization
+            corr_values = corr_matrix.replace({np.nan: None}).values.tolist()
             correlations = {
                 "columns": list(corr_matrix.columns),
-                "values": corr_matrix.values.tolist()
+                "values": corr_values
             }
 
         send_json(self, {
-            "dataset_key": dataset_id,
+            "dataset_key": full_key,
             "schema":      schema,
             "kpis":        kpis,
             "insights":    insights,
@@ -155,6 +164,7 @@ class handler(BaseHTTPRequestHandler):
             "filename":    filename,
             "shape":       list(df.shape),
         })
+
 
     def log_message(self, format, *args):
         pass

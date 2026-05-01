@@ -10,34 +10,48 @@
     --surface-0: #0f172a;
     --surface-1: #1e293b;
     --surface-2: #334155;
-    
+
     /* Vibrant Accents */
     --primary: #6366f1;
     --primary-glow: rgba(99, 102, 241, 0.15);
     --secondary: #a855f7;
-    
+
     /* Semantic Colors */
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
-    
+
     /* Text */
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --border: rgba(255, 255, 255, 0.08);
   }
 
-  html, body {
+  html,
+  body {
     @apply bg-[#030712] text-[#f8fafc] font-sans selection:bg-indigo-500/30;
     font-family: 'Outfit', sans-serif;
     -webkit-font-smoothing: antialiased;
     scroll-behavior: smooth;
   }
 
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
 
   /* Hide default browser password eye */
   input::-ms-reveal,
@@ -47,6 +61,7 @@
 }
 
 @layer components {
+
   /* Glassmorphism Surface */
   .glass-card {
     @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl;
@@ -61,19 +76,15 @@
   }
 
   .btn-primary {
-    @apply bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 
-           text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-300
-           shadow-lg shadow-indigo-500/20 active:scale-95 disabled:opacity-50;
+    @apply bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-300 shadow-lg shadow-indigo-500/20 active:scale-95 disabled:opacity-50;
   }
 
   .btn-secondary {
-    @apply bg-white/[0.05] hover:bg-white/[0.1] text-white font-medium
-           px-5 py-2.5 rounded-xl border border-white/[0.1] transition-all duration-300;
+    @apply bg-white/[0.05] hover:bg-white/[0.1] text-white font-medium px-5 py-2.5 rounded-xl border border-white/[0.1] transition-all duration-300;
   }
 
   .tab-button {
-    @apply px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300
-           text-[#94a3b8] hover:text-white hover:bg-white/[0.05];
+    @apply px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 text-[#94a3b8] hover:text-white hover:bg-white/[0.05];
   }
 
   .tab-button.active {
@@ -81,10 +92,7 @@
   }
 
   .input {
-    @apply bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5
-           text-white placeholder-[#475569] focus:outline-none
-           focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
-           w-full transition-all;
+    @apply bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-white placeholder-[#475569] focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 w-full transition-all;
   }
 
   /* Style dropdowns specifically with the arrow */
@@ -101,18 +109,37 @@
     @apply bg-[#0f172a] text-white py-2;
   }
 
-  .kpi-card {
-    @apply glass-card p-6 border-l-4 border-l-indigo-500 shadow-2xl;
+  /* Custom Minimalist Scrollbar */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 20px;
+    transition: background 0.3s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.3);
+  }
+
+  .glass-card {
+    @apply bg-[#0B0F19]/60 backdrop-blur-3xl border border-white/[0.08] rounded-[2.5rem] shadow-2xl;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .chat-bubble-user {
-    @apply bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl rounded-tr-none px-6 py-4 max-w-[85%]
-           ml-auto text-[14px] leading-relaxed shadow-xl shadow-indigo-500/10 border border-white/10;
+    @apply bg-indigo-600 text-white px-6 py-4 max-w-[85%] text-[14px] leading-relaxed shadow-lg shadow-indigo-600/20 rounded-2xl rounded-tr-none;
   }
-  
+
   .chat-bubble-ai {
-    @apply bg-white/[0.04] backdrop-blur-xl px-6 py-5 max-w-[95%] text-[14px] leading-relaxed 
-           border border-white/10 rounded-2xl rounded-tl-none shadow-sm;
+    @apply bg-white/[0.04] backdrop-blur-xl px-6 py-5 max-w-[95%] text-[14px] leading-relaxed border border-white/10 rounded-2xl rounded-tl-none shadow-sm;
   }
 
   .section-title {
@@ -121,9 +148,50 @@
 
   /* Animated background gradient */
   .bg-mesh {
-    background: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-                radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.08) 0px, transparent 50%),
-                #030712;
+    position: relative;
+    background-color: #030712;
+    overflow: hidden;
+  }
+
+  .bg-mesh::before,
+  .bg-mesh::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .bg-mesh::before {
+    background: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%);
+    animation: mesh-float-1 20s infinite alternate ease-in-out;
+  }
+
+  .bg-mesh::after {
+    background: radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.15) 0px, transparent 50%);
+    animation: mesh-float-2 25s infinite alternate ease-in-out;
+  }
+
+  @keyframes mesh-float-1 {
+    0% {
+      transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+      transform: translate(10%, 10%) scale(1.1);
+    }
+  }
+
+  @keyframes mesh-float-2 {
+    0% {
+      transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+      transform: translate(-10%, -10%) scale(1.2);
+    }
   }
 }
-

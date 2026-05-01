@@ -37,6 +37,8 @@ interface Props {
   isAnalyzing: boolean;
   chatError: string | null;
   onDatasetRecovered?: (payload: DatasetPayload) => void;
+  selectedReportIndices: Set<number>;
+  setSelectedReportIndices: React.Dispatch<React.SetStateAction<Set<number>>>;
 }
 
 export default function AIAnalyst({ 
@@ -48,11 +50,12 @@ export default function AIAnalyst({
   isAnalyzing,
   chatError,
   onDatasetRecovered,
+  selectedReportIndices,
+  setSelectedReportIndices,
 }: Props) {
   const [input, setInput] = useState("");
   const [showClearModal, setShowClearModal] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
   const [pinnedMap, setPinnedMap] = useState<Record<number, string>>({});
   const [isListening, setIsListening] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -63,7 +66,10 @@ export default function AIAnalyst({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // If we're analyzing (active chat), use smooth scroll
+    // If messages just changed (could be history load), use instant scroll to avoid jank
+    const behavior = isAnalyzing ? "smooth" : "auto";
+    bottomRef.current?.scrollIntoView({ behavior });
   }, [messages, isAnalyzing]);
 
   // Autocomplete logic
@@ -132,6 +138,30 @@ export default function AIAnalyst({
     syncPins();
   }, [messages, payload]);
 
+  // Typewriter effect state
+  const [typedContent, setTypedContent] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    messages.forEach((msg, idx) => {
+      if (msg.role === "assistant" && !typedContent[idx]) {
+        let i = 0;
+        const fullText = msg.content;
+        const interval = setInterval(() => {
+          setTypedContent(prev => ({
+            ...prev,
+            [idx]: fullText.substring(0, i)
+          }));
+          i += 4; // Type 4 chars at a time for speed
+          if (i > fullText.length) {
+            setTypedContent(prev => ({ ...prev, [idx]: fullText }));
+            clearInterval(interval);
+          }
+        }, 12);
+        return () => clearInterval(interval);
+      }
+    });
+  }, [messages]);
+
   const handleSend = async (text?: string) => {
     const q = (text || input).trim();
     if (!q || isAnalyzing) return;
@@ -167,9 +197,6 @@ export default function AIAnalyst({
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  const handleAddToReport = (idx: number) => {
-    setAddedIndices(prev => new Set(prev).add(idx));
-  };
 
   const handlePin = async (msg: ChatMessage, idx: number) => {
     if (!payload || !msg.chart) return;
@@ -255,14 +282,41 @@ export default function AIAnalyst({
     recognition.start();
   };
 
-  const speak = (text: string) => {
+  const [currentlySpeakingIdx, setCurrentlySpeakingIdx] = useState<number | null>(null);
+
+  const handleToggleSpeak = (text: string, idx: number) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.1;
-    utterance.pitch = 1;
-    window.speechSynthesis.speak(utterance);
-    toast.info("Speaking analysis...", { icon: <Volume2 size={16} /> });
+
+    if (window.speechSynthesis.speaking && currentlySpeakingIdx === idx) {
+      window.speechSynthesis.cancel();
+      setCurrentlySpeakingIdx(null);
+      toast.info("Speech stopped");
+    } else {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.1;
+      utterance.pitch = 1;
+      utterance.onend = () => setCurrentlySpeakingIdx(null);
+      utterance.onerror = () => setCurrentlySpeakingIdx(null);
+      
+      window.speechSynthesis.speak(utterance);
+      setCurrentlySpeakingIdx(idx);
+      toast.info("Speaking analysis...", { icon: <Volume2 size={16} /> });
+    }
+  };
+
+  const handleToggleReport = (idx: number) => {
+    setSelectedReportIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+        toast.info("Removed from report briefing");
+      } else {
+        next.add(idx);
+        toast.success("Added to report briefing");
+      }
+      return next;
+    });
   };
 
   const handleSaveEdit = (idx: number) => {
@@ -274,7 +328,7 @@ export default function AIAnalyst({
   };
   
   return (
-    <div className="flex flex-col h-[calc(100vh-220px)] relative overflow-hidden bg-[#030712]/20 rounded-2xl border border-white/5 shadow-2xl">
+    <div className="flex flex-col h-[calc(100vh-160px)] relative overflow-hidden bg-[#030712]/20 rounded-2xl border border-white/5 shadow-2xl">
       <div className="absolute top-0 right-2 z-10">
         <button 
           onClick={() => setShowClearModal(true)}
@@ -327,9 +381,9 @@ export default function AIAnalyst({
                         {copiedIndex === idx ? <Check size={12} /> : <Copy size={12} />}
                       </button>
                       <button 
-                        onClick={() => speak(msg.content)}
-                        className="p-1.5 bg-slate-800 border border-white/10 rounded-lg text-slate-400 hover:text-white shadow-xl"
-                        title="Read Aloud"
+                        onClick={() => handleToggleSpeak(msg.content, idx)}
+                        className={`p-1.5 border border-white/10 rounded-lg shadow-xl transition-all ${currentlySpeakingIdx === idx ? "bg-indigo-600 text-white animate-pulse" : "bg-slate-800 text-slate-400 hover:text-white"}`}
+                        title={currentlySpeakingIdx === idx ? "Stop Reading" : "Read Aloud"}
                       >
                         <Volume2 size={12} />
                       </button>
@@ -358,13 +412,13 @@ export default function AIAnalyst({
                       )}
                       {msg.query_type !== 'irrelevant' && (
                         <button 
-                          onClick={() => handleAddToReport(idx)}
+                          onClick={() => handleToggleReport(idx)}
                           className={`p-1.5 border rounded-lg shadow-xl transition-all ${
-                            addedIndices.has(idx) 
-                              ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400" 
+                            selectedReportIndices.has(idx) 
+                              ? "bg-emerald-600 border-emerald-500 text-white" 
                               : "bg-slate-800 border-white/10 text-slate-400 hover:text-white"
                           }`}
-                          title="Add to report"
+                          title={selectedReportIndices.has(idx) ? "Remove from report" : "Add to report"}
                         >
                           <PlusCircle size={12} />
                         </button>
@@ -396,7 +450,7 @@ export default function AIAnalyst({
                         </div>
                       </div>
                     ) : (
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown>{msg.role === "assistant" ? (typedContent[idx] || "") : msg.content}</ReactMarkdown>
                     )}
                   </div>
 
@@ -474,9 +528,9 @@ export default function AIAnalyst({
         <div ref={bottomRef} className="h-4" />
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#030712] via-[#030712]/95 to-transparent backdrop-blur-sm">
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#030712] via-[#030712]/95 to-transparent backdrop-blur-sm">
         {suggestions.length > 0 && messages.length <= 1 && payload && (
-          <div className="flex flex-wrap gap-2.5 mb-6">
+          <div className="flex flex-wrap gap-2.5 mb-4">
             {suggestions.map((s) => (
               <button
                 key={s}
@@ -490,14 +544,14 @@ export default function AIAnalyst({
           </div>
         )}
         
-        <div className="relative group max-w-4xl mx-auto">
+        <div className="relative group max-w-5xl mx-auto">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-2xl blur opacity-10 group-focus-within:opacity-30 transition-opacity duration-500" />
-          <div className="relative flex items-center gap-3 p-2 bg-[#0B0F19]/80 backdrop-blur-2xl border border-white/10 rounded-2xl group-focus-within:border-indigo-500/50 transition-all shadow-2xl">
+          <div className="relative flex items-center gap-3 p-1.5 bg-[#0B0F19]/80 backdrop-blur-2xl border border-white/10 rounded-2xl group-focus-within:border-indigo-500/50 transition-all shadow-2xl">
             <div className="pl-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors">
               <HelpCircle size={22} />
             </div>
             <input
-              className="bg-transparent border-none focus:ring-0 text-[15px] text-white placeholder-slate-500 flex-1 py-4 outline-none"
+              className="bg-transparent border-none focus:ring-0 text-[15px] text-white placeholder-slate-500 flex-1 py-3 outline-none"
               placeholder={isListening ? "Listening..." : (payload ? "Ask me to analyze your data..." : "Select a dataset first...")}
               value={input}
               onChange={(e) => setInput(e.target.value)}

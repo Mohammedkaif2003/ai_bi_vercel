@@ -75,9 +75,13 @@ def _load_dataset(dataset_key: str, user: dict | None) -> dict:
 
     safe_key = os.path.basename(dataset_key)
 
-    # Check if it's a Supabase dataset
-    if dataset_key.startswith("sb_") and user and user.get("id") != "demo-user-id":
-        dataset_id = dataset_key[3:]
+    # Check if it's a Supabase dataset (either starts with sb_ or is a raw UUID)
+    import re
+    is_sb_prefixed = dataset_key.startswith("sb_")
+    is_uuid = bool(re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", dataset_key, re.I))
+
+    if (is_sb_prefixed or is_uuid) and user and user.get("id") != "demo-user-id":
+        dataset_id = dataset_key[3:] if is_sb_prefixed else dataset_key
         supabase = get_supabase_for_user(user.get("token"))
         if not supabase:
             raise FileNotFoundError("Could not connect to Supabase.")
@@ -119,12 +123,15 @@ def _load_dataset(dataset_key: str, user: dict | None) -> dict:
 
     # Calculate Correlation Matrix (for numeric columns)
     correlations = {}
+    import numpy as np
     numeric_df = df.select_dtypes(include=['number'])
     if not numeric_df.empty and len(numeric_df.columns) > 1:
         corr_matrix = numeric_df.corr().round(2)
+        # Replace NaN with None for valid JSON serialization
+        corr_values = corr_matrix.replace({np.nan: None}).values.tolist()
         correlations = {
             "columns": list(corr_matrix.columns),
-            "values": corr_matrix.values.tolist()
+            "values": corr_values
         }
 
     return {
