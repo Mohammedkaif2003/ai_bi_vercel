@@ -1,21 +1,19 @@
 # Nexlytics
 
-Nexlytics is an AI-powered business intelligence app for exploring CSV data with KPI cards, automated insights, plain-English analysis, forecasting, and executive PDF reports.
+Nexlytics is a premium, AI-powered Business Intelligence platform designed for high-performance CSV exploration. It features cinematic data analysis, executive command centers, and high-fidelity trend forecasting—all wrapped in a sophisticated 'Nexlytics Indigo' design system.
 
 The repository currently includes:
 
 - A production-oriented Next.js front end with Python serverless API routes for Vercel.
 - A legacy Streamlit app for local Python development and experimentation.
 
-## Features
-
-- Sign in with demo users or environment-configured credentials.
-- Upload a CSV or load one of the bundled sample datasets.
-- Review KPI cards, schema details, preview rows, and automated insights.
-- Ask plain-English questions and get tables, charts, and narrated answers.
-- Generate simple revenue or sales forecasts.
-- Export a narrative executive PDF from analysis history.
-- Use deterministic pandas/Plotly analysis for common business questions, with AI used primarily for narration.
+- **Cinematic Analysis**: Experience 'Intelligence Focus'—a side-by-side analytical stage for deep data synthesis.
+- **Executive Command Center**: A persistent, drag-and-drop hub for your most critical cross-dataset insights.
+- **High-Fidelity Forecasting**: Generate trend projections with statistical confidence scores and executive data grids.
+- **Indigo Design System**: A premium, high-performance UI featuring glassmorphism, cinematic typography, and dynamic motion.
+- **Professional Reporting**: Export narrated executive PDF reports from your active analysis session or global history.
+- **Automated Intelligence**: Instant KPI extraction, data quality health scores, and trend detection.
+- **Deterministic Precision**: Uses pandas/Plotly for primary analysis, with AI used for authoritative narration and synthesis.
 
 ## Tech Stack
 

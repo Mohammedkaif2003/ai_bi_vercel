@@ -63,7 +63,7 @@ class handler(BaseHTTPRequestHandler):
         tmp_path = os.path.join(tempfile.gettempdir(), "nexlytics_report.pdf")
 
         brand_logo_b64 = data.get("brand_logo_b64")
-        brand_color = data.get("brand_color") or "#2563EB"
+        brand_color = data.get("brand_color") or "#6366F1"
         theme = data.get("theme") or "light"
 
         try:

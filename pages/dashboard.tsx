@@ -71,7 +71,8 @@ export default function DashboardPage() {
     dataSource, setDataSource,
     selectedKeys, setSelectedKeys,
     loadingDataset, setLoadingDataset,
-    datasetError, setDatasetError
+    datasetError, setDatasetError,
+    pendingDatasetToActivate, setPendingDatasetToActivate
   } = useStore();
   
   const [sessionDataset, setSessionDataset] = useState<DatasetPayload | null>(null);
@@ -187,14 +188,19 @@ export default function DashboardPage() {
     setDatasetError("");
     try {
       const payload = await loadDataset(keys[0]);
-      setDatasetPayload(payload);
-      setSessionDataset(payload);
+      
+      // If we already have an active dataset and it's different, prompt
+      if (datasetPayload && datasetPayload.dataset_key !== payload.dataset_key) {
+        setPendingDatasetToActivate(payload);
+        toast.info("Dataset preview loaded", { description: "Review the data or activate it for analysis." });
+      } else {
+        setDatasetPayload(payload);
+        setSessionDataset(payload);
+        toast.success(`Dataset "${payload.filename}" loaded successfully!`);
+      }
+      
       setActiveSessionId(null);
       setNewChatKey(Date.now().toString());
-      toast.success(`Dataset "${payload.filename}" loaded successfully!`, {
-        description: `${payload.shape[0].toLocaleString()} rows and ${payload.shape[1]} columns processed.`,
-        icon: <Database size={16} className="text-emerald-400" />
-      });
       setShowMobileMenu(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load dataset.";
@@ -274,11 +280,19 @@ export default function DashboardPage() {
     try {
       const payload = await loadDataset(keyToLoad);
       setSessionDataset(payload);
-      setDatasetPayload(payload); // Also set global dataset if possible
+      
+      // If this session's dataset is different from the ACTIVE one, prompt to switch
+      if (datasetPayload && datasetPayload.dataset_key !== payload.dataset_key) {
+        setPendingDatasetToActivate(payload);
+      } else if (!datasetPayload) {
+        // If no active dataset, make this one active automatically? 
+        // User said "if i go to history, it views and a pop up"
+        // So let's always prompt if it's not already active.
+        setPendingDatasetToActivate(payload);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load dataset.";
       if (msg.includes("not found")) {
-        // Allow loading the session history even if the dataset is missing
         setSessionDataset(null);
       } else {
         setDatasetError(msg);
@@ -313,6 +327,17 @@ export default function DashboardPage() {
 
     await supabase.from("chat_sessions").update({ title: newTitle }).eq("id", session.id);
     setChatSessions((prev) => prev.map((s) => s.id === session.id ? { ...s, title: newTitle } : s));
+  }
+
+  function handleConfirmActivation() {
+    if (pendingDatasetToActivate) {
+      setDatasetPayload(pendingDatasetToActivate);
+      setSessionDataset(pendingDatasetToActivate);
+      toast.success("Dataset activated", {
+        description: `${pendingDatasetToActivate.filename} is now the active source.`
+      });
+      setPendingDatasetToActivate(null);
+    }
   }
 
   const handleDiscoveryClick = (query: string) => {
@@ -576,6 +601,20 @@ export default function DashboardPage() {
           message="Are you sure you want to delete this conversation? This action cannot be undone and all insights will be permanently removed."
           confirmLabel="Delete Permanently"
           type="danger"
+        />
+
+        <ConfirmModal 
+          isOpen={!!pendingDatasetToActivate}
+          onClose={() => setPendingDatasetToActivate(null)}
+          onConfirm={handleConfirmActivation}
+          title="Switch Active Dataset?"
+          message={datasetPayload 
+            ? `You are currently using "${datasetPayload.filename}". Would you like to switch to "${pendingDatasetToActivate?.filename}" for new analysis?`
+            : `Would you like to set "${pendingDatasetToActivate?.filename}" as your active dataset for new analysis?`
+          }
+          confirmLabel="Yes, Switch Dataset"
+          cancelLabel="No, Stay on Current"
+          type="info"
         />
       </div>
   );

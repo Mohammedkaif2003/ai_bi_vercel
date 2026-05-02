@@ -35,6 +35,8 @@ interface AppState {
   setLoadingDataset: (loading: boolean) => void;
   datasetError: string;
   setDatasetError: (error: string) => void;
+  pendingDatasetToActivate: DatasetPayload | null;
+  setPendingDatasetToActivate: (payload: DatasetPayload | null) => void;
 
   // Global Insights
   pinnedInsights: any[];
@@ -74,6 +76,8 @@ export const useStore = create<AppState>((set) => ({
   setLoadingDataset: (loadingDataset) => set({ loadingDataset }),
   datasetError: "",
   setDatasetError: (datasetError) => set({ datasetError }),
+  pendingDatasetToActivate: null,
+  setPendingDatasetToActivate: (pendingDatasetToActivate) => set({ pendingDatasetToActivate }),
 
   pinnedInsights: [],
   setPinnedInsights: (pinnedInsights) => set({ pinnedInsights }),

@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Nexlytics is a CSV-based business intelligence application. Users can sign in, load a sample dataset or upload their own CSV, inspect KPIs and automated insights, ask plain-English analysis questions, create forecasts, and export executive PDF reports.
+Nexlytics is a high-performance, CSV-centric Business Intelligence platform. It empowers users with cinematic data analysis ('Intelligence Focus'), a persistent executive command center, high-fidelity trend forecasting, and professional-grade automated reporting. The entire experience is built on the 'Nexlytics Indigo' design system, prioritizing visual excellence and interactive speed.
 
 The current production path is a Next.js application backed by Python API routes for Vercel. The older Streamlit app remains in the repository for local Python development.
 
@@ -50,14 +50,16 @@ The application follows a compute-first model:
 | Area | Files | Purpose |
 |---|---|---|
 | Auth page | `pages/index.tsx` | Login form, demo credential disclosure, session setup |
-| Dashboard shell | `pages/dashboard.tsx` | Dataset loading, tab navigation, sign-out, high-level state |
+| Dashboard shell | `pages/dashboard.tsx` | Dataset loading, tab navigation, high-level store integration |
 | API client | `lib/api.ts` | Typed wrappers around `/api/*` endpoints |
 | Types | `lib/types.ts` | Shared TypeScript interfaces |
-| KPI display | `components/KPICards.tsx` | Dashboard KPI cards |
-| Analyst tab | `components/AIAnalyst.tsx` | Question input, analysis results, Plotly charts |
-| Forecasting tab | `components/Forecasting.tsx` | Forecast controls and results |
-| Reports tab | `components/Reports.tsx` | PDF report generation |
-| Charts | `components/PlotlyChart.tsx` | Plotly rendering wrapper |
+| Analyst tab | `components/AIAnalyst.tsx` | Cinematic chat interface with side-by-side 'Intelligence Focus' |
+| Command Center | `components/LiveBoard.tsx` | Persistent, drag-and-drop hub for pinned insights |
+| Forecasting tab | `components/Forecasting.tsx` | Predictive dashboard with confidence scoring and high-fidelity charts |
+| Data Overview | `components/KPICards.tsx` | Glassmorphism KPI cards with dynamic hover glows |
+| Reports tab | `components/Reports.tsx` | Split-view reporting (Active Session vs Global Archive) |
+| Sidebar | `components/Sidebar.tsx` | Modernized navigation with dataset health indicators |
+| Charts | `components/PlotlyChart.tsx` | Responsive Plotly rendering with brand-aligned styling |
 
 ## 5. Python API Routes
 

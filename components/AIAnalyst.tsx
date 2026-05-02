@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Send, 
@@ -16,7 +16,8 @@ import {
   Mic,
   MicOff,
   Zap,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { DatasetPayload, User, ChatMessage } from "@/lib/types";
@@ -27,7 +28,7 @@ import ConfirmModal from "./ConfirmModal";
 import { toast } from "sonner";
 import { useStore } from "@/hooks/useStore";
 import { MessageSkeleton } from "./Skeleton";
-import { Volume2, Edit3, Save, X } from "lucide-react";
+import { Volume2, Edit3, Save, X, Maximize2 } from "lucide-react";
 
 interface Props {
   payload: DatasetPayload | null;
@@ -56,9 +57,9 @@ export default function AIAnalyst({
   selectedReportIndices,
   setSelectedReportIndices,
 }: Props) {
-  const { datasetPayload, user: storeUser, addPinnedInsight, removePinnedInsight } = useStore();
+  const { datasetPayload, user: storeUser, addPinnedInsight, removePinnedInsight, setPendingDatasetToActivate } = useStore();
   
-  // Use props if available, fallback to store/local (though dashboard should provide them)
+  const isReadOnly = !!(propPayload && datasetPayload && propPayload.dataset_key !== datasetPayload.dataset_key);
   const user = propUser || storeUser;
   const messages = propMessages || [];
   const sendMessage = propSendMessage;
@@ -74,6 +75,7 @@ export default function AIAnalyst({
   const [isListening, setIsListening] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [cursorPos, setCursorPos] = useState(0);
@@ -187,6 +189,15 @@ export default function AIAnalyst({
   const handleSend = async (text?: string) => {
     const q = (text || input).trim();
     if (!q || isAnalyzing) return;
+    
+    if (isReadOnly) {
+      setPendingDatasetToActivate(propPayload);
+      toast.warning("Dataset Not Active", {
+        description: "Please activate this dataset to perform new analysis."
+      });
+      return;
+    }
+
     setInput("");
     await sendMessage(q);
   };
@@ -358,16 +369,30 @@ export default function AIAnalyst({
   
   return (
     <div className="flex flex-col h-[calc(100vh-160px)] relative overflow-hidden bg-[#030712]/20 rounded-2xl border border-white/5 shadow-2xl">
-      <div className="absolute top-0 right-2 z-10">
-        <button 
-          onClick={() => setShowClearModal(true)}
-          className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
-          title="Clear Chat"
+      
+      {isReadOnly && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-6 mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between gap-3 shadow-lg"
         >
-          <Trash2 size={14} />
-          <span className="hidden sm:inline">Clear Chat</span>
-        </button>
-      </div>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-500 shrink-0">
+              <AlertCircle size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-200">Read-Only History</p>
+              <p className="text-[10px] text-amber-500/80 font-medium">Viewing history for "{propPayload?.filename}". Switch to this dataset to analyze.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setPendingDatasetToActivate(propPayload)}
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black uppercase tracking-wider rounded-lg transition-colors"
+          >
+            Activate Now
+          </button>
+        </motion.div>
+      )}
 
       <div className="flex-1 overflow-y-auto space-y-6 px-6 pb-32 pt-10 custom-scrollbar">
         <AnimatePresence initial={false}>
@@ -398,8 +423,8 @@ export default function AIAnalyst({
                 </div>
               )}
               
-              <div className="flex flex-col gap-2 max-w-[85%] group">
-                <div className={`${msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"} relative group`}>
+              <div className={`flex flex-col gap-2 group transition-all duration-300 ${editingIndex === idx ? "w-full max-w-full" : "max-w-[92%]"}`}>
+                <div className={`${msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"} relative group ${editingIndex === idx ? "w-full !max-w-full" : ""}`}>
                   {msg.role === "assistant" && (
                     <div className="absolute -top-3 -right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                       <button 
@@ -425,6 +450,13 @@ export default function AIAnalyst({
                         title="Edit Narration"
                       >
                         <Edit3 size={12} />
+                      </button>
+                      <button 
+                        onClick={() => setFocusedIndex(idx)}
+                        className="p-1.5 bg-slate-800 border border-white/10 rounded-lg text-slate-400 hover:text-white shadow-xl transition-all hover:scale-110 active:scale-95"
+                        title="View Full Screen"
+                      >
+                        <Maximize2 size={12} />
                       </button>
                       {msg.chart && (
                         <button 
@@ -455,26 +487,27 @@ export default function AIAnalyst({
                     </div>
                   )}
                   
-                  <div className="leading-relaxed prose prose-invert prose-sm max-w-none">
+                  <div className="leading-relaxed prose prose-invert prose-sm md:prose-base max-w-none prose-p:text-slate-200">
                     {editingIndex === idx ? (
                       <div className="space-y-3">
                         <textarea
-                          className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 min-h-[100px]"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 min-h-[160px] resize-none custom-scrollbar"
                           value={editingContent}
                           onChange={(e) => setEditingContent(e.target.value)}
+                          autoFocus
                         />
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap items-center gap-3 mt-4">
                           <button 
                             onClick={() => handleSaveEdit(idx)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold"
+                            className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xl shadow-indigo-600/20"
                           >
-                            <Save size={12} /> Save
+                            <Save size={14} /> Update Narration
                           </button>
                           <button 
                             onClick={() => setEditingIndex(null)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold"
+                            className="flex items-center gap-2 px-6 py-2 bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 rounded-xl text-xs font-bold transition-all border border-transparent hover:border-rose-500/20"
                           >
-                            <X size={12} /> Cancel
+                            <X size={14} /> Discard Changes
                           </button>
                         </div>
                       </div>
@@ -571,9 +604,9 @@ export default function AIAnalyst({
         <div ref={bottomRef} className="h-4" />
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#030712] via-[#030712]/95 to-transparent backdrop-blur-sm">
+      <div className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-[#030712] via-[#030712]/95 to-transparent backdrop-blur-sm">
         {suggestions.length > 0 && messages.length <= 1 && payload && (
-          <div className="flex flex-wrap gap-2.5 mb-4">
+          <div className="flex flex-wrap gap-2.5 mb-4 max-w-full mx-auto px-2">
             {suggestions.map((s) => (
               <button
                 key={s}
@@ -587,7 +620,7 @@ export default function AIAnalyst({
           </div>
         )}
         
-        <div className="relative group max-w-5xl mx-auto">
+        <div className="relative group max-w-full mx-auto">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-2xl blur opacity-10 group-focus-within:opacity-30 transition-opacity duration-500" />
           <div className="relative flex items-center gap-3 p-1.5 bg-[#0B0F19]/80 backdrop-blur-2xl border border-white/10 rounded-2xl group-focus-within:border-indigo-500/50 transition-all shadow-2xl">
             <div className="pl-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors">
@@ -595,11 +628,11 @@ export default function AIAnalyst({
             </div>
             <input
               className="bg-transparent border-none focus:ring-0 text-[15px] text-white placeholder-slate-500 flex-1 py-3 outline-none"
-              placeholder={isListening ? "Listening..." : (payload ? "Ask me to analyze your data..." : "Select a dataset first...")}
+              placeholder={isListening ? "Listening..." : (isReadOnly ? "Activate dataset to analyze..." : (payload ? "Ask me to analyze your data..." : "Select a dataset first..."))}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isAnalyzing || !payload}
+              disabled={isAnalyzing || !payload || isReadOnly}
             />
 
             {/* Autocomplete Dropdown */}
@@ -630,24 +663,24 @@ export default function AIAnalyst({
             <div className="flex items-center gap-2 pr-2">
               <button
                 onClick={toggleVoice}
-                disabled={isAnalyzing || !payload}
+                disabled={isAnalyzing || !payload || isReadOnly}
                 className={`p-2 rounded-xl transition-all ${
                   isListening 
                     ? "bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/40" 
                     : "text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10"
-                }`}
-                title="Voice Input"
+                } ${isReadOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+                title={isReadOnly ? "Activate dataset to use voice" : "Voice Input"}
               >
                 {isListening ? <MicOff size={20} /> : <Mic size={20} />}
               </button>
               <button 
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
-                  input.trim() && !isAnalyzing && payload
+                  input.trim() && !isAnalyzing && payload && !isReadOnly
                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 active:scale-95" 
                     : "bg-white/5 text-slate-700 cursor-not-allowed"
                 }`}
                 onClick={() => handleSend()} 
-                disabled={isAnalyzing || !input.trim() || !payload}
+                disabled={isAnalyzing || !input.trim() || !payload || isReadOnly}
               >
                 <span className="hidden sm:inline text-xs uppercase tracking-widest">Analyze</span>
                 <Send size={18} />
@@ -657,15 +690,109 @@ export default function AIAnalyst({
         </div>
       </div>
 
-      <ConfirmModal
-        isOpen={showClearModal}
-        onClose={() => setShowClearModal(false)}
-        onConfirm={clearChat}
-        title="Clear Analysis History"
-        message="Are you sure you want to clear the analysis history?"
-        confirmLabel="Clear"
-        type="danger"
-      />
+      {/* Full Screen Focus Mode */}
+      <AnimatePresence>
+        {focusedIndex !== null && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-12 bg-[#020617]/95 backdrop-blur-xl"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-[#0f172a] w-full max-w-6xl h-full max-h-[90vh] rounded-[2.5rem] border border-white/10 shadow-2xl flex flex-col overflow-hidden relative"
+            >
+              <div className="absolute top-6 right-6 z-50">
+                <div className="flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 border border-indigo-500/30">
+                      <Sparkles size={28} />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400 tracking-tight">Intelligence Focus</h2>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded text-[10px] font-bold text-indigo-400 uppercase tracking-widest">{payload?.filename || "Analysis"}</div>
+                        <span className="text-slate-700">•</span>
+                        <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{payload?.shape ? `${payload.shape[0].toLocaleString()} Data Points` : "Deep Dive"}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => handleCopy(messages[focusedIndex as number].content, focusedIndex as number)}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-300 text-xs font-bold transition-all active:scale-95"
+                    >
+                      {copiedIndex === focusedIndex ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                      {copiedIndex === focusedIndex ? "Copied" : "Copy Narrative"}
+                    </button>
+                    <button 
+                      onClick={() => setFocusedIndex(null)}
+                      className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-slate-400 hover:text-white transition-all active:scale-95 shadow-lg group"
+                    >
+                      <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-10 gap-12 flex-1 min-h-0 pt-6">
+                  <div className="lg:col-span-4 flex flex-col gap-8 overflow-y-auto pr-8 custom-scrollbar relative">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 blur-[100px] pointer-events-none rounded-full" />
+                    
+                    <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-8 space-y-8 shadow-inner backdrop-blur-md relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+                      
+                      <div className="flex items-center gap-3 px-4 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full w-fit shrink-0">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Synthesis Engine</span>
+                      </div>
+
+                      <div className="prose prose-invert prose-indigo max-w-none prose-p:text-xl prose-p:leading-[1.7] prose-p:text-slate-200 prose-strong:text-indigo-400 prose-headings:text-white prose-li:text-slate-300">
+                        <ReactMarkdown>
+                          {messages[focusedIndex as number].content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto py-6 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">System Identity</span>
+                        <span className="text-xs font-bold text-slate-400">Nexlytics Intelligence Engine</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Generated At</span>
+                        <span className="text-xs font-bold text-slate-400">{new Date().toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-6 flex flex-col min-h-0 pl-4 border-l border-white/5">
+                    {messages[focusedIndex as number].chart ? (
+                      <div className="flex-1 bg-black/20 rounded-[3rem] border border-white/5 p-10 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] relative overflow-hidden flex items-center justify-center min-h-[550px]">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.05)_0%,transparent_100%)] pointer-events-none" />
+                        <PlotlyChart 
+                          spec={messages[focusedIndex as number].chart!} 
+                          height={620}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1 rounded-[2.5rem] border border-white/5 border-dashed flex items-center justify-center bg-white/[0.01]">
+                        <div className="text-center">
+                          <Zap className="mx-auto mb-4 text-slate-700" size={32} />
+                          <p className="text-slate-600 font-bold uppercase tracking-widest text-xs">Analytical Visualization Not Available</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

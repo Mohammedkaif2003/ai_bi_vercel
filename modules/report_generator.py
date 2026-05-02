@@ -50,9 +50,9 @@ logger = get_logger("report_generator")
 C_INK      = colors.HexColor("#0F172A")
 C_BODY     = colors.HexColor("#1F2937")
 C_MUTED    = colors.HexColor("#64748B")
-C_ACCENT   = colors.HexColor("#2563EB")
+C_ACCENT   = colors.HexColor("#6366F1")
 C_ACCENT2  = colors.HexColor("#4F46E5")
-C_ACCENT3  = colors.HexColor("#7C3AED")
+C_ACCENT3  = colors.HexColor("#8B5CF6")
 C_HAIRLINE = colors.HexColor("#E2E8F0")
 C_TH_BG    = colors.HexColor("#1E3A5F")
 C_ROW_ALT  = colors.HexColor("#F1F5F9")
@@ -67,31 +67,19 @@ def _apply_theme(theme_name: str = "light"):
         C_INK = colors.white
         C_BODY = colors.HexColor("#E2E8F0")
         C_MUTED = colors.HexColor("#94A3B8")
-        C_ACCENT = colors.HexColor("#6366F1")
-        C_ACCENT2 = colors.HexColor("#818CF8")
+        C_ACCENT = colors.HexColor("#818CF8")
+        C_ACCENT2 = colors.HexColor("#A5B4FC")
         C_HAIRLINE = colors.HexColor("#1E293B")
         C_TH_BG = colors.HexColor("#312E81")
         C_ROW_ALT = colors.HexColor("#0F172A")
         C_ROW_BORDER = colors.HexColor("#1E293B")
         C_COVER_BAND = colors.HexColor("#030712")
         C_PAGE_BG = colors.HexColor("#030712")
-    elif theme_name == "blue":
-        C_INK = colors.HexColor("#1E3A8A")
-        C_BODY = colors.HexColor("#1E40AF")
-        C_MUTED = colors.HexColor("#3B82F6")
-        C_ACCENT = colors.HexColor("#2563EB")
-        C_ACCENT2 = colors.HexColor("#1D4ED8")
-        C_HAIRLINE = colors.HexColor("#DBEAFE")
-        C_TH_BG = colors.HexColor("#1E3A8A")
-        C_ROW_ALT = colors.HexColor("#EFF6FF")
-        C_ROW_BORDER = colors.HexColor("#BFDBFE")
-        C_COVER_BAND = colors.HexColor("#1E3A8A")
-        C_PAGE_BG = colors.white
-    else: # light / corporate
+    else: # light / standard
         C_INK = colors.HexColor("#0F172A")
         C_BODY = colors.HexColor("#1F2937")
         C_MUTED = colors.HexColor("#64748B")
-        C_ACCENT = colors.HexColor("#2563EB")
+        C_ACCENT = colors.HexColor("#6366F1")
         C_ACCENT2 = colors.HexColor("#4F46E5")
         C_HAIRLINE = colors.HexColor("#E2E8F0")
         C_TH_BG = colors.HexColor("#1E3A5F")
@@ -100,7 +88,7 @@ def _apply_theme(theme_name: str = "light"):
         C_COVER_BAND = colors.HexColor("#0B1B3A")
         C_PAGE_BG = colors.white
 
-HX_ACCENT = "#2563EB"
+HX_ACCENT = "#6366F1"
 HX_MUTED  = "#64748B"
 HX_GOLD   = "#B45309"
 HX_INK    = "#0F172A"
@@ -432,7 +420,7 @@ def _section_divider() -> Table:
 # Chart export
 # ─────────────────────────────────────────────────────────────────────────────
 # Bright, print-safe palette for PDF export — each trace gets a distinct color
-_EXPORT_PALETTE = ["#2563EB", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#8B5CF6"]
+_EXPORT_PALETTE = ["#6366F1", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#8B5CF6"]
 
 
 def _reset_trace_colors_for_light_bg(export_fig):

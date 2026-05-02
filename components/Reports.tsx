@@ -16,11 +16,13 @@ import {
   RotateCcw,
   Eye,
   Palette,
-  CheckCircle
+  CheckCircle,
+  History
 } from "lucide-react";
 import type { DatasetPayload, User, AnalysisHistoryEntry, ChatSession, ChatMessage } from "@/lib/types";
 import { generateReport } from "@/lib/api";
 import PlotlyChart from "./PlotlyChart";
+import { supabase } from "@/lib/supabase";
 
 interface Props {
   payload: DatasetPayload | null;
@@ -35,13 +37,25 @@ interface Props {
   setSelectedReportIndices: React.Dispatch<React.SetStateAction<Set<number>>>;
 }
 
+interface HistoricalInsight {
+  query: string;
+  ai_response: string;
+  insight: string;
+  result: any;
+  chart: any;
+  timestamp: number;
+  session_title?: string;
+  is_history?: boolean;
+}
+
 interface AnalysisHistoryEntryExtended extends AnalysisHistoryEntry {
   originalIdx: number;
+  session_title?: string;
+  is_active?: boolean;
 }
 const THEMES = [
-  { id: "light", name: "Clean Light", color: "#2563EB", bg: "bg-white", text: "text-slate-900" },
-  { id: "dark", name: "Executive Dark", color: "#6366F1", bg: "bg-slate-950", text: "text-white" },
-  { id: "blue", name: "Corporate Blue", color: "#1E3A8A", bg: "bg-blue-50", text: "text-blue-900" },
+  { id: "light", name: "Modern Light", color: "#6366F1", bg: "bg-white", text: "text-slate-900" },
+  { id: "dark", name: "Modern Dark", color: "#818CF8", bg: "bg-[#030712]", text: "text-white" },
 ];
 
 export default function ReportsTab({ 
@@ -53,9 +67,12 @@ export default function ReportsTab({
   chatError,
   selectedReportIndices,
   setSelectedReportIndices,
+  activeSessionId
 }: Props) {
-  const [history, setHistory] = useState<AnalysisHistoryEntryExtended[]>([]);
+  const [activeHistory, setActiveHistory] = useState<AnalysisHistoryEntryExtended[]>([]);
+  const [globalHistory, setGlobalHistory] = useState<AnalysisHistoryEntryExtended[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState("");
   const [chatInput, setChatInput] = useState("");
   
@@ -63,11 +80,11 @@ export default function ReportsTab({
   const [reportTitle, setReportTitle] = useState("AI-Assisted Executive Briefing");
   const [reportIntro, setReportIntro] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("light");
+  
+  const selectedThemeData = THEMES.find(t => t.id === selectedTheme) || THEMES[0];
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-
-  const selectedThemeData = THEMES.find(t => t.id === selectedTheme) || THEMES[0];
 
   useEffect(() => {
     const analysisEntries: AnalysisHistoryEntryExtended[] = [];
@@ -80,12 +97,76 @@ export default function ReportsTab({
           insight: messages[i].content,
           result: messages[i].result || [],
           chart: messages[i].chart,
-          originalIdx: i
+          originalIdx: i,
+          is_active: true
         });
       }
     }
-    setHistory(analysisEntries);
+    setActiveHistory(analysisEntries);
   }, [messages]);
+
+  useEffect(() => {
+    async function fetchAllHistory() {
+      if (!user?.id) return;
+      setLoadingHistory(true);
+      try {
+        // 1. Get all session IDs for the user
+        let query = supabase
+          .from("chat_sessions")
+          .select("id, title, dataset_key")
+          .eq("user_id", user.id);
+        
+        if (activeSessionId) {
+          query = query.neq("id", activeSessionId);
+        }
+
+        const { data: sessions, error: sErr } = await query;
+        
+        console.log("Sessions found:", sessions?.length);
+        if (sErr) throw sErr;
+        if (!sessions || sessions.length === 0) {
+          setGlobalHistory([]);
+          return;
+        }
+
+        const sessionIds = sessions.map(s => s.id);
+        const sessionMap = Object.fromEntries(sessions.map(s => [s.id, s.title]));
+
+        // 2. Get all assistant messages for these sessions
+        const { data: msgs, error: mErr } = await supabase
+          .from("chat_messages")
+          .select("*")
+          .in("session_id", sessionIds)
+          .eq("role", "assistant")
+          .neq("query_type", "irrelevant")
+          .order("created_at", { ascending: false });
+
+        if (mErr) throw mErr;
+
+        // 3. Transform to history entries
+        const entries: AnalysisHistoryEntryExtended[] = (msgs || []).map((m, idx) => ({
+          query: "Insight",
+          ai_response: m.content,
+          insight: m.content,
+          result: m.result_data || [],
+          chart: m.chart_spec,
+          originalIdx: -(idx + 1),
+          session_title: sessionMap[m.session_id],
+          is_active: false
+        }));
+
+        setGlobalHistory(entries);
+      } catch (err) {
+        console.error("Failed to fetch global history:", err);
+      } finally {
+        setLoadingHistory(false);
+      }
+    }
+
+    fetchAllHistory();
+  }, [user?.id, activeSessionId]);
+
+  const allHistory = [...activeHistory, ...globalHistory];
 
   const toggleSelection = (msgIdx: number) => {
     setSelectedReportIndices(prev => {
@@ -115,7 +196,7 @@ export default function ReportsTab({
     setIsReady(false);
     
     try {
-      const selectedHistory = history.filter((h) => selectedReportIndices.has(h.originalIdx));
+      const selectedHistory = allHistory.filter((h) => selectedReportIndices.has(h.originalIdx));
       const PlotlyModule = await import("plotly.js/dist/plotly.js" as any);
       const Plotly = PlotlyModule.default || PlotlyModule;
       
@@ -218,48 +299,99 @@ export default function ReportsTab({
           <div className="flex items-center justify-between mb-4">
              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Insights ({selectedReportIndices.size})</h3>
              <div className="flex gap-2">
-               <button onClick={() => setSelectedReportIndices(new Set(history.map(h => h.originalIdx)))} className="text-[10px] text-indigo-400 hover:underline">Select All</button>
+               <button onClick={() => setSelectedReportIndices(new Set(allHistory.map(h => h.originalIdx)))} className="text-[10px] text-indigo-400 hover:underline">Select All</button>
                <span className="text-slate-700">/</span>
                <button onClick={() => setSelectedReportIndices(new Set())} className="text-[10px] text-slate-500 hover:underline">Clear</button>
              </div>
           </div>
           
-          <div className="space-y-4 max-h-[600px] overflow-y-auto scrollbar-hide pr-2">
-            <AnimatePresence mode="popLayout">
-              {history.length === 0 && !isAnalyzing ? (
-                <div className="text-center py-20 px-8 rounded-[2.5rem] bg-white/[0.02] border border-white/[0.05] border-dashed">
-                  <MessageSquare className="text-slate-500 mx-auto mb-6" size={32} />
-                  <h3 className="text-xl font-bold text-white mb-2">No Insights Found</h3>
-                  <p className="text-slate-500 text-sm">Ask a question below to generate content.</p>
-                </div>
-              ) : (
-                history.map((entry, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={() => toggleSelection(entry.originalIdx)}
-                    className={`group p-6 rounded-[2rem] border transition-all cursor-pointer relative overflow-hidden ${
-                      selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-600/10 border-indigo-500/40" : "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    {selectedReportIndices.has(entry.originalIdx) && (
-                      <motion.div layoutId="selection-border" className="absolute inset-0 border-2 border-indigo-500/50 rounded-[2rem] pointer-events-none" />
-                    )}
-                    <div className="flex items-start gap-4">
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black ${
-                        selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-500"
-                      }`}>{i + 1}</div>
-                      <div className="flex-1">
-                        <p className={`text-sm font-bold mb-2 ${selectedReportIndices.has(entry.originalIdx) ? "text-white" : "text-slate-300"}`}>{entry.query}</p>
-                        <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{entry.ai_response}</p>
+          <div className="space-y-8 max-h-[700px] overflow-y-auto scrollbar-hide pr-2">
+            {/* Active Session Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl w-fit">
+                <Sparkles size={12} className="text-indigo-400" />
+                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Active Session Insights</span>
+              </div>
+              
+              <AnimatePresence mode="popLayout">
+                {activeHistory.length === 0 ? (
+                  <div className="text-center py-10 px-8 rounded-[2rem] bg-white/[0.01] border border-white/[0.03] border-dashed">
+                    <p className="text-slate-600 text-xs font-bold uppercase tracking-widest">No active insights yet</p>
+                  </div>
+                ) : (
+                  activeHistory.map((entry, i) => (
+                    <motion.div 
+                      key={`active-${entry.originalIdx}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => toggleSelection(entry.originalIdx)}
+                      className={`group p-6 rounded-[2rem] border transition-all cursor-pointer relative overflow-hidden ${
+                        selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-600/10 border-indigo-500/40" : "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {selectedReportIndices.has(entry.originalIdx) && (
+                        <motion.div layoutId="selection-border" className="absolute inset-0 border-2 border-indigo-500/50 rounded-[2rem] pointer-events-none" />
+                      )}
+                      <div className="flex items-start gap-4">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black ${
+                          selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-500"
+                        }`}>{i + 1}</div>
+                        <div className="flex-1">
+                          <p className={`text-sm font-bold mb-2 ${selectedReportIndices.has(entry.originalIdx) ? "text-white" : "text-slate-300"}`}>{entry.query}</p>
+                          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{entry.ai_response}</p>
+                        </div>
+                        {selectedReportIndices.has(entry.originalIdx) ? <CheckCircle2 className="text-indigo-500" size={18} /> : <div className="w-4 h-4 rounded-full border border-white/10" />}
                       </div>
-                      {selectedReportIndices.has(entry.originalIdx) ? <CheckCircle2 className="text-indigo-500" size={18} /> : <div className="w-4 h-4 rounded-full border border-white/10" />}
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </AnimatePresence>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Historical Archive Section */}
+            <div className="space-y-4 pt-6">
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-500/10 border border-slate-500/20 rounded-xl w-fit">
+                <History size={12} className="text-slate-400" />
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historical Archive</span>
+              </div>
+
+              <AnimatePresence mode="popLayout">
+                {globalHistory.length === 0 ? (
+                  <div className="text-center py-10 px-8 rounded-[2rem] bg-white/[0.01] border border-white/[0.03] border-dashed">
+                    <p className="text-slate-600 text-xs font-bold uppercase tracking-widest">No previous sessions found</p>
+                  </div>
+                ) : (
+                  globalHistory.map((entry, i) => (
+                    <motion.div 
+                      key={`global-${entry.originalIdx}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => toggleSelection(entry.originalIdx)}
+                      className={`group p-6 rounded-[2rem] border transition-all cursor-pointer relative overflow-hidden ${
+                        selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-600/10 border-indigo-500/40" : "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {selectedReportIndices.has(entry.originalIdx) && (
+                        <motion.div layoutId="selection-border" className="absolute inset-0 border-2 border-indigo-500/50 rounded-[2rem] pointer-events-none" />
+                      )}
+                      <div className="flex items-start gap-4">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black ${
+                          selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-500"
+                        }`}>{i + 1}</div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[9px] font-black text-indigo-400/60 uppercase tracking-widest">{entry.session_title}</span>
+                          </div>
+                          <p className={`text-sm font-bold mb-2 ${selectedReportIndices.has(entry.originalIdx) ? "text-white" : "text-slate-300"}`}>{entry.ai_response.substring(0, 60)}...</p>
+                          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{entry.ai_response}</p>
+                        </div>
+                        {selectedReportIndices.has(entry.originalIdx) ? <CheckCircle2 className="text-indigo-500" size={18} /> : <div className="w-4 h-4 rounded-full border border-white/10" />}
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
         </div>
@@ -284,7 +416,7 @@ export default function ReportsTab({
                        {reportIntro && <p className={`text-[11px] italic leading-relaxed opacity-70 ${selectedThemeData.text}`}>{reportIntro}</p>}
                        
                        <div className="space-y-4">
-                           {history.filter(h => selectedReportIndices.has(h.originalIdx)).map((entry, idx) => (
+                           {allHistory.filter(h => selectedReportIndices.has(h.originalIdx)).map((entry, idx) => (
                              <div key={idx} className="space-y-2">
                                 <h5 className={`text-[12px] font-bold ${selectedThemeData.text}`}>{entry.query}</h5>
                                 <p className={`text-[10px] leading-relaxed opacity-60 ${selectedThemeData.text}`}>{entry.ai_response}</p>
