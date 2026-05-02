@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Layout, 
@@ -154,13 +154,7 @@ export default function LiveBoard({ isActive }: Props) {
     })
   );
 
-  useEffect(() => {
-    if (isActive && pinnedInsights.length === 0) {
-      fetchInsights();
-    }
-  }, [isActive]);
-
-  async function fetchInsights() {
+  const fetchInsights = useCallback(async () => {
     try {
       setLoading(true);
       const data = await listPinnedInsights();
@@ -170,7 +164,13 @@ export default function LiveBoard({ isActive }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [setPinnedInsights]);
+
+  useEffect(() => {
+    if (isActive && pinnedInsights.length === 0) {
+      fetchInsights();
+    }
+  }, [isActive, pinnedInsights.length, fetchInsights]);
 
   async function handleDelete() {
     if (!deleteId) return;

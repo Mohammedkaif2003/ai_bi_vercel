@@ -122,7 +122,7 @@ export default function DashboardPage() {
     });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, [router, setUser]);
 
   useEffect(() => {
     listDatasets()
@@ -132,7 +132,7 @@ export default function DashboardPage() {
       .catch((err: unknown) => {
         setDatasetError(err instanceof Error ? err.message : "Failed to load dataset list.");
       });
-  }, []);
+  }, [setAvailableDatasets, setDatasetError]);
 
   const fetchSessions = useCallback(async () => {
     if (!user) return;
@@ -142,13 +142,16 @@ export default function DashboardPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (data) setChatSessions(data as ChatSession[]);
-  }, [user]);
+  }, [user, setChatSessions]);
 
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
 
   // Unified Chat State (Shared across all tabs)
+  const chatDatasetKey = useMemo(() => datasetPayload?.dataset_key, [datasetPayload?.dataset_key]);
+  const chatDatasetName = useMemo(() => datasetPayload?.filename, [datasetPayload?.filename]);
+
   const {
     messages,
     isLoading: isAnalyzing,
@@ -158,8 +161,8 @@ export default function DashboardPage() {
     setSessionId
   } = useChat({
     user,
-    datasetKey: datasetPayload?.dataset_key,
-    datasetName: datasetPayload?.filename,
+    datasetKey: chatDatasetKey,
+    datasetName: chatDatasetName,
     initialSessionId: activeSessionId,
     onSessionCreated: (session) => {
       setActiveSessionId(session.id);

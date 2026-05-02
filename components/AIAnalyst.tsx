@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Send, 
@@ -61,13 +61,12 @@ export default function AIAnalyst({
   
   const isReadOnly = !!(propPayload && datasetPayload && propPayload.dataset_key !== datasetPayload.dataset_key);
   const user = propUser || storeUser;
-  const messages = propMessages || [];
+  const payload = useMemo(() => propPayload || datasetPayload, [propPayload, datasetPayload]);
+  const messages = useMemo(() => propMessages || [], [propMessages]);
   const sendMessage = propSendMessage;
   const clearChat = propClearChat;
   const isAnalyzing = propIsAnalyzing;
   const chatError = propChatError;
-
-  const payload = propPayload || datasetPayload;
   const [input, setInput] = useState("");
   const [showClearModal, setShowClearModal] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -184,7 +183,7 @@ export default function AIAnalyst({
         return () => clearInterval(interval);
       }
     });
-  }, [messages]);
+  }, [messages, typedContent]);
 
   const handleSend = async (text?: string) => {
     const q = (text || input).trim();
@@ -382,7 +381,7 @@ export default function AIAnalyst({
             </div>
             <div>
               <p className="text-xs font-bold text-amber-200">Read-Only History</p>
-              <p className="text-[10px] text-amber-500/80 font-medium">Viewing history for "{propPayload?.filename}". Switch to this dataset to analyze.</p>
+              <p className="text-[10px] text-amber-500/80 font-medium">Viewing history for &quot;{payload?.filename}&quot;. Switch to this dataset to analyze.</p>
             </div>
           </div>
           <button 
