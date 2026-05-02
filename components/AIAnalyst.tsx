@@ -15,7 +15,8 @@ import {
   PinOff,
   Mic,
   MicOff,
-  Zap
+  Zap,
+  Loader2
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { DatasetPayload, User, ChatMessage } from "@/lib/types";
@@ -24,6 +25,7 @@ import { useChat } from "@/hooks/useChat";
 import PlotlyChart from "./PlotlyChart";
 import ConfirmModal from "./ConfirmModal";
 import { toast } from "sonner";
+import { useStore } from "@/hooks/useStore";
 import { MessageSkeleton } from "./Skeleton";
 import { Volume2, Edit3, Save, X } from "lucide-react";
 
@@ -42,17 +44,29 @@ interface Props {
 }
 
 export default function AIAnalyst({ 
-  payload, 
-  user, 
-  messages,
-  sendMessage,
-  clearChat,
-  isAnalyzing,
-  chatError,
+  payload: propPayload, 
+  user: propUser, 
+  messages: propMessages,
+  sendMessage: propSendMessage,
+  clearChat: propClearChat,
+  isAnalyzing: propIsAnalyzing,
+  chatError: propChatError,
+  onSwitchToForecast,
   onDatasetRecovered,
   selectedReportIndices,
   setSelectedReportIndices,
 }: Props) {
+  const { datasetPayload, user: storeUser, addPinnedInsight, removePinnedInsight } = useStore();
+  
+  // Use props if available, fallback to store/local (though dashboard should provide them)
+  const user = propUser || storeUser;
+  const messages = propMessages || [];
+  const sendMessage = propSendMessage;
+  const clearChat = propClearChat;
+  const isAnalyzing = propIsAnalyzing;
+  const chatError = propChatError;
+
+  const payload = propPayload || datasetPayload;
   const [input, setInput] = useState("");
   const [showClearModal, setShowClearModal] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -64,13 +78,21 @@ export default function AIAnalyst({
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [cursorPos, setCursorPos] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastMsgCount = useRef(0);
 
   useEffect(() => {
-    // If we're analyzing (active chat), use smooth scroll
-    // If messages just changed (could be history load), use instant scroll to avoid jank
-    const behavior = isAnalyzing ? "smooth" : "auto";
-    bottomRef.current?.scrollIntoView({ behavior });
-  }, [messages, isAnalyzing]);
+    // Only scroll if messages count increased
+    if (messages.length > lastMsgCount.current) {
+      // Small delay to let the DOM update (especially for charts)
+      const timer = setTimeout(() => {
+        const behavior = isAnalyzing ? "smooth" : "auto";
+        bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+      }, 100);
+      lastMsgCount.current = messages.length;
+      return () => clearTimeout(timer);
+    }
+    lastMsgCount.current = messages.length;
+  }, [messages.length, isAnalyzing]);
 
   // Autocomplete logic
   useEffect(() => {
@@ -199,58 +221,64 @@ export default function AIAnalyst({
 
 
   const handlePin = async (msg: ChatMessage, idx: number) => {
-    if (!payload || !msg.chart) return;
+    if (!msg.chart || !payload) return;
     
-    // Toggle Logic
+    // Check if already pinned
     if (pinnedMap[idx]) {
       const pinId = pinnedMap[idx];
       try {
-        // Optimistic update
+        removePinnedInsight(pinId);
         setPinnedMap(prev => {
           const next = { ...prev };
           delete next[idx];
           return next;
         });
-
         await unpinInsight(pinId);
-        toast.success("Insight removed from dashboard");
-        
-        // Notify other UI (LiveBoard)
-        window.dispatchEvent(new CustomEvent("pinned_insights:changed"));
+        toast.success("Removed from dashboard");
       } catch (err) {
-        console.error("Failed to unpin insight:", err);
-        toast.error("Failed to unpin insight");
-        // Rollback
-        setPinnedMap(prev => ({ ...prev, [idx]: pinId }));
+        toast.error("Failed to unpin");
       }
       return;
     }
 
     try {
-      const query = messages[idx-1]?.role === 'user' ? messages[idx-1].content : "Analysis";
-      const result = await pinInsight({
+      // Create a temporary ID for optimistic update
+      const tempId = `temp-${Date.now()}`;
+      const newPin = {
+        id: tempId,
         dataset_key: payload.dataset_key,
         filename: payload.filename,
-        query: query,
+        query: messages[idx-1]?.content || "Insight",
+        chart_spec: msg.chart,
+        narration: msg.content,
+        created_at: new Date().toISOString()
+      };
+
+      // Optimistic Update
+      addPinnedInsight(newPin);
+      setPinnedMap(prev => ({ ...prev, [idx]: tempId }));
+      
+      const savedPin = await pinInsight({
+        dataset_key: payload.dataset_key,
+        filename: payload.filename,
+        query: messages[idx-1]?.content || "Insight",
         chart_spec: msg.chart,
         narration: msg.content
       });
       
-      setPinnedMap(prev => ({ ...prev, [idx]: result.id }));
-      toast.success("Insight pinned to dashboard!");
-
-      // Notify other UI (LiveBoard) that pins changed so it can refresh live
-      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
-        try {
-          window.dispatchEvent(new CustomEvent("pinned_insights:changed"));
-        } catch (e) {
-          // ignore
-        }
-      }
+      // Replace temp ID with real ID
+      setPinnedMap(prev => ({ ...prev, [idx]: savedPin.id }));
+      toast.success("Pinned to dashboard");
     } catch (err) {
-      console.error("Failed to pin insight:", err);
+      toast.error("Failed to pin insight");
+      // Rollback
+      setPinnedMap(prev => {
+        const next = { ...prev };
+        delete next[idx];
+        return next;
+      });
     }
-  };
+  }
 
   const toggleVoice = () => {
     if (isListening) {
@@ -306,6 +334,7 @@ export default function AIAnalyst({
   };
 
   const handleToggleReport = (idx: number) => {
+    if (!setSelectedReportIndices) return;
     setSelectedReportIndices(prev => {
       const next = new Set(prev);
       if (next.has(idx)) {
@@ -410,7 +439,7 @@ export default function AIAnalyst({
                           <Pin size={12} className={pinnedMap[idx] ? "fill-current" : ""} />
                         </button>
                       )}
-                      {msg.query_type !== 'irrelevant' && (
+                      {msg.query_type !== 'irrelevant' && selectedReportIndices && (
                         <button 
                           onClick={() => handleToggleReport(idx)}
                           className={`p-1.5 border rounded-lg shadow-xl transition-all ${
@@ -516,12 +545,26 @@ export default function AIAnalyst({
 
         {isAnalyzing && (
           <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex justify-start items-start gap-3 w-full relative group"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-start items-start gap-3"
           >
-            <div className="absolute -inset-4 bg-indigo-500/5 blur-2xl rounded-full animate-pulse pointer-events-none" />
-            <MessageSkeleton />
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0 border border-indigo-500/20">
+              <Loader2 size={18} className="animate-spin" />
+            </div>
+            <div className="flex flex-col gap-2 w-full max-w-[85%]">
+              <div className="chat-bubble-ai w-full">
+                <div className="flex items-center gap-3 mb-3 text-indigo-400">
+                  <Sparkles size={14} className="animate-pulse" />
+                  <span className="text-xs font-bold uppercase tracking-widest">
+                    {messages.length > 0 && messages[messages.length-1].role === 'user' 
+                      ? (messages[messages.length-1].content.length > 50 ? "Heavy Analysis in Progress..." : "Analyzing Data patterns...")
+                      : "Synthesizing Insights..."}
+                  </span>
+                </div>
+                <MessageSkeleton />
+              </div>
+            </div>
           </motion.div>
         )}
 

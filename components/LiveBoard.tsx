@@ -14,6 +14,7 @@ import {
 import { listPinnedInsights, unpinInsight } from "@/lib/api";
 import PlotlyChart from "./PlotlyChart";
 import ConfirmModal from "./ConfirmModal";
+import { useStore } from "@/hooks/useStore";
 import {
   DndContext, 
   closestCenter,
@@ -127,7 +128,7 @@ function SortableInsight({ insight, onDelete }: { insight: PinnedInsight, onDele
 }
 
 export default function LiveBoard({ isActive }: Props) {
-  const [insights, setInsights] = useState<PinnedInsight[]>([]);
+  const { pinnedInsights, setPinnedInsights, removePinnedInsight } = useStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -142,31 +143,16 @@ export default function LiveBoard({ isActive }: Props) {
   );
 
   useEffect(() => {
-    if (isActive) {
+    if (isActive && pinnedInsights.length === 0) {
       fetchInsights();
     }
-  }, [isActive]);
-
-  // Listen for global pin changes so the LiveBoard refreshes in real-time
-  useEffect(() => {
-    function onPinnedChange() {
-      if (isActive) fetchInsights();
-    }
-    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
-      window.addEventListener("pinned_insights:changed", onPinnedChange);
-    }
-    return () => {
-      if (typeof window !== "undefined" && typeof window.removeEventListener === "function") {
-        window.removeEventListener("pinned_insights:changed", onPinnedChange);
-      }
-    };
   }, [isActive]);
 
   async function fetchInsights() {
     try {
       setLoading(true);
       const data = await listPinnedInsights();
-      setInsights(data || []);
+      setPinnedInsights(data || []);
     } catch (err: any) {
       setError(err.message || "Failed to load dashboard.");
     } finally {
@@ -177,31 +163,32 @@ export default function LiveBoard({ isActive }: Props) {
   async function handleDelete() {
     if (!deleteId) return;
     try {
+      // Optimistic update
+      removePinnedInsight(deleteId);
       await unpinInsight(deleteId);
-      setInsights(prev => prev.filter(i => i.id !== deleteId));
       setDeleteId(null);
     } catch (err: any) {
+      // Rollback would be nice but for now we just alert
       alert("Failed to delete insight: " + err.message);
+      fetchInsights(); // Refresh from server
     }
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      setInsights((items) => {
-        const oldIndex = items.findIndex((i) => i.id === active.id);
-        const newIndex = items.findIndex((i) => i.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
+      const oldIndex = pinnedInsights.findIndex((i) => i.id === active.id);
+      const newIndex = pinnedInsights.findIndex((i) => i.id === over.id);
+      setPinnedInsights(arrayMove(pinnedInsights, oldIndex, newIndex));
     }
   }
 
-  const filteredInsights = insights.filter(i => 
+  const filteredInsights = pinnedInsights.filter(i => 
     i.query.toLowerCase().includes(searchQuery.toLowerCase()) ||
     i.filename.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading && insights.length === 0) {
+  if (loading && pinnedInsights.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
         <Loader2 className="text-indigo-500 animate-spin mb-4" size={40} />

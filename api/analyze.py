@@ -38,7 +38,8 @@ from _utils import (  # noqa: E402
     send_error,
     send_json,
 )
-from modules.ai_conversation import narrate_result  # noqa: E402
+from modules.ai_conversation import narrate_result, generate_conversational_response  # noqa: E402
+from modules.code_executor import execute_code  # noqa: E402
 from modules.data_loader import mask_sensitive_columns, normalize_columns  # noqa: E402
 from modules.query_utils import is_dataset_related_query  # noqa: E402
 from modules.smart_analysis import run_smart_analysis  # noqa: E402
@@ -111,23 +112,62 @@ class handler(BaseHTTPRequestHandler):
             })
             return
 
-        # Deterministic smart analysis
+        # Phase 1: Deterministic smart analysis
         log_audit(user, "analyze", {"query": query, "dataset_key": dataset_key})
         analysis = run_smart_analysis(query, df)
+        
+        # Phase 2: AI Code Fallback (if deterministic engine doesn't have a pattern)
         if analysis is None:
-            send_json(self, {
-                "query_type": "unknown",
-                "summary": "",
-                "narration": (
-                    "I couldn't compute a deterministic answer for this query. "
-                    "Try rephrasing or asking about a specific column or metric."
-                ),
-                "result": [],
-                "chart": None,
-                "chart_type": None,
-            })
-            return
+            # Trigger "Analyst Mode" — model generates code + narration
+            ai_response = generate_conversational_response(
+                query, 
+                result=None, # No pre-computed result
+                insight="", 
+                df=df, 
+                concise=True
+            )
+            
+            if isinstance(ai_response, dict):
+                narration = ai_response.get("text", "")
+                chart_code = ai_response.get("chart_code", "")
+                
+                # Execute the code safely
+                exec_result = execute_code(chart_code, df) if chart_code else None
+                
+                # Unpack execution result
+                result_data = []
+                chart_json = None
+                
+                if isinstance(exec_result, tuple) and len(exec_result) == 2:
+                    res, charts = exec_result
+                    result_data = _safe_result(res)
+                    if charts and len(charts) > 0:
+                        chart_json = fig_to_json(charts[0])
+                elif exec_result is not None and not isinstance(exec_result, str):
+                    result_data = _safe_result(exec_result)
 
+                send_json(self, {
+                    "query_type": "ai_analyst",
+                    "summary": "Analytic synthesis performed by AI agent.",
+                    "narration": narration,
+                    "result": result_data,
+                    "chart": chart_json,
+                    "chart_type": "generated"
+                })
+                return
+            else:
+                # Basic narration if model failed to return dict
+                send_json(self, {
+                    "query_type": "unknown",
+                    "summary": "",
+                    "narration": str(ai_response) or "I couldn't analyze this query. Try rephrasing.",
+                    "result": [],
+                    "chart": None,
+                    "chart_type": None,
+                })
+                return
+
+        # Original deterministic path
         summary = analysis.get("summary", "")
         query_type = analysis.get("query_type", "general")
         fig = analysis.get("chart")
