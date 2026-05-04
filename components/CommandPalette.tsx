@@ -56,7 +56,7 @@ export const CommandPalette = ({ onSelectTab, datasets, onSelectDataset }: Props
                   No results found.
                 </Command.Empty>
 
-                <Command.Group heading={<span className="px-3 py-2 text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Navigation</span>}>
+                <Command.Group heading={<span className="px-3 py-2 text-xs font-bold text-indigo-400 uppercase tracking-widest">Navigation</span>}>
                   <CommandItem onSelect={() => { onSelectTab('overview'); setOpen(false); }}>
                     <Database size={18} className="mr-3 text-slate-400" />
                     <span>Data Overview</span>
@@ -80,7 +80,7 @@ export const CommandPalette = ({ onSelectTab, datasets, onSelectDataset }: Props
                 </Command.Group>
 
                 {datasets.length > 0 && (
-                  <Command.Group heading={<span className="px-3 py-2 text-[10px] font-bold text-indigo-400 uppercase tracking-widest mt-2 block">Datasets</span>}>
+                  <Command.Group heading={<span className="px-3 py-2 text-xs font-bold text-indigo-400 uppercase tracking-widest mt-2 block">Datasets</span>}>
                     {datasets.map((d) => (
                       <CommandItem key={d.key} onSelect={() => { onSelectDataset(d.key); setOpen(false); }}>
                         <Database size={18} className="mr-3 text-emerald-500/50" />
@@ -91,10 +91,10 @@ export const CommandPalette = ({ onSelectTab, datasets, onSelectDataset }: Props
                 )}
               </Command.List>
 
-              <div className="p-3 border-t border-white/5 bg-black/20 flex items-center justify-between text-[10px] font-medium text-slate-500 uppercase tracking-widest">
+              <div className="p-3 border-t border-white/5 bg-black/20 flex items-center justify-between text-xs font-medium text-slate-500 uppercase tracking-widest">
                 <div className="flex items-center gap-4">
-                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px]">ENTER</kbd> to select</span>
-                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px]">ESC</kbd> to close</span>
+                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px]">ENTER</kbd> to select</span>
+                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[11px]">ESC</kbd> to close</span>
                 </div>
                 <span>Nexlytics Quick Search</span>
               </div>

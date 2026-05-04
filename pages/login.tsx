@@ -137,7 +137,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {!isRecovery && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="email">
+                  <label className="text-xs font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="email">
                     Email Address
                   </label>
                   <div className="relative group">
@@ -157,7 +157,7 @@ export default function LoginPage() {
               
               {!isForgot && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="password">
+                  <label className="text-xs font-bold text-indigo-400 uppercase tracking-widest ml-1" htmlFor="password">
                     {isRecovery ? "New Password" : "Password"}
                   </label>
                   <div className="relative group">
@@ -189,7 +189,7 @@ export default function LoginPage() {
                           setIsForgot(true);
                           setError("");
                         }}
-                        className="text-[10px] text-slate-500 hover:text-indigo-400 transition-colors font-bold uppercase tracking-widest"
+                        className="text-xs text-slate-500 hover:text-indigo-400 transition-colors font-bold uppercase tracking-widest"
                       >
                         Forgot password?
                       </button>

@@ -480,11 +480,11 @@ export default function DashboardPage() {
 
           <main className="flex-1 h-full flex flex-col overflow-hidden p-4 md:p-5 custom-scrollbar">
 
-            <div className="flex gap-2 mb-10 bg-black/40 p-1.5 rounded-2xl w-full border border-white/5 backdrop-blur-xl shadow-2xl">
+            <div className="flex gap-2 mb-10 bg-black/40 p-1.5 rounded-2xl w-full border border-white/5 backdrop-blur-xl shadow-2xl overflow-x-auto custom-scrollbar pb-2">
               {tabs.map((t) => (
                 <button
                   key={t.id}
-                  className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl text-sm font-bold tracking-tight transition-all duration-300 relative ${activeTab === t.id
+                  className={`flex-1 shrink-0 min-w-[140px] flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl text-sm font-bold tracking-tight transition-all duration-300 relative whitespace-nowrap ${activeTab === t.id
                       ? "text-white"
                       : "text-slate-500 hover:text-slate-200"
                     }`}
@@ -584,7 +584,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Live Board Tab */}
-              <div className={activeTab === "board" ? "block" : "hidden"}>
+              <div className={activeTab === "board" ? "block h-full overflow-y-auto custom-scrollbar pr-2" : "hidden"}>
                 <LiveBoard 
                   isActive={activeTab === "board"} 
                 />
@@ -725,7 +725,7 @@ return (
           
           {insights.length > 0 && (
             <section className="card p-8">
-              <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-6">
                 <Sparkles size={14} /> Intelligence Briefing
               </div>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -761,7 +761,7 @@ return (
       {correlations && correlations.columns.length > 1 && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <section className="lg:col-span-7 card p-8">
-            <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">
+            <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-6">
               <LayoutDashboard size={14} /> Relationship Heatmap
             </div>
             <div className="h-[400px] w-full bg-black/20 rounded-[2rem] overflow-hidden border border-white/5">
@@ -791,7 +791,7 @@ return (
           </section>
 
           <section className="lg:col-span-5 card p-8">
-            <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">
+            <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-6">
               <TrendingUp size={14} /> Key Relationships
             </div>
             <div className="space-y-4">
@@ -824,7 +824,7 @@ return (
 
       {/* Column Explorer */}
       <section className="card p-8">
-        <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">
+        <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-6">
           <Library size={14} /> Data Dictionary
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -838,7 +838,7 @@ return (
               <div key={col} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-bold text-white truncate mr-2">{col}</span>
-                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                  <span className={`text-[11px] font-black uppercase px-2 py-0.5 rounded-md ${
                     isNumeric ? "bg-emerald-500/10 text-emerald-400" :
                     isCat ? "bg-indigo-500/10 text-indigo-400" :
                     isTime ? "bg-amber-500/10 text-amber-400" :
@@ -847,7 +847,7 @@ return (
                     {isNumeric ? "Numeric" : isCat ? "Category" : isTime ? "Date/Time" : "Text"}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 truncate">
+                <p className="text-xs text-slate-500 truncate">
                   Example: <span className="text-slate-400">{String(sample ?? "N/A")}</span>
                 </p>
               </div>
@@ -869,7 +869,7 @@ return (
 
         <div className="p-8 border-b border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-20">
           <div className="flex-1">
-            <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-1">
+            <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-1">
               <Database size={14} /> Professional Data Preview
             </div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
@@ -923,10 +923,10 @@ return (
                     className="absolute right-0 top-full mt-2 w-64 bg-[#0F172A] border border-white/10 rounded-2xl shadow-2xl z-50 p-4"
                   >
                     <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/5">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Select Columns</span>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Columns</span>
                       <button 
                         onClick={() => setVisibleColumns(schema.column_names)}
-                        className="text-[9px] font-bold text-indigo-400 hover:text-white"
+                        className="text-[11px] font-bold text-indigo-400 hover:text-white"
                       >
                         Select All
                       </button>

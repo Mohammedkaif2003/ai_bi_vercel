@@ -45,7 +45,7 @@ export const DataQualityGauge = ({ score, label }: Props) => {
           <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Health</span>
         </div>
       </div>
-      <p className="mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{label}</p>
+      <p className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{label}</p>
     </div>
   );
 };

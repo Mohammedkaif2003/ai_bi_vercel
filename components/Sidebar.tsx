@@ -114,14 +114,14 @@ export default function Sidebar({
             className="space-y-6 px-2"
           >
             <div>
-              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4">
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4">
                 Data Management
               </p>
               
               <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 mb-4">
                 <button 
                   onClick={() => setDataSource("preloaded")}
-                  className={`flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
                     dataSource === "preloaded" 
                       ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
                       : "text-slate-400 hover:text-white"
@@ -132,7 +132,7 @@ export default function Sidebar({
                 </button>
                 <button 
                   onClick={() => setDataSource("upload")}
-                  className={`flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
                     dataSource === "upload" 
                       ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
                       : "text-slate-400 hover:text-white"
@@ -161,7 +161,7 @@ export default function Sidebar({
                   >
                     <option value="" disabled className="bg-[#0B0F19]">Select Source...</option>
                     {availableDatasets.map((d) => (
-                      <option key={d.key} value={d.key} className="bg-[#0B0F19] py-2 text-[10px]">
+                      <option key={d.key} value={d.key} className="bg-[#0B0F19] py-2 text-xs">
                         {d.label}
                       </option>
                     ))}
@@ -216,7 +216,7 @@ export default function Sidebar({
                 <motion.p
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-rose-400 text-[10px] font-bold mt-3 flex items-center gap-1.5"
+                  className="text-rose-400 text-xs font-bold mt-3 flex items-center gap-1.5"
                 >
                   <Info size={12} /> {datasetError}
                 </motion.p>
@@ -236,8 +236,8 @@ export default function Sidebar({
                       Active Dataset
                     </div>
                     <div className="flex items-center gap-1 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
-                      <span className="text-[10px] font-black text-indigo-400">{datasetPayload.health_score ?? 98}%</span>
-                      <span className="text-[9px] text-indigo-500/60 font-bold uppercase">Health</span>
+                      <span className="text-xs font-black text-indigo-400">{datasetPayload.health_score ?? 98}%</span>
+                      <span className="text-[11px] text-indigo-500/60 font-bold uppercase">Health</span>
                     </div>
                   </div>
                   <p className="text-white font-medium truncate mb-1">{datasetPayload.filename}</p>
@@ -249,7 +249,7 @@ export default function Sidebar({
                     <Database size={14} className="text-slate-500" />
                     Awaiting Intelligence
                   </div>
-                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-[0.1em] text-center">
+                  <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.1em] text-center">
                     Select or drop a source to begin
                   </p>
                 </div>
@@ -286,7 +286,7 @@ export default function Sidebar({
         <div className="flex-1 overflow-y-auto mt-6 space-y-1 scrollbar-hide pr-1 w-full px-2">
           <div className="flex items-center gap-2 mb-4 mt-2 px-1 opacity-80">
             <HistoryIcon size={12} className="text-indigo-400" />
-            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em]">
+            <p className="text-xs font-bold text-indigo-400 uppercase tracking-[0.2em]">
               Chat History
             </p>
           </div>
@@ -368,7 +368,7 @@ export default function Sidebar({
             <>
               <div className="flex-1 truncate">
                 <p className="text-xs font-bold text-white truncate">{user?.display_name}</p>
-                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">{user?.role}</p>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">{user?.role}</p>
               </div>
               <button 
                 onClick={onSignOut}

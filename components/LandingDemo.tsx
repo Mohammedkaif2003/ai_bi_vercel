@@ -87,7 +87,7 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
             </div>
             <div>
               <h3 className="text-white font-bold text-lg tracking-tight">Interactive Showcase</h3>
-              <p className="text-indigo-400 text-[10px] font-bold uppercase tracking-[0.2em]">Experiencing Nexlytics PRO</p>
+              <p className="text-indigo-400 text-xs font-bold uppercase tracking-[0.2em]">Experiencing Nexlytics PRO</p>
             </div>
           </div>
           <button 
@@ -146,7 +146,7 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
                             transition={{ delay: i * 0.1, type: "spring", stiffness: 100 }}
                             className="w-full bg-gradient-to-t from-indigo-600 to-violet-400 rounded-t-lg relative group/bar"
                           >
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[9px] font-black px-1.5 py-0.5 rounded opacity-0 group-hover/bar:opacity-100 transition-opacity">
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[11px] font-black px-1.5 py-0.5 rounded opacity-0 group-hover/bar:opacity-100 transition-opacity">
                               {h}%
                             </div>
                           </motion.div>
@@ -169,10 +169,10 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
                 transition={{ delay: i * 0.1 }}
                 className="p-6 bg-white/[0.03] border border-white/5 rounded-[2rem] hover:bg-white/[0.06] transition-all hover:scale-[1.02]"
               >
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">{kpi.label}</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{kpi.label}</p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-white tracking-tight">{kpi.value}</span>
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${kpi.positive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                  <span className={`text-xs font-black px-1.5 py-0.5 rounded ${kpi.positive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                     {kpi.change}
                   </span>
                 </div>
@@ -188,7 +188,7 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
             
             <div className="p-8 border-b border-white/5 flex items-center justify-between bg-[#0F172A]/80 backdrop-blur-xl">
                <div>
-                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Professional Data Preview</p>
+                <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Professional Data Preview</p>
                 <p className="text-xs text-slate-500 font-medium tracking-tight">Viewing Sample Data · {SAMPLE_DATA.rows.toLocaleString()} Rows Total</p>
                </div>
                <div className="flex items-center gap-3">

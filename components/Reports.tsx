@@ -273,7 +273,7 @@ export default function ReportsTab({
     <div className="space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-2">
+          <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-2">
             <Sparkles size={14} /> Report Builder
           </div>
           <h2 className="text-4xl font-bold text-white mb-3 tracking-tight">Narrative Designer</h2>
@@ -285,7 +285,7 @@ export default function ReportsTab({
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowPreview(!showPreview)}
-            className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl border transition-all ${
+            className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl border transition-all ${
               showPreview ? "bg-indigo-500 text-white border-indigo-400 shadow-lg shadow-indigo-500/20" : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
             }`}
           >
@@ -299,9 +299,9 @@ export default function ReportsTab({
           <div className="flex items-center justify-between mb-4">
              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Insights ({selectedReportIndices.size})</h3>
              <div className="flex gap-2">
-               <button onClick={() => setSelectedReportIndices(new Set(allHistory.map(h => h.originalIdx)))} className="text-[10px] text-indigo-400 hover:underline">Select All</button>
+               <button onClick={() => setSelectedReportIndices(new Set(allHistory.map(h => h.originalIdx)))} className="text-xs text-indigo-400 hover:underline">Select All</button>
                <span className="text-slate-700">/</span>
-               <button onClick={() => setSelectedReportIndices(new Set())} className="text-[10px] text-slate-500 hover:underline">Clear</button>
+               <button onClick={() => setSelectedReportIndices(new Set())} className="text-xs text-slate-500 hover:underline">Clear</button>
              </div>
           </div>
           
@@ -310,7 +310,7 @@ export default function ReportsTab({
             <div className="space-y-4">
               <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl w-fit">
                 <Sparkles size={12} className="text-indigo-400" />
-                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Active Session Insights</span>
+                <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Active Session Insights</span>
               </div>
               
               <AnimatePresence mode="popLayout">
@@ -333,7 +333,7 @@ export default function ReportsTab({
                         <motion.div layoutId="selection-border" className="absolute inset-0 border-2 border-indigo-500/50 rounded-[2rem] pointer-events-none" />
                       )}
                       <div className="flex items-start gap-4">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black ${
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
                           selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-500"
                         }`}>{i + 1}</div>
                         <div className="flex-1">
@@ -352,7 +352,7 @@ export default function ReportsTab({
             <div className="space-y-4 pt-6">
               <div className="flex items-center gap-2 px-4 py-2 bg-slate-500/10 border border-slate-500/20 rounded-xl w-fit">
                 <History size={12} className="text-slate-400" />
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historical Archive</span>
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Historical Archive</span>
               </div>
 
               <AnimatePresence mode="popLayout">
@@ -375,12 +375,12 @@ export default function ReportsTab({
                         <motion.div layoutId="selection-border" className="absolute inset-0 border-2 border-indigo-500/50 rounded-[2rem] pointer-events-none" />
                       )}
                       <div className="flex items-start gap-4">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black ${
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
                           selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-500"
                         }`}>{i + 1}</div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[9px] font-black text-indigo-400/60 uppercase tracking-widest">{entry.session_title}</span>
+                            <span className="text-[11px] font-black text-indigo-400/60 uppercase tracking-widest">{entry.session_title}</span>
                           </div>
                           <p className={`text-sm font-bold mb-2 ${selectedReportIndices.has(entry.originalIdx) ? "text-white" : "text-slate-300"}`}>{entry.ai_response.substring(0, 60)}...</p>
                           <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{entry.ai_response}</p>
@@ -401,16 +401,16 @@ export default function ReportsTab({
             {showPreview ? (
               <div className="space-y-6">
                  <div className="flex items-center justify-between mb-4">
-                   <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Live Preview</h3>
-                   <button onClick={() => setShowPreview(false)} className="text-[10px] text-indigo-400">Back to Settings</button>
+                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Live Preview</h3>
+                   <button onClick={() => setShowPreview(false)} className="text-xs text-indigo-400">Back to Settings</button>
                  </div>
                  
-                 <div className={`aspect-[3/4] rounded-3xl p-6 overflow-y-auto scrollbar-hide border border-white/5 shadow-2xl ${selectedThemeData.bg}`}>
+                 <div className={`aspect-[3/4] rounded-3xl p-6 overflow-y-auto custom-scrollbar border border-white/5 shadow-2xl ${selectedThemeData.bg}`}>
                     <div className="space-y-6">
                        <div className="border-b border-slate-200/10 pb-6 text-center">
                           <div className={`w-8 h-8 rounded-lg mx-auto mb-4 ${selectedTheme === 'dark' ? 'bg-indigo-500' : 'bg-slate-900'}`} />
                           <h4 className={`text-xl font-bold ${selectedThemeData.text}`}>{reportTitle}</h4>
-                          <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest">Executive Briefing · {new Date().toLocaleDateString()}</p>
+                          <p className="text-xs text-slate-500 mt-2 uppercase tracking-widest">Executive Briefing · {new Date().toLocaleDateString()}</p>
                        </div>
                        
                        {reportIntro && <p className={`text-[11px] italic leading-relaxed opacity-70 ${selectedThemeData.text}`}>{reportIntro}</p>}
@@ -419,7 +419,7 @@ export default function ReportsTab({
                            {allHistory.filter(h => selectedReportIndices.has(h.originalIdx)).map((entry, idx) => (
                              <div key={idx} className="space-y-2">
                                 <h5 className={`text-[12px] font-bold ${selectedThemeData.text}`}>{entry.query}</h5>
-                                <p className={`text-[10px] leading-relaxed opacity-60 ${selectedThemeData.text}`}>{entry.ai_response}</p>
+                                <p className={`text-xs leading-relaxed opacity-60 ${selectedThemeData.text}`}>{entry.ai_response}</p>
                                 {entry.chart && (
                                   <div className="h-20 rounded-xl bg-slate-500/5 border border-slate-500/10" />
                                 )}
@@ -442,7 +442,7 @@ export default function ReportsTab({
                 
                 <div className="space-y-6">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Theme</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-3">Theme</label>
                     <div className="grid grid-cols-3 gap-3">
                       {THEMES.map(t => (
                         <button 
@@ -453,14 +453,14 @@ export default function ReportsTab({
                           }`}
                         >
                           <div className={`w-8 h-8 rounded-lg shadow-inner ${t.bg} border border-white/10`} />
-                          <span className="text-[9px] font-bold whitespace-nowrap">{t.name}</span>
+                          <span className="text-[11px] font-bold whitespace-nowrap">{t.name}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Report Title</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-3">Report Title</label>
                     <input 
                       type="text" value={reportTitle} 
                       onChange={(e) => setReportTitle(e.target.value)}
@@ -469,7 +469,7 @@ export default function ReportsTab({
                   </div>
                   
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Executive Intro</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-3">Executive Intro</label>
                     <textarea 
                       value={reportIntro} 
                       onChange={(e) => setReportIntro(e.target.value)}
@@ -498,7 +498,7 @@ export default function ReportsTab({
                         >
                           <Download size={20} /> <span className="font-black uppercase text-xs tracking-widest">Download PDF</span>
                         </button>
-                        <button onClick={() => setIsReady(false)} className="w-full text-slate-500 text-[10px] font-bold uppercase flex items-center justify-center gap-2 hover:text-white transition-colors">
+                        <button onClick={() => setIsReady(false)} className="w-full text-slate-500 text-xs font-bold uppercase flex items-center justify-center gap-2 hover:text-white transition-colors">
                           <RotateCcw size={12} /> Start Over
                         </button>
                       </div>

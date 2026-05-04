@@ -130,9 +130,9 @@ export default function PlotlyChart({ spec, height = 420 }: Props) {
   };
 
   return (
-    <div className="relative group/chart" ref={containerRef}>
+    <div className="relative group/chart w-full h-full flex items-center justify-center min-w-0 overflow-hidden" ref={containerRef}>
       {!inView ? (
-        <div className="h-80 flex items-center justify-center text-[#64748B] text-sm">
+        <div className="w-full flex items-center justify-center text-[#64748B] text-sm" style={{ height: `${height}px` }}>
           Loading chart…
         </div>
       ) : (
@@ -145,6 +145,7 @@ export default function PlotlyChart({ spec, height = 420 }: Props) {
             ...figure.config,
           }}
           style={{ width: "100%", height: `${height}px` }}
+          className="w-full"
           useResizeHandler
         />
       )}

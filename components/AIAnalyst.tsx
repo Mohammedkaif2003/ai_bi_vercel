@@ -201,10 +201,11 @@ export default function AIAnalyst({
     await sendMessage(q);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+      e.currentTarget.style.height = 'auto';
     }
   };
 
@@ -381,12 +382,12 @@ export default function AIAnalyst({
             </div>
             <div>
               <p className="text-xs font-bold text-amber-200">Read-Only History</p>
-              <p className="text-[10px] text-amber-500/80 font-medium">Viewing history for &quot;{payload?.filename}&quot;. Switch to this dataset to analyze.</p>
+              <p className="text-xs text-amber-500/80 font-medium">Viewing history for &quot;{payload?.filename}&quot;. Switch to this dataset to analyze.</p>
             </div>
           </div>
           <button 
             onClick={() => setPendingDatasetToActivate(propPayload)}
-            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black uppercase tracking-wider rounded-lg transition-colors"
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-wider rounded-lg transition-colors"
           >
             Activate Now
           </button>
@@ -531,7 +532,7 @@ export default function AIAnalyst({
 
                   {!msg.chart && msg.result && msg.result.length > 0 && msg.result.length <= 10 && (
                     <div className="mt-4 p-3 bg-black/20 rounded-xl border border-white/5 overflow-x-auto">
-                      <div className="flex items-center gap-2 mb-2 text-indigo-300 text-[10px] font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-2 mb-2 text-indigo-300 text-xs font-bold uppercase tracking-wider">
                         <TableIcon size={12} /> Data Result
                       </div>
                       <table className="text-xs w-full border-collapse">
@@ -560,7 +561,7 @@ export default function AIAnalyst({
                   )}
                 </div>
                 {msg.timestamp && (
-                  <span className="text-[10px] text-slate-600 font-medium px-1">
+                  <span className="text-xs text-slate-600 font-medium px-1">
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 )}
@@ -625,11 +626,18 @@ export default function AIAnalyst({
             <div className="pl-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors">
               <HelpCircle size={22} />
             </div>
-            <input
-              className="bg-transparent border-none focus:ring-0 text-[15px] text-white placeholder-slate-500 flex-1 py-3 outline-none"
+            <textarea
+              className="bg-transparent border-none focus:ring-0 text-[15px] text-white placeholder-slate-500 flex-1 py-3 outline-none resize-none custom-scrollbar"
+              style={{ minHeight: '48px', maxHeight: '160px' }}
+              rows={1}
               placeholder={isListening ? "Listening..." : (isReadOnly ? "Activate dataset to analyze..." : (payload ? "Ask me to analyze your data..." : "Select a dataset first..."))}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = `${target.scrollHeight}px`;
+              }}
               onKeyDown={handleKeyDown}
               disabled={isAnalyzing || !payload || isReadOnly}
             />
@@ -644,7 +652,7 @@ export default function AIAnalyst({
                   className="absolute bottom-full mb-3 left-0 w-64 bg-[#0B0F19] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50"
                 >
                   <div className="p-2 border-b border-white/5 bg-white/5">
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2">Suggestions</span>
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest px-2">Suggestions</span>
                   </div>
                   {autocompleteItems.map((item) => (
                     <button
@@ -713,9 +721,9 @@ export default function AIAnalyst({
                     <div>
                       <h2 className="text-2xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400 tracking-tight">Intelligence Focus</h2>
                       <div className="flex items-center gap-2 mt-2">
-                        <div className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded text-[10px] font-bold text-indigo-400 uppercase tracking-widest">{payload?.filename || "Analysis"}</div>
+                        <div className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded text-xs font-bold text-indigo-400 uppercase tracking-widest">{payload?.filename || "Analysis"}</div>
                         <span className="text-slate-700">•</span>
-                        <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{payload?.shape ? `${payload.shape[0].toLocaleString()} Data Points` : "Deep Dive"}</div>
+                        <div className="text-slate-400 text-xs font-bold uppercase tracking-widest">{payload?.shape ? `${payload.shape[0].toLocaleString()} Data Points` : "Deep Dive"}</div>
                       </div>
                     </div>
                   </div>
@@ -746,7 +754,7 @@ export default function AIAnalyst({
                       
                       <div className="flex items-center gap-3 px-4 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full w-fit shrink-0">
                         <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Synthesis Engine</span>
+                        <span className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em]">Synthesis Engine</span>
                       </div>
 
                       <div className="prose prose-invert prose-indigo max-w-none prose-p:text-xl prose-p:leading-[1.7] prose-p:text-slate-200 prose-strong:text-indigo-400 prose-headings:text-white prose-li:text-slate-300">
@@ -758,11 +766,11 @@ export default function AIAnalyst({
 
                     <div className="mt-auto py-6 flex items-center justify-between">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">System Identity</span>
+                        <span className="text-xs font-black text-slate-600 uppercase tracking-[0.3em]">System Identity</span>
                         <span className="text-xs font-bold text-slate-400">Nexlytics Intelligence Engine</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Generated At</span>
+                        <span className="text-xs font-black text-slate-600 uppercase tracking-[0.3em]">Generated At</span>
                         <span className="text-xs font-bold text-slate-400">{new Date().toLocaleTimeString()}</span>
                       </div>
                     </div>

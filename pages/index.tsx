@@ -235,7 +235,7 @@ export default function LandingPage() {
           <p className="text-slate-500 text-xs mb-8">
             &copy; 2026 Nexlytics AI platform. All rights reserved. Built for professional analysts.
           </p>
-          <div className="flex justify-center gap-8 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+          <div className="flex justify-center gap-8 text-xs font-bold text-slate-600 uppercase tracking-widest">
             <a href="#" className="hover:text-indigo-400 transition-colors">Privacy</a>
             <a href="#" className="hover:text-indigo-400 transition-colors">Terms</a>
             <a href="#" className="hover:text-indigo-400 transition-colors">Security</a>

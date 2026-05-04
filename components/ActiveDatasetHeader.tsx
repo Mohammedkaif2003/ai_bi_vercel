@@ -43,11 +43,11 @@ export default function ActiveDatasetHeader({
             
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Active Dataset</span>
+                <span className="text-xs font-black text-emerald-400 uppercase tracking-[0.2em]">Active Dataset</span>
                 <span className="w-1 h-1 rounded-full bg-slate-700" />
                 <div className="flex items-center gap-1.5 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
                    <BarChart3 size={10} className="text-indigo-400" />
-                   <span className="text-[9px] font-bold text-indigo-300 uppercase">{dataset.shape[0].toLocaleString()} Rows</span>
+                   <span className="text-[11px] font-bold text-indigo-300 uppercase">{dataset.shape[0].toLocaleString()} Rows</span>
                 </div>
               </div>
               <h2 className="text-sm font-bold text-white truncate max-w-[200px] md:max-w-md group-hover:text-indigo-300 transition-colors">

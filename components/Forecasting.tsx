@@ -78,7 +78,7 @@ export default function ForecastingTab({ payload }: Props) {
 
         <div className="bg-[#0B0F19]/60 backdrop-blur-xl border border-white/10 rounded-[1.5rem] p-3 flex items-center gap-4 shadow-2xl">
           <div className="pl-3">
-            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
+            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
               Projection Scope
             </label>
             <div className="flex items-center gap-2">
@@ -166,7 +166,7 @@ export default function ForecastingTab({ payload }: Props) {
                     <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 group-hover:text-indigo-400 transition-colors">
                       <stat.icon size={14} />
                     </div>
-                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{stat.label}</p>
+                    <p className="text-xs text-slate-500 font-black uppercase tracking-widest">{stat.label}</p>
                   </div>
                   <p className={`text-2xl font-bold tracking-tight relative z-10 ${stat.cls ?? "text-white"}`}>{stat.value}</p>
                 </div>
@@ -184,7 +184,7 @@ export default function ForecastingTab({ payload }: Props) {
                   </h3>
                   <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-lg border border-white/10">
                     <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live Projection</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Live Projection</span>
                   </div>
                 </div>
                 
@@ -225,8 +225,8 @@ export default function ForecastingTab({ payload }: Props) {
                   <table className="w-full text-sm border-separate border-spacing-y-2">
                     <thead>
                       <tr>
-                        <th className="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest pb-2 px-3">Timeline</th>
-                        <th className="text-right text-[10px] font-black text-slate-500 uppercase tracking-widest pb-2 px-3">Projected</th>
+                        <th className="text-left text-xs font-black text-slate-500 uppercase tracking-widest pb-2 px-3">Timeline</th>
+                        <th className="text-right text-xs font-black text-slate-500 uppercase tracking-widest pb-2 px-3">Projected</th>
                       </tr>
                     </thead>
                     <tbody>

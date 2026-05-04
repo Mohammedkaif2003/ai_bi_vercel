@@ -76,11 +76,11 @@ export default function KPICards({ kpis }: { kpis: KPI[] }) {
                 <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shadow-inner">
                   <Icon size={18} />
                 </div>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.25em] group-hover:text-slate-300 transition-colors truncate max-w-[120px]" title={kpi.metric}>
+                <p className="text-xs text-slate-500 font-black uppercase tracking-[0.25em] group-hover:text-slate-300 transition-colors truncate max-w-[120px]" title={kpi.metric}>
                   {kpi.metric}
                 </p>
               </div>
-              <div className="text-[10px] font-bold text-slate-700 group-hover:text-indigo-400/50 transition-colors">
+              <div className="text-xs font-bold text-slate-700 group-hover:text-indigo-400/50 transition-colors">
                 METRIC.KPI
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function KPICards({ kpis }: { kpis: KPI[] }) {
               {(["average", "max", "min"] as const).map((key) =>
                 kpi[key] !== "" && kpi[key] !== null && kpi[key] !== undefined ? (
                   <div key={key} className="flex-1">
-                    <p className="text-[9px] text-slate-600 font-black uppercase mb-1 tracking-widest">
+                    <p className="text-[11px] text-slate-600 font-black uppercase mb-1 tracking-widest">
                       {key === "average" ? "AVG" : key}
                     </p>
                     <p className="text-sm text-slate-300 font-bold whitespace-nowrap group-hover:text-white transition-colors tabular-nums">{formatValue(kpi[key])}</p>
