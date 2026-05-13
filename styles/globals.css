@@ -27,12 +27,17 @@
     --border: rgba(255, 255, 255, 0.08);
   }
 
+  /* Premium Global Background */
   html,
   body {
-    @apply bg-[#030712] text-[#f8fafc] font-sans selection:bg-indigo-500/30;
+    @apply bg-[#030712] text-[#f8fafc] font-sans selection:bg-indigo-500/30 overflow-x-hidden;
     font-family: 'Outfit', sans-serif;
     -webkit-font-smoothing: antialiased;
     scroll-behavior: smooth;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 
   ::-webkit-scrollbar {
@@ -129,17 +134,64 @@
     background: rgba(99, 102, 241, 0.3);
   }
 
-  .glass-card {
-    @apply bg-[#0B0F19]/60 backdrop-blur-3xl border border-white/[0.08] rounded-[2.5rem] shadow-2xl;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+  /* Billion-Dollar Glassmorphism */
+  .glass-sidebar {
+    @apply bg-[#030712]/60 backdrop-blur-3xl border-r border-white/[0.08] shadow-[25px_0_60px_-20px_rgba(0,0,0,0.6)];
+    box-shadow: 1px 0 0 0 rgba(255,255,255,0.05), 25px 0 60px -20px rgba(0,0,0,0.6);
+  }
+
+  .glass-nav {
+    @apply bg-[#030712]/70 backdrop-blur-2xl border-b border-white/[0.08] shadow-2xl;
+  }
+
+  .glass-card-premium {
+    @apply bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] rounded-[2rem] shadow-2xl transition-all duration-500;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .glass-card-premium:hover {
+    @apply border-indigo-500/20 bg-white/[0.04] shadow-indigo-500/5;
+  }
+
+  /* Futuristic Tab Active State */
+  .tab-active-premium {
+    @apply bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)];
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tab-active-premium::after {
+    content: "";
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full;
+    animation: shimmer 3s infinite;
+  }
+
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+  }
+
+  .animate-shine {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .animate-shine::after {
+    content: "";
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full;
+    transition: transform 0.5s;
+  }
+
+  .animate-shine:hover::after {
+    transform: translateX(100%);
+    transition: transform 0.8s ease-in-out;
   }
 
   .chat-bubble-user {
-    @apply bg-indigo-600 text-white px-6 py-4 max-w-[85%] text-[14px] leading-relaxed shadow-lg shadow-indigo-600/20 rounded-2xl rounded-tr-none;
+    @apply bg-indigo-600 text-white px-6 py-4 max-w-[85%] text-[14px] font-medium leading-relaxed shadow-lg shadow-indigo-600/20 rounded-2xl rounded-tr-none border border-white/10;
   }
 
   .chat-bubble-ai {
-    @apply bg-white/[0.04] backdrop-blur-xl px-6 py-5 max-w-[95%] text-[14px] leading-relaxed border border-white/10 rounded-2xl rounded-tl-none shadow-sm;
+    @apply bg-white/[0.03] backdrop-blur-xl px-6 py-5 max-w-[95%] text-[14px] leading-relaxed border border-white/[0.08] rounded-2xl rounded-tl-none shadow-sm;
   }
 
   .section-title {
@@ -193,5 +245,48 @@
     100% {
       transform: translate(-10%, -10%) scale(1.2);
     }
+  }
+
+  /* Masked Gradient for Scrollable Areas */
+  .mask-fade-y {
+    mask-image: linear-gradient(to bottom, transparent, black 8%, black 92%, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 8%, black 92%, transparent);
+  }
+
+  /* Health Pulse Animations */
+  @keyframes pulse-health-green {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+
+  @keyframes pulse-health-amber {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+  }
+
+  .animate-health-green {
+    animation: pulse-health-green 2s infinite;
+  }
+
+  .animate-health-amber {
+    animation: pulse-health-amber 2s infinite;
+  }
+
+  /* Floating UI Elements */
+  .floating-hologram {
+    animation: hologram-float 6s infinite ease-in-out;
+  }
+
+  @keyframes hologram-float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(2deg); }
+  }
+
+  /* Futuristic Grid Overlay */
+  .grid-overlay {
+    background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.03) 1px, transparent 0);
+    background-size: 30px 30px;
   }
 }

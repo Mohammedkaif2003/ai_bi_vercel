@@ -78,6 +78,7 @@ export default function AIAnalyst({
   const [autocompleteItems, setAutocompleteItems] = useState<string[]>([]);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [cursorPos, setCursorPos] = useState(0);
+  const [loadingStep, setLoadingStep] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastMsgCount = useRef(0);
 
@@ -184,6 +185,26 @@ export default function AIAnalyst({
       }
     });
   }, [messages, typedContent]);
+  
+  // Thinking steps rotation
+  useEffect(() => {
+    if (isAnalyzing) {
+      const interval = setInterval(() => {
+        setLoadingStep(prev => (prev + 1) % 4);
+      }, 2500);
+      return () => {
+        clearInterval(interval);
+        setLoadingStep(0);
+      };
+    }
+  }, [isAnalyzing]);
+
+  const thinkingSteps = [
+    "Scanning dataset architecture...",
+    "Correlating data dimensions...",
+    "Computing statistical significance...",
+    "Narrating analytical synthesis..."
+  ];
 
   const handleSend = async (text?: string) => {
     const q = (text || input).trim();
@@ -394,7 +415,7 @@ export default function AIAnalyst({
         </motion.div>
       )}
 
-      <div className="flex-1 overflow-y-auto space-y-6 px-6 pb-32 pt-10 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto space-y-6 px-6 pb-32 pt-10 custom-scrollbar mask-fade-y">
         <AnimatePresence initial={false}>
           {messages.length === 0 && payload && (
              <motion.div 
@@ -591,7 +612,7 @@ export default function AIAnalyst({
                   <Sparkles size={14} className="animate-pulse" />
                   <span className="text-xs font-bold uppercase tracking-widest">
                     {messages.length > 0 && messages[messages.length-1].role === 'user' 
-                      ? (messages[messages.length-1].content.length > 50 ? "Heavy Analysis in Progress..." : "Analyzing Data patterns...")
+                      ? thinkingSteps[loadingStep]
                       : "Synthesizing Insights..."}
                   </span>
                 </div>
