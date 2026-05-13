@@ -261,7 +261,7 @@ export default function AIAnalyst({
   }, [payload]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-160px)] relative overflow-hidden bg-[#030712]/20 rounded-2xl border border-white/5 shadow-2xl">
+    <div className="flex flex-col flex-1 h-full relative overflow-hidden bg-[#030712]/20 rounded-2xl border border-white/5 shadow-2xl">
       {isReadOnly && (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mx-6 mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center gap-3">

@@ -106,19 +106,19 @@ export default function LandingPage() {
         <meta name="description" content="NEXLYTICS is a premium AI-driven Business Intelligence platform." />
       </Head>
 
-      <div className="h-screen w-full bg-[#020617] text-white overflow-hidden relative flex flex-col selection:bg-indigo-500/30">
+      <div className="min-h-screen lg:h-screen w-full bg-[#020617] text-white overflow-x-hidden lg:overflow-hidden relative flex flex-col selection:bg-indigo-500/30">
         
         {/* Background Layers */}
         <div className="absolute inset-0 z-0">
            <div className="absolute inset-0 opacity-[0.04] pointer-events-none" 
                 style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
-           
+           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50 z-20" />
            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-indigo-600/10 blur-[150px] rounded-full pointer-events-none" />
            <div className="absolute bottom-0 left-1/4 w-[600px] h-[300px] bg-violet-600/5 blur-[120px] rounded-full pointer-events-none" />
         </div>
 
         {/* TOP BAR (Ultra-Compact) */}
-        <nav className="relative z-50 w-full px-10 py-6 flex items-center justify-between shrink-0">
+        <nav className="relative z-50 w-full px-6 md:px-10 py-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 group cursor-pointer" onClick={() => router.push("/")}>
             <div className="w-8 h-8 flex items-center justify-center bg-white/[0.03] border border-white/10 rounded-lg group-hover:border-white/20 transition-all">
                <LogoMark size={20} />
@@ -155,7 +155,7 @@ export default function LandingPage() {
                 <motion.h1 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-6xl md:text-[80px] font-black tracking-tighter text-white leading-none mb-3 select-none"
+                  className="text-4xl sm:text-6xl md:text-[80px] font-black tracking-tighter text-white leading-none mb-3 select-none"
                 >
                   DATA ORACLE
                 </motion.h1>
