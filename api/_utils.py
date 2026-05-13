@@ -219,6 +219,60 @@ def load_dataset_b64(dataset_key: str, user: dict | None = None) -> str:
     raise ValueError(f"Dataset not found: {dataset_key}")
 
 
+def save_dataset_b64(dataset_key: str, csv_b64: str, user: dict | None = None) -> bool:
+    """Save a dataset (base64 string) to both high-speed cache and persistent storage."""
+    from redis_client import store_dataset
+    
+    # 1. Update Redis Cache (High-speed)
+    store_dataset(dataset_key, csv_b64, ttl=3600)
+
+    # 2. Persistent Storage (Supabase)
+    # Check if it starts with 'sb_' OR is a raw UUID
+    import re
+    is_sb_prefixed = dataset_key.startswith("sb_")
+    is_uuid = bool(re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", dataset_key, re.I))
+
+    if (is_sb_prefixed or is_uuid) and user and user.get("id") != "demo-user-id":
+        dataset_id = dataset_key[3:] if is_sb_prefixed else dataset_key
+        from supabase_client import get_supabase_for_user
+        supabase = get_supabase_for_user(user.get("token"))
+        if not supabase:
+            return False
+            
+        try:
+            # Get current info to find storage path
+            res = supabase.table("datasets").select("*").eq("id", dataset_id).execute()
+            if not res.data:
+                return False
+                
+            dataset_info = res.data[0]
+            path = dataset_info["storage_path"]
+            
+            # Upload to storage
+            csv_bytes = base64.b64decode(csv_b64.encode("utf-8"))
+            supabase.storage.from_("user_datasets").upload(
+                path=path,
+                file=csv_bytes,
+                file_options={"content-type": "text/csv", "upsert": "true"}
+            )
+            
+            # Update metadata if needed (e.g. row count might have changed during wrangling)
+            import pandas as pd
+            df = df_from_csv_b64(csv_b64)
+            supabase.table("datasets").update({
+                "row_count": len(df),
+                "column_count": len(df.columns),
+                "updated_at": "now()"
+            }).eq("id", dataset_id).execute()
+            
+            return True
+        except Exception as e:
+            print(f"[Save Dataset Error]: {e}")
+            return False
+            
+    return True
+
+
 # ---------------------------------------------------------------------------
 # DataFrame serialisation helpers
 # ---------------------------------------------------------------------------

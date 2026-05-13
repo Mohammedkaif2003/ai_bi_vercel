@@ -53,18 +53,33 @@ _FRIENDLY: dict[str, str] = {
 }
 
 
+_ORDER = ["sales_data.csv", "hr_data.csv", "finance_data.csv"]
+
 def _list_datasets(user: dict | None) -> list[dict]:
     result = []
     
-    # Only return local datasets (Library samples)
-    # Cloud datasets are stored for chat history persistence but kept out of the general Library
     if os.path.isdir(_DATA_DIR):
-        for fname in sorted(os.listdir(_DATA_DIR)):
-            if fname.endswith(".csv"):
+        files = os.listdir(_DATA_DIR)
+        files_lower = {f.lower(): f for f in files}
+        
+        # Add ordered items first (case-insensitive match)
+        for key in _ORDER:
+            key_lower = key.lower()
+            if key_lower in files_lower:
+                actual_name = files_lower[key_lower]
+                result.append({
+                    "key":   actual_name,
+                    "label": _FRIENDLY.get(actual_name, actual_name),
+                })
+                
+        # Add any remaining CSVs that weren't in the explicit order
+        for fname in sorted(files):
+            if fname.endswith(".csv") and fname.lower() not in [k.lower() for k in _ORDER]:
                 result.append({
                     "key":   fname,
                     "label": _FRIENDLY.get(fname, fname),
                 })
+                
     return result
 
 

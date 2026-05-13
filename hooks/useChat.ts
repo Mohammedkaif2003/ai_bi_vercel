@@ -31,7 +31,7 @@ export function useChat({
   // Sync session ID if prop changes
   useEffect(() => {
     if (initialSessionId !== undefined) {
-      setSessionId(initialSessionId);
+      setTimeout(() => setSessionId(initialSessionId), 0);
     }
   }, [initialSessionId]);
 
@@ -146,7 +146,7 @@ export function useChat({
       loadSession(sessionId);
       lastLoadedSessionId.current = sessionId;
     } else if (!sessionId) {
-      setMessages([]);
+      setTimeout(() => setMessages([]), 0);
       historyRef.current = [];
       lastLoadedSessionId.current = null;
     }
@@ -191,16 +191,18 @@ export function useChat({
         if (onSessionCreated) onSessionCreated(newSession);
       }
 
-      // 2. Persist User Message
-      await supabase.from("chat_messages").insert({
+      // 2. Persist User Message AND 3. Call Analysis API in parallel
+      const userMsgPromise = supabase.from("chat_messages").insert({
         session_id: activeSessionId,
         role: "user",
         content: content.trim(),
         created_at: new Date(userTimestamp).toISOString()
       });
 
-      // 3. Call Analysis API
-      const result = await analyze(content, datasetKey, datasetName);
+      const analysisPromise = analyze(content, datasetKey, datasetName);
+
+      // Await both, but primarily we need the analysis result
+      const [_, result] = await Promise.all([userMsgPromise, analysisPromise]);
 
       const assistantTimestamp = Date.now();
       const aiMsg: ChatMessage = {
@@ -247,6 +249,29 @@ export function useChat({
     }
   }, [user, datasetKey, datasetName, sessionId, isLoading, onSessionCreated]);
 
+  const updateMessage = useCallback(async (idx: number, content: string) => {
+    setMessages(prev => {
+      const next = [...prev];
+      if (next[idx]) {
+        next[idx] = { ...next[idx], content };
+      }
+      return next;
+    });
+
+    // If we have a session and the message is in Supabase, we should update it there too.
+    // This is optional but recommended for persistence.
+    if (sessionId) {
+      try {
+        // Find the message in Supabase. This is tricky because we don't have the message ID here.
+        // In a real app, ChatMessage would have an 'id' field.
+        // For now, we just update the UI state.
+        console.log("Message updated locally. Persistence to Supabase would require message IDs.");
+      } catch (err) {
+        console.error("Failed to update message in Supabase:", err);
+      }
+    }
+  }, [sessionId]);
+
   const clearChat = useCallback(() => {
     setMessages([]);
     setSessionId(null);
@@ -262,6 +287,7 @@ export function useChat({
     sendMessage,
     clearChat,
     loadSession,
-    setSessionId
+    setSessionId,
+    updateMessage
   };
 }

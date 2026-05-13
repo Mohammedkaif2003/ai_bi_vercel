@@ -43,6 +43,9 @@ from modules.code_executor import execute_code  # noqa: E402
 from modules.data_loader import mask_sensitive_columns, normalize_columns  # noqa: E402
 from modules.query_utils import is_dataset_related_query  # noqa: E402
 from modules.smart_analysis import run_smart_analysis  # noqa: E402
+from modules.app_logging import get_logger  # noqa: E402
+
+logger = get_logger("analyze")
 
 
 def _safe_result(result) -> list[dict]:
@@ -112,16 +115,40 @@ class handler(BaseHTTPRequestHandler):
             })
             return
 
-        # Phase 1: Deterministic smart analysis
-        log_audit(user, "analyze", {"query": query, "dataset_key": dataset_key})
-        analysis = run_smart_analysis(query, df)
+        # Phase 0: Semantic Discovery
+        from modules.report_intelligence import semantic_column_mapper
         
-        # Phase 2: AI Code Fallback (if deterministic engine doesn't have a pattern)
+        semantic_map = semantic_column_mapper(query, df.columns.tolist())
+
+        # Phase 1: Deterministic smart analysis
+        log_audit(user, "analyze", {"query": query, "dataset_key": dataset_key, "semantic_map": semantic_map})
+        analysis = run_smart_analysis(query, df, semantic_map=semantic_map)
+        
+        # Phase 2: AI Code Fallback or Reflection (Self-Correction)
         if analysis is None:
+            # Check if we should reflect (suggest columns) or try to execute code
+            # If semantic_map is empty, it's more likely we need reflection
+            if not semantic_map:
+                reflection_text = generate_conversational_response(
+                    query, 
+                    result=None,
+                    df=df,
+                    reflection=True
+                )
+                send_json(self, {
+                    "query_type": "reflection",
+                    "summary": "Ambiguous column reference detected.",
+                    "narration": reflection_text,
+                    "result": [],
+                    "chart": None,
+                    "chart_type": None,
+                })
+                return
+
             # Trigger "Analyst Mode" — model generates code + narration
             ai_response = generate_conversational_response(
                 query, 
-                result=None, # No pre-computed result
+                result=None, 
                 insight="", 
                 df=df, 
                 concise=True
@@ -174,7 +201,7 @@ class handler(BaseHTTPRequestHandler):
         result = analysis.get("result")
 
         # Narrate pre-computed results with the LLM
-        narration = narrate_result(query, summary) if summary else summary
+        narration = narrate_result(query, result, summary) if summary else summary
 
         send_json(self, {
             "query_type": query_type,

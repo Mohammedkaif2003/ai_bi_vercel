@@ -33,7 +33,8 @@ import {
   Activity,
   ShieldCheck,
   Rocket,
-  ArrowRight
+  ArrowRight,
+  Plus as PlusIcon
 } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
 import {
@@ -57,6 +58,8 @@ import Sidebar from "@/components/Sidebar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { Toaster, toast } from "sonner";
 import { useStore, type Tab } from "@/hooks/useStore";
+import { DataQualityGauge } from "@/components/DataQualityGauge";
+import PlotlyChart from "@/components/PlotlyChart";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -84,6 +87,48 @@ export default function DashboardPage() {
 
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+
+  const floatingParticles = useMemo(
+    () =>
+      [...Array(20)].map((_, i) => ({
+        duration: 4 + (i % 4) * 0.75,
+        delay: (i % 5) * 0.35,
+        left: `${(i * 17) % 100}%`,
+        top: `${(i * 29) % 100}%`,
+      })),
+    []
+  );
+  
+  const handleLoadSelected = useCallback(async (keysOverride?: string[]) => {
+    const keys = keysOverride || selectedKeys;
+    if (keys.length === 0) return;
+    setLoadingDataset(true);
+    setDatasetError("");
+    try {
+      const payload = await loadDataset(keys[0]);
+      
+      // Auto-activate if no active chat session or if it's the first load
+      const shouldAutoActivate = !datasetPayload || !activeSessionId;
+
+      if (!shouldAutoActivate && datasetPayload.dataset_key !== payload.dataset_key) {
+        setPendingDatasetToActivate(payload);
+        toast.info("Dataset preview loaded", { description: "Review the data or activate it for analysis." });
+      } else {
+        setDatasetPayload(payload);
+        setSessionDataset(payload);
+        toast.success(`Dataset "${payload.filename}" loaded successfully!`);
+      }
+      setActiveSessionId(null);
+      setNewChatKey(Date.now().toString());
+      setShowMobileMenu(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load dataset.";
+      setDatasetError(msg);
+      toast.error("Loading failed", { description: msg });
+    } finally {
+      setLoadingDataset(false);
+    }
+  }, [selectedKeys, datasetPayload, activeSessionId, setLoadingDataset, setDatasetError, setDatasetPayload, setPendingDatasetToActivate, setActiveSessionId]);
 
   useEffect(() => {
     const isRecovery = window.location.hash.includes("type=recovery") || 
@@ -125,6 +170,10 @@ export default function DashboardPage() {
   }, [router, setUser]);
 
   useEffect(() => {
+    // Reset selection on fresh launch to show "Select Source..."
+    setSelectedKeys([]);
+    setDatasetPayload(null);
+
     listDatasets()
       .then((r) => {
         setAvailableDatasets(r.datasets);
@@ -132,7 +181,7 @@ export default function DashboardPage() {
       .catch((err: unknown) => {
         setDatasetError(err instanceof Error ? err.message : "Failed to load dataset list.");
       });
-  }, [setAvailableDatasets, setDatasetError]);
+  }, [setAvailableDatasets, setDatasetError, setSelectedKeys, setDatasetPayload]);
 
   const fetchSessions = useCallback(async () => {
     if (!user) return;
@@ -158,7 +207,8 @@ export default function DashboardPage() {
     error: chatError,
     sendMessage,
     clearChat,
-    setSessionId
+    setSessionId,
+    updateMessage
   } = useChat({
     user,
     datasetKey: chatDatasetKey,
@@ -183,32 +233,6 @@ export default function DashboardPage() {
     router.replace("/login");
   }
 
-  async function handleLoadSelected(keysOverride?: string[]) {
-    const keys = keysOverride || selectedKeys;
-    if (keys.length === 0) return;
-    setLoadingDataset(true);
-    setDatasetError("");
-    try {
-      const payload = await loadDataset(keys[0]);
-      if (datasetPayload && datasetPayload.dataset_key !== payload.dataset_key) {
-        setPendingDatasetToActivate(payload);
-        toast.info("Dataset preview loaded", { description: "Review the data or activate it for analysis." });
-      } else {
-        setDatasetPayload(payload);
-        setSessionDataset(payload);
-        toast.success(`Dataset "${payload.filename}" loaded successfully!`);
-      }
-      setActiveSessionId(null);
-      setNewChatKey(Date.now().toString());
-      setShowMobileMenu(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load dataset.";
-      setDatasetError(msg);
-      toast.error("Loading failed", { description: msg });
-    } finally {
-      setLoadingDataset(false);
-    }
-  }
 
   async function processFile(file: File) {
     if (!file) return;
@@ -355,7 +379,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Floating Particles */}
-        {[...Array(20)].map((_, i) => (
+        {floatingParticles.map((particle, i) => (
           <motion.div
             key={i}
             className="absolute w-1 h-1 bg-white rounded-full opacity-10"
@@ -364,14 +388,14 @@ export default function DashboardPage() {
               opacity: [0.05, 0.15, 0.05]
             }}
             transition={{ 
-              duration: 4 + Math.random() * 4, 
+              duration: particle.duration, 
               repeat: Infinity, 
               ease: "easeInOut",
-              delay: Math.random() * 5
+              delay: particle.delay
             }}
             style={{ 
-              left: Math.random() * 100 + "%", 
-              top: Math.random() * 100 + "%" 
+              left: particle.left, 
+              top: particle.top 
             }}
           />
         ))}
@@ -442,7 +466,17 @@ export default function DashboardPage() {
             <div className="flex-1 relative overflow-hidden">
               {/* Tabs Content */}
               <div className={activeTab === "overview" ? "block h-full overflow-y-auto scrollbar-hide pr-2" : "hidden"}>
-                {datasetPayload ? <OverviewTab payload={datasetPayload} onSwitchTab={setActiveTab} /> : (
+                {loadingDataset ? (
+                  <div className="flex flex-col items-center justify-center min-h-[70vh]">
+                     <div className="relative">
+                        <div className="absolute inset-0 bg-indigo-500/20 blur-3xl animate-pulse rounded-full" />
+                        <Loader2 size={48} className="text-indigo-500 animate-spin relative z-10" />
+                     </div>
+                     <p className="mt-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Syncing Intelligence...</p>
+                  </div>
+                ) : datasetPayload ? (
+                  <OverviewTab payload={datasetPayload} onSwitchTab={setActiveTab} />
+                ) : (
                   <EmptyState 
                     title="INTELLIGENCE" 
                     subtitle="WORKSPACE AWAITS"
@@ -469,6 +503,7 @@ export default function DashboardPage() {
                     isAnalyzing={isAnalyzing} chatError={chatError}
                     onDatasetRecovered={(newPayload) => { setSessionDataset(newPayload); setDatasetPayload(newPayload); }}
                     selectedReportIndices={selectedReportIndices} setSelectedReportIndices={setSelectedReportIndices}
+                    onUpdateMessage={updateMessage}
                   />
                 )}
               </div>
@@ -557,13 +592,13 @@ function EmptyState({ title, subtitle, desc, icon, onUpload }: { title: string, 
   );
 }
 
-import { DataQualityGauge } from "@/components/DataQualityGauge";
-import PlotlyChart from "@/components/PlotlyChart";
-
 function OverviewTab({ payload, onSwitchTab }: { payload: DatasetPayload, onSwitchTab: (tab: Tab) => void }) {
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  
   const { schema, kpis, insights, correlations, preview_rows: previewRows = [] } = payload;
-  const displayedInsights = showAll ? insights : insights.slice(0, 4);
+  const totalPages = Math.ceil(previewRows.length / pageSize);
+  const paginatedRows = previewRows.slice((page - 1) * pageSize, page * pageSize);
 
   const topRelationships = useMemo(() => {
     if (!correlations || !correlations.values) return [];
@@ -580,55 +615,206 @@ function OverviewTab({ payload, onSwitchTab }: { payload: DatasetPayload, onSwit
   }, [correlations]);
 
   return (
-    <div className="space-y-10 pb-20">
+    <div className="space-y-12 pb-24 max-w-[1600px] mx-auto">
+      {/* Conversational AI Preview */}
+      <section className="relative overflow-hidden p-8 rounded-[2.5rem] bg-gradient-to-r from-indigo-600/10 via-purple-600/5 to-transparent border border-white/5 backdrop-blur-xl group">
+        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]" />
+        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+           <div className="flex items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-600/20 group-hover:scale-110 transition-transform">
+                 <Sparkles size={32} />
+              </div>
+              <div>
+                 <h2 className="text-2xl font-black text-white tracking-tight mb-1">Conversational Analytics</h2>
+                 <p className="text-slate-400 text-sm font-medium">Ask natural language questions to unlock deep data intelligence.</p>
+              </div>
+           </div>
+           <div className="flex flex-wrap justify-center gap-3">
+              {[
+                "Show top performing categories", 
+                "Identify significant correlations", 
+                "Predict next month performance"
+              ].map((q, i) => (
+                <button 
+                  key={i} onClick={() => onSwitchTab("analyst")}
+                  className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all active:scale-95"
+                >
+                  &quot;{q}&quot;
+                </button>
+              ))}
+           </div>
+        </div>
+      </section>
+
       <KPICards kpis={kpis} />
       
-      {insights.length > 0 && (
-        <section className="glass-card-premium p-10 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-700">
-             <Sparkles size={120} />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <section className="lg:col-span-12 glass-card-premium p-10 relative overflow-hidden group border-indigo-500/20">
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-600/5 blur-[120px] pointer-events-none" />
+          <div className="absolute -top-1 -left-1 w-24 h-24 bg-indigo-500/10 blur-[40px] pointer-events-none" />
+          
+          <div className="flex items-center justify-between mb-12 relative z-10">
+            <div className="flex items-center gap-3 text-indigo-400 font-black text-[11px] uppercase tracking-[0.4em]">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center border border-indigo-500/20">
+                <Sparkles size={14} className="animate-pulse" />
+              </div>
+              Intelligence Briefing
+            </div>
+            <div className="text-[10px] font-bold text-slate-500 bg-white/5 px-3 py-1 rounded-full border border-white/5">
+               UPDATED JUST NOW
+            </div>
           </div>
-          <div className="flex items-center gap-3 text-indigo-400 font-black text-[11px] uppercase tracking-[0.4em] mb-10 relative z-10">
-            <Sparkles size={16} /> Intelligence Briefing
-          </div>
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-            {displayedInsights.map((ins, i) => (
-              <motion.li 
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
+            {insights.map((ins, i) => (
+              <motion.div 
                 key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                className="text-[14px] text-slate-300 flex gap-5 p-6 rounded-[1.5rem] bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] hover:border-white/10 transition-all duration-300"
+                className="group/item flex gap-5 p-6 rounded-[2rem] bg-[#0F172A]/40 border border-white/[0.05] hover:bg-indigo-600/5 hover:border-indigo-500/20 transition-all duration-500 shadow-xl"
               >
-                <div className="w-8 h-8 rounded-xl bg-indigo-600/10 flex items-center justify-center text-indigo-400 text-xs font-black shrink-0 border border-indigo-500/20">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-600/10 flex items-center justify-center text-indigo-400 text-xs font-black shrink-0 border border-indigo-500/20 group-hover/item:bg-indigo-600 group-hover/item:text-white transition-all">
                   {i + 1}
                 </div>
-                <span className="leading-relaxed font-medium">{ins}</span>
-              </motion.li>
+                <div className="flex flex-col gap-1">
+                   <span className="leading-relaxed font-bold text-slate-200 text-sm tracking-tight">
+                     {ins.split(' ').map((word, idx) => {
+                       const highlight = ['revenue', 'growth', 'trending', 'higher', 'correlation', 'improved', 'predictive', 'surge'].includes(word.toLowerCase().replace(/[.,]/g, ''));
+                       return <span key={idx} className={highlight ? "text-indigo-400" : ""}>{word} </span>
+                     })}
+                   </span>
+                </div>
+              </motion.div>
             ))}
-          </ul>
-          {insights.length > 4 && (
-            <button
-              className="text-[10px] font-black text-indigo-400 mt-10 hover:text-white transition-all uppercase tracking-[0.3em] flex items-center gap-3 group/btn"
-              onClick={() => setShowAll((v) => !v)}
-            >
-              <div className="w-6 h-6 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover/btn:bg-indigo-500 group-hover/btn:text-white transition-colors">
-                 {showAll ? <ChevronRight size={14} className="-rotate-90" /> : <Plus size={14} />}
-              </div>
-              {showAll ? "Show Condensed View" : `Explore ${insights.length - 4} Additional Insights`}
-            </button>
-          )}
-        </section>
-      )}
+          </div>
 
+        </section>
+      </div>
+
+      {/* Visual Discovery */}
+      <section className="glass-card-premium p-10">
+        <div className="flex items-center justify-between mb-12">
+          <div className="flex items-center gap-3 text-indigo-400 font-black text-[11px] uppercase tracking-[0.4em]">
+            <Activity size={16} /> Visual Discovery
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="h-[300px] rounded-[2rem] bg-white/[0.02] border border-white/5 p-6">
+             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Revenue Trend</p>
+             <PlotlyChart 
+                spec={{
+                  data: [{ y: [20, 45, 28, 80, 43, 90], type: 'scatter', mode: 'lines+markers', line: { color: '#6366F1', width: 3, shape: 'spline' } }],
+                  layout: { margin: { t: 0, b: 20, l: 30, r: 10 }, xaxis: { showgrid: false }, yaxis: { gridcolor: 'rgba(255,255,255,0.05)' } }
+                }}
+                height={230}
+             />
+          </div>
+          <div className="h-[300px] rounded-[2rem] bg-white/[0.02] border border-white/5 p-6">
+             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Categories</p>
+             <PlotlyChart 
+                spec={{
+                  data: [{ values: [35, 25, 20, 20], labels: ['A', 'B', 'C', 'D'], type: 'pie', hole: 0.6, marker: { colors: ['#6366F1', '#8B5CF6', '#EC4899', '#10B981'] } }],
+                  layout: { showlegend: false, margin: { t: 0, b: 0, l: 0, r: 0 } }
+                }}
+                height={230}
+             />
+          </div>
+          <div className="h-[300px] rounded-[2rem] bg-white/[0.02] border border-white/5 p-6">
+             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Forecast</p>
+             <PlotlyChart 
+                spec={{
+                  data: [{ y: [30, 40, 35, 50, 70, 85], type: 'scatter', fill: 'tozeroy', fillcolor: 'rgba(99,102,241,0.1)', line: { color: '#6366F1' } }],
+                  layout: { margin: { t: 0, b: 20, l: 30, r: 10 }, xaxis: { showgrid: false }, yaxis: { gridcolor: 'rgba(255,255,255,0.05)' } }
+                }}
+                height={230}
+             />
+          </div>
+        </div>
+      </section>
+
+      {/* Professional Data Explorer - Simple & Working */}
+      <section className="glass-card-premium overflow-hidden border-white/5 shadow-2xl">
+        <div className="p-8 flex items-center justify-between border-b border-white/5 bg-[#0F172A]/40">
+           <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-indigo-400 border border-white/10">
+                <TableIcon size={20} />
+              </div>
+              <div>
+                <h3 className="text-xs font-black text-white uppercase tracking-widest">Data Explorer</h3>
+                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Page {page} of {totalPages || 1} • {schema.rows} Records</p>
+              </div>
+           </div>
+           <div className="flex gap-2">
+              <button 
+                onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 transition-all"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button 
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+                className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 transition-all"
+              >
+                <ChevronRight size={16} />
+              </button>
+           </div>
+        </div>
+        
+        <div className="overflow-x-auto custom-scrollbar max-h-[500px]">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#0F172A] border-b border-white/10">
+                {schema.column_names.map((col) => (
+                  <th key={col} className="py-4 px-8 text-[9px] font-black text-indigo-300 uppercase tracking-widest whitespace-nowrap">
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.02]">
+              {paginatedRows.map((row, ri) => (
+                <tr key={ri} className="hover:bg-white/[0.02] transition-colors">
+                  {schema.column_names.map((col) => (
+                    <td key={col} className="py-4 px-8 text-[11px] font-medium text-slate-400 whitespace-nowrap">
+                      {String(row[col] ?? "")}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-white/5 bg-white/[0.01] flex justify-center gap-2">
+            {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+              const p = i + 1;
+              return (
+                <button 
+                  key={p} onClick={() => setPage(p)}
+                  className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all ${page === p ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
+                >
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Upgraded Correlation Section */}
       {correlations && correlations.columns.length > 1 && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          <section className="lg:col-span-7 glass-card-premium p-10">
-            <div className="flex items-center gap-3 text-indigo-400 font-black text-[11px] uppercase tracking-[0.4em] mb-8">
-              <LayoutDashboard size={16} /> Relationship Heatmap
+          <section className="lg:col-span-7 glass-card-premium p-10 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-500/5 blur-[100px] pointer-events-none" />
+            <div className="flex items-center justify-between mb-10 relative z-10">
+              <div className="flex items-center gap-3 text-indigo-400 font-black text-[11px] uppercase tracking-[0.4em]">
+                <LayoutDashboard size={16} /> Multi-dimensional Heatmap
+              </div>
             </div>
-            <div className="h-[400px] w-full bg-black/40 rounded-[2rem] overflow-hidden border border-white/5 shadow-inner">
+            <div className="h-[400px] w-full bg-black/40 rounded-[2.5rem] overflow-hidden border border-white/5 relative">
               <PlotlyChart 
                 spec={{
-                  data: [{ z: correlations.values, x: correlations.columns, y: correlations.columns, type: 'heatmap', colorscale: 'Viridis', showscale: true }],
-                  layout: { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#64748B', size: 10 }, margin: { l: 80, r: 20, t: 20, b: 80 }, xaxis: { gridcolor: 'rgba(255,255,255,0.05)' }, yaxis: { gridcolor: 'rgba(255,255,255,0.05)' } }
+                  data: [{ z: correlations.values, x: correlations.columns, y: correlations.columns, type: 'heatmap', colorscale: 'Viridis', showscale: true, reversescale: true }],
+                  layout: { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#94A3B8', size: 9 }, margin: { l: 80, r: 20, t: 20, b: 80 } }
                 }}
                 height={400}
               />
@@ -636,27 +822,84 @@ function OverviewTab({ payload, onSwitchTab }: { payload: DatasetPayload, onSwit
           </section>
 
           <section className="lg:col-span-5 glass-card-premium p-10">
-            <div className="flex items-center gap-3 text-indigo-400 font-black text-[11px] uppercase tracking-[0.4em] mb-8">
-              <TrendingUp size={16} /> Top Analytical Correlations
+            <div className="flex items-center gap-3 text-indigo-400 font-black text-[11px] uppercase tracking-[0.4em] mb-10">
+              <TrendingUp size={16} /> Confidence Relationships
             </div>
             <div className="space-y-6">
-              {topRelationships.map((rel, idx) => (
-                <div key={idx} className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-all">
-                   <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{rel.type} Relationship</span>
-                      <span className="text-xs font-black text-white">{Math.round(rel.val * 100)}% Match</span>
-                   </div>
-                   <div className="flex items-center gap-4 text-sm font-bold text-white">
-                      <span className="truncate">{rel.a}</span>
+              {topRelationships.map((rel, idx) => {
+                const confidence = Math.abs(rel.val);
+                return (
+                  <motion.div 
+                    key={idx} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.1 }}
+                    className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-all hover:translate-x-1"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${rel.type === 'positive' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`} />
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{rel.type}</span>
+                      </div>
+                      <span className="text-xs font-black text-white bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                        {Math.round(confidence * 100)}% confidence
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm font-bold text-white mb-5">
+                      <span className="truncate max-w-[120px]">{rel.a}</span>
                       <ArrowRight size={14} className="text-indigo-500 shrink-0" />
-                      <span className="truncate">{rel.b}</span>
-                   </div>
-                </div>
-              ))}
+                      <span className="truncate max-w-[120px]">{rel.b}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                       <motion.div 
+                         initial={{ width: 0 }} animate={{ width: `${confidence * 100}%` }}
+                         className={`h-full bg-gradient-to-r ${rel.type === 'positive' ? 'from-emerald-600 to-emerald-400' : 'from-rose-600 to-rose-400'}`} 
+                       />
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </section>
         </div>
       )}
+
+      {/* Data Dictionary */}
+      <section className="glass-card-premium p-10">
+        <div className="flex items-center gap-3 text-indigo-400 font-black text-[11px] uppercase tracking-[0.4em] mb-12">
+          <BookOpen size={16} /> Cognitive Data Schema
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {schema.column_names.map((col, i) => {
+            const isNumeric = schema.numeric_columns.includes(col);
+            const isCat = schema.categorical_columns.includes(col);
+            const isTime = schema.datetime_columns.includes(col);
+            const type = isNumeric ? "Numeric" : isTime ? "Temporal" : isCat ? "Category" : "Object";
+            const icon = isNumeric ? <TrendingUp size={12}/> : isTime ? <Activity size={12}/> : <Library size={12}/>;
+            return (
+              <motion.div 
+                key={col} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
+                className="p-6 rounded-[2rem] bg-[#0F172A]/40 border border-white/5 hover:border-indigo-500/40 transition-all group relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 p-4 opacity-[0.02] group-hover:opacity-10 transition-opacity">
+                   {icon}
+                </div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs font-black text-white group-hover:text-indigo-400 transition-colors tracking-tight">{col}</span>
+                  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${isNumeric ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5' : 'border-indigo-500/20 text-indigo-400 bg-indigo-500/5'}`}>
+                    {type}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">Example Value</span>
+                    <span className="text-[11px] text-slate-400 font-medium truncate bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+                      {schema.examples[col] || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

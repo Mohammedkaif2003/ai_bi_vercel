@@ -60,8 +60,10 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
       }, 50);
       return () => clearInterval(timer);
     } else {
-      setDemoQuery("");
-      setIsTyping(true);
+      setTimeout(() => {
+        setDemoQuery("");
+        setIsTyping(true);
+      }, 0);
     }
   }, [isOpen]);
 
@@ -77,51 +79,51 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
       <motion.div 
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="w-full max-w-6xl h-full max-h-[90vh] bg-[#0B0F19] border border-white/10 rounded-[2.5rem] shadow-[0_0_100px_rgba(99,102,241,0.2)] overflow-hidden flex flex-col relative"
+        className="w-full max-w-5xl h-full max-h-[85vh] bg-[#0B0F19] border border-white/10 rounded-[2rem] shadow-[0_0_100px_rgba(99,102,241,0.2)] overflow-hidden flex flex-col relative"
       >
         {/* Demo Header */}
-        <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-[#0F172A]/50">
+        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-[#0F172A]/50">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
-              <Zap size={20} className="text-white fill-white" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
+              <Zap size={18} className="text-white fill-white" />
             </div>
             <div>
-              <h3 className="text-white font-bold text-lg tracking-tight">Interactive Showcase</h3>
-              <p className="text-indigo-400 text-xs font-bold uppercase tracking-[0.2em]">Experiencing Nexlytics PRO</p>
+              <h3 className="text-white font-bold text-base tracking-tight">Interactive Showcase</h3>
+              <p className="text-indigo-400 text-[10px] font-bold uppercase tracking-[0.2em]">Experiencing Nexlytics PRO</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-all"
+            className="p-1.5 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
           {/* Mock Chat Simulation */}
-          <div className="p-8 rounded-[2rem] bg-white/[0.02] border border-white/5 relative overflow-hidden group">
+          <div className="p-6 rounded-[1.5rem] bg-white/[0.02] border border-white/5 relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
-              <Sparkles size={120} className="text-indigo-500" />
+              <Sparkles size={100} className="text-indigo-500" />
             </div>
             
             <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
-                  <Sparkles size={14} className="text-white" />
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                  <Sparkles size={12} className="text-white" />
                 </div>
-                <span className="text-xs font-bold text-indigo-300 uppercase tracking-widest">AI Analyst</span>
+                <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">AI Analyst</span>
               </div>
               
-              <div className="flex flex-col gap-6">
-                <div className="bg-white/5 p-5 rounded-3xl rounded-tl-none max-w-md border border-white/5 backdrop-blur-md">
-                  <p className="text-sm text-slate-300 leading-relaxed">
+              <div className="flex flex-col gap-4">
+                <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none max-w-sm border border-white/5 backdrop-blur-md">
+                  <p className="text-xs text-slate-300 leading-relaxed">
                     Hello! {"I've"} analyzed your <b className="text-white">Global Sales</b> dataset. What specific insights are you looking for today?
                   </p>
                 </div>
                 
-                <div className="self-end bg-indigo-600 p-5 rounded-3xl rounded-tr-none max-w-md shadow-2xl shadow-indigo-600/40">
-                  <p className="text-sm text-white font-semibold leading-relaxed">
+                <div className="self-end bg-indigo-600 p-4 rounded-2xl rounded-tr-none max-w-sm shadow-2xl shadow-indigo-600/40">
+                  <p className="text-xs text-white font-semibold leading-relaxed">
                     {demoQuery}{isTyping && <span className="animate-pulse ml-0.5 font-light">|</span>}
                   </p>
                 </div>
@@ -131,13 +133,13 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
                     <motion.div 
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-white/5 p-6 rounded-3xl rounded-tl-none border border-emerald-500/20 backdrop-blur-xl"
+                      className="bg-white/5 p-5 rounded-2xl rounded-tl-none border border-emerald-500/20 backdrop-blur-xl"
                     >
-                      <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+                      <p className="text-xs text-slate-300 mb-4 leading-relaxed">
                         Based on current trends, revenue is projected to grow by <b className="text-emerald-400">12% in Q4</b>, primarily driven by Enterprise segments in North America.
                       </p>
                       
-                      <div className="h-40 w-full bg-indigo-500/5 rounded-2xl flex items-end justify-around p-6 gap-3 border border-white/5">
+                      <div className="h-32 w-full bg-indigo-500/5 rounded-xl flex items-end justify-around p-4 gap-2 border border-white/5">
                         {[40, 65, 45, 85, 100, 75, 90].map((h, i) => (
                           <motion.div 
                             key={i}
@@ -160,19 +162,19 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
           </div>
 
           {/* KPI Row */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {SAMPLE_DATA.kpis.map((kpi, i) => (
               <motion.div 
                 key={i} 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="p-6 bg-white/[0.03] border border-white/5 rounded-[2rem] hover:bg-white/[0.06] transition-all hover:scale-[1.02]"
+                className="p-5 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-white/[0.06] transition-all hover:scale-[1.02]"
               >
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{kpi.label}</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">{kpi.label}</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-white tracking-tight">{kpi.value}</span>
-                  <span className={`text-xs font-black px-1.5 py-0.5 rounded ${kpi.positive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                  <span className="text-2xl font-bold text-white tracking-tight">{kpi.value}</span>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${kpi.positive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                     {kpi.change}
                   </span>
                 </div>
@@ -186,26 +188,26 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
               <div className="h-full w-1/4 bg-gradient-to-r from-indigo-500 to-violet-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
             </div>
             
-            <div className="p-8 border-b border-white/5 flex items-center justify-between bg-[#0F172A]/80 backdrop-blur-xl">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-[#0F172A]/80 backdrop-blur-xl">
                <div>
-                <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Professional Data Preview</p>
-                <p className="text-xs text-slate-500 font-medium tracking-tight">Viewing Sample Data · {SAMPLE_DATA.rows.toLocaleString()} Rows Total</p>
+                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Professional Data Preview</p>
+                <p className="text-[10px] text-slate-500 font-medium tracking-tight">Viewing Sample Data · {SAMPLE_DATA.rows.toLocaleString()} Rows Total</p>
                </div>
                <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-2 py-1">
-                  <div className="p-1.5 text-slate-600"><ChevronLeft size={16} /></div>
-                  <span className="text-[11px] font-bold text-white min-w-[2.5rem] text-center">1 / 154</span>
-                  <div className="p-1.5 text-indigo-400 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"><ChevronRight size={16} /></div>
+                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-1.5 py-0.5">
+                  <div className="p-1 text-slate-600"><ChevronLeft size={14} /></div>
+                  <span className="text-[10px] font-bold text-white min-w-[2rem] text-center">1 / 154</span>
+                  <div className="p-1 text-indigo-400 hover:bg-white/10 rounded-md transition-colors cursor-pointer"><ChevronRight size={14} /></div>
                 </div>
                </div>
             </div>
             
             <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-              <table className="w-full text-[11px] text-left border-collapse table-auto">
+              <table className="w-full text-[10px] text-left border-collapse table-auto">
                 <thead className="bg-[#0F172A] sticky top-0">
                   <tr>
                     {SAMPLE_DATA.columns_list.slice(0, 6).map(col => (
-                      <th key={col} className="py-5 px-8 text-slate-500 font-bold uppercase tracking-widest border-b border-white/10 whitespace-nowrap min-w-[150px]">
+                      <th key={col} className="py-4 px-6 text-slate-500 font-bold uppercase tracking-widest border-b border-white/10 whitespace-nowrap min-w-[120px]">
                         <span className="text-white/80">{col}</span>
                       </th>
                     ))}
@@ -215,7 +217,7 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
                   {SAMPLE_DATA.preview_rows.map((row, i) => (
                     <tr key={i} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors group">
                       {SAMPLE_DATA.columns_list.slice(0, 6).map(col => (
-                        <td key={col} className="py-4 px-8 text-slate-300 font-medium whitespace-nowrap bg-[#0F172A]/30">
+                        <td key={col} className="py-3 px-6 text-slate-300 font-medium whitespace-nowrap bg-[#0F172A]/30">
                           <span className="group-hover:text-indigo-300 transition-colors">{(row as any)[col]}</span>
                         </td>
                       ))}
@@ -228,17 +230,17 @@ export default function LandingDemo({ isOpen, onClose }: { isOpen: boolean; onCl
         </div>
 
         {/* CTA Footer */}
-        <div className="p-10 border-t border-white/5 bg-[#030712]/90 backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-8">
+        <div className="p-6 border-t border-white/5 bg-[#030712]/90 backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
-            <h4 className="text-white font-bold text-2xl mb-2 tracking-tight">Experience the future of BI today.</h4>
-            <p className="text-slate-500 text-base max-w-lg leading-relaxed font-medium">Stop digging through spreadsheets. Connect your data and start asking questions.</p>
+            <h4 className="text-white font-bold text-xl mb-1 tracking-tight">Experience the future of BI today.</h4>
+            <p className="text-slate-500 text-sm max-w-lg leading-relaxed font-medium">Stop digging through spreadsheets. Connect your data and start asking questions.</p>
           </div>
           <button 
-            className="w-full md:w-auto bg-white text-black px-10 py-5 rounded-[2rem] font-bold text-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-4 shadow-[0_0_50px_rgba(255,255,255,0.1)]"
+            className="w-full md:w-auto bg-white text-black px-8 py-3.5 rounded-2xl font-bold text-base hover:bg-indigo-600 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-3 shadow-[0_0_50px_rgba(255,255,255,0.1)]"
             onClick={() => window.location.href = '/login'}
           >
             Launch Dashboard
-            <ArrowRight size={24} />
+            <ArrowRight size={20} />
           </button>
         </div>
       </motion.div>

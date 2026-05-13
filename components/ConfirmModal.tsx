@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, AlertTriangle } from "lucide-react";
 
@@ -22,6 +23,21 @@ export default function ConfirmModal({
   onConfirm,
   type = "danger" 
 }: ModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isOpen && e.key === "Enter") {
+        e.preventDefault();
+        onConfirm();
+        onClose();
+      }
+      if (isOpen && e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onConfirm, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (

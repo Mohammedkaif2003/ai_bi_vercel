@@ -180,7 +180,7 @@ class handler(BaseHTTPRequestHandler):
             import traceback
             trace = traceback.format_exc()
             print(trace)
-            send_error(self, f"Internal Server Error: {str(e)}\n{trace}", 500)
+            send_error(self, f"Internal Server Error: {str(e)}", 500)
 
     def log_message(self, format, *args):
         pass

@@ -4,7 +4,7 @@
 
 Nexlytics is a high-performance, CSV-centric Business Intelligence platform. It empowers users with cinematic data analysis ('Intelligence Focus'), a persistent executive command center, high-fidelity trend forecasting, and professional-grade automated reporting. The entire experience is built on the 'Nexlytics Indigo' design system, prioritizing visual excellence and interactive speed.
 
-The current production path is a Next.js application backed by Python API routes for Vercel. The older Streamlit app remains in the repository for local Python development.
+The current production path is a Next.js application backed by Python API routes for Vercel. The repository also contains older Streamlit-oriented modules, but the standalone Streamlit app entry point is not part of this workspace snapshot.
 
 ## 2. Runtime Architecture
 
@@ -91,7 +91,7 @@ Shared serverless helpers live in `api/_utils.py`. They provide CORS handling, J
 | `modules/dataset_analyzer.py` | Schema and column profiling |
 | `modules/data_loader.py` | CSV loading and column normalization |
 
-The Streamlit-specific modules, such as `modules/app_tabs.py`, `modules/app_views.py`, and `modules/app_state.py`, support `app.py`.
+The Streamlit-specific modules, such as `modules/app_tabs.py`, `modules/app_views.py`, and `modules/app_state.py`, are historical helpers that are no longer wired to a standalone app entry point in this repository snapshot.
 
 ## 7. Analysis Pipeline
 

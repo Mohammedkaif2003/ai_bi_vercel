@@ -1,12 +1,10 @@
 # Nexlytics
 
-Nexlytics is a premium, AI-powered Business Intelligence platform designed for high-performance CSV exploration. It features cinematic data analysis, executive command centers, and high-fidelity trend forecasting—all wrapped in a sophisticated 'Nexlytics Indigo' design system.
+Nexlytics is a premium, AI-powered Business Intelligence platform designed for high-performance CSV exploration. It features cinematic data analysis, executive command centers, and high-fidelity trend forecasting, all wrapped in a sophisticated 'Nexlytics Indigo' design system.
 
 The repository currently includes:
 
 - A production-oriented Next.js front end with Python serverless API routes for Vercel.
-- A legacy Streamlit app for local Python development and experimentation.
-
 - **Cinematic Analysis**: Experience 'Intelligence Focus'—a side-by-side analytical stage for deep data synthesis.
 - **Executive Command Center**: A persistent, drag-and-drop hub for your most critical cross-dataset insights.
 - **High-Fidelity Forecasting**: Generate trend projections with statistical confidence scores and executive data grids.
@@ -17,7 +15,7 @@ The repository currently includes:
 
 ## Tech Stack
 
-- Next.js 14, React 18, TypeScript, Tailwind CSS
+- Next.js 16, React 18, TypeScript, Tailwind CSS
 - Python serverless functions under `api/`
 - Pandas, NumPy, Plotly
 - Groq and optional Google Generative AI integrations
@@ -32,9 +30,9 @@ The repository currently includes:
 |   |-- index.tsx             # Sign-in page
 |   `-- dashboard.tsx         # Main BI dashboard
 |-- components/               # React dashboard components
+|-- hooks/                    # Client-side state and chat hooks
 |-- lib/                      # Front-end API client and shared types
 |-- api/                      # Python API routes for Vercel
-|   |-- auth.py
 |   |-- datasets.py
 |   |-- upload.py
 |   |-- analyze.py
@@ -43,9 +41,7 @@ The repository currently includes:
 |-- modules/                  # Shared Python analytics/reporting logic
 |-- data/raw/                 # Sample CSV datasets
 |-- tests/                    # Python tests
-|-- app.py                    # Legacy Streamlit app
 |-- requirements.txt          # Python dependencies for Vercel/API routes
-|-- requirements-streamlit.txt # Full Streamlit development dependencies
 |-- package.json              # Next.js dependencies and scripts
 |-- vercel.json               # Vercel configuration
 `-- PROJECT_DOCUMENTATION.md  # Detailed technical documentation
@@ -129,32 +125,6 @@ You can also deploy from the CLI:
 ```powershell
 vercel --prod
 ```
-
-## Legacy Streamlit App
-
-The original Streamlit app is still available for local Python development.
-
-Install the Streamlit dependencies:
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements-streamlit.txt
-```
-
-Add a `.env` file:
-
-```env
-GROQ_API_KEY=your_groq_api_key_here
-```
-
-Run Streamlit:
-
-```powershell
-streamlit run app.py
-```
-
-Open `http://localhost:8501`.
 
 ## Sample Datasets
 

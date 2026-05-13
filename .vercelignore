@@ -11,6 +11,7 @@ node_modules
 .next
 .vercel
 *.log
+*.err.log
 .vscode
 .idea
 
@@ -30,3 +31,7 @@ remote.txt
 changes.txt
 desktop.ini
 tsconfig.tsbuildinfo
+lint_results.txt
+next_help.txt
+ARCHITECTURE_REPORT.pdf
+!README.md

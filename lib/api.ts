@@ -43,7 +43,9 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 async function get<T>(path: string): Promise<T> {
   const token = await getAuthToken();
   const res = await fetch(`${BASE}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
   const json = await res.json();
   if (!res.ok) throw new Error((json as { error?: string }).error ?? "Request failed");
@@ -101,6 +103,7 @@ export async function generateReport(
   analysis_history: AnalysisHistoryEntry[],
   dataset_name: string,
   user_name: string,
+  dataset_key?: string,
   report_title?: string,
   report_intro?: string,
   theme?: string,
@@ -111,6 +114,7 @@ export async function generateReport(
     analysis_history,
     dataset_name,
     user_name,
+    dataset_key,
     report_title,
     report_intro,
     theme,

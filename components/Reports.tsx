@@ -79,12 +79,8 @@ export default function ReportsTab({
   // Customization State
   const [reportTitle, setReportTitle] = useState("AI-Assisted Executive Briefing");
   const [reportIntro, setReportIntro] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState("light");
-  
-  const selectedThemeData = THEMES.find(t => t.id === selectedTheme) || THEMES[0];
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     const analysisEntries: AnalysisHistoryEntryExtended[] = [];
@@ -102,7 +98,7 @@ export default function ReportsTab({
         });
       }
     }
-    setActiveHistory(analysisEntries);
+    setTimeout(() => setActiveHistory(analysisEntries), 0);
   }, [messages]);
 
   useEffect(() => {
@@ -110,7 +106,6 @@ export default function ReportsTab({
       if (!user?.id) return;
       setLoadingHistory(true);
       try {
-        // 1. Get all session IDs for the user
         let query = supabase
           .from("chat_sessions")
           .select("id, title, dataset_key")
@@ -121,8 +116,6 @@ export default function ReportsTab({
         }
 
         const { data: sessions, error: sErr } = await query;
-        
-        console.log("Sessions found:", sessions?.length);
         if (sErr) throw sErr;
         if (!sessions || sessions.length === 0) {
           setGlobalHistory([]);
@@ -132,7 +125,6 @@ export default function ReportsTab({
         const sessionIds = sessions.map(s => s.id);
         const sessionMap = Object.fromEntries(sessions.map(s => [s.id, s.title]));
 
-        // 2. Get all assistant messages for these sessions
         const { data: msgs, error: mErr } = await supabase
           .from("chat_messages")
           .select("*")
@@ -143,7 +135,6 @@ export default function ReportsTab({
 
         if (mErr) throw mErr;
 
-        // 3. Transform to history entries
         const entries: AnalysisHistoryEntryExtended[] = (msgs || []).map((m, idx) => ({
           query: "Insight",
           ai_response: m.content,
@@ -176,14 +167,6 @@ export default function ReportsTab({
       return next;
     });
   };
-
-  async function handleAskQuestion() {
-    if (!payload) return;
-    const q = chatInput.trim();
-    if (!q || isAnalyzing) return;
-    setChatInput("");
-    await sendMessage(q);
-  }
 
   async function handleGenerateReport() {
     if (selectedReportIndices.size === 0) {
@@ -220,14 +203,10 @@ export default function ReportsTab({
               height: 450
             });
             
-            // Wait a moment for layout/animations to settle
             await new Promise(r => setTimeout(r, 200));
-            
             const imgData = await Plotly.toImage(div, { format: 'png', width: 800, height: 450 });
             if (imgData && imgData.length > 1000) {
               entry.chart_b64 = imgData.split(',')[1];
-            } else {
-              console.warn("Captured chart image was suspiciously small/empty.");
             }
           } catch (chartErr) {
             console.error("Failed to capture chart image:", chartErr);
@@ -243,9 +222,10 @@ export default function ReportsTab({
         selectedHistory,
         payload?.filename || "Report",
         user?.display_name || "User",
+        payload?.dataset_key,
         reportTitle,
         reportIntro,
-        selectedTheme
+        "light"
       );
       
       const binary = atob(res.pdf_b64);
@@ -281,17 +261,6 @@ export default function ReportsTab({
             Curate and theme your executive intelligence briefing.
           </p>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setShowPreview(!showPreview)}
-            className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl border transition-all ${
-              showPreview ? "bg-indigo-500 text-white border-indigo-400 shadow-lg shadow-indigo-500/20" : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
-            }`}
-          >
-            <Eye size={14} /> {showPreview ? "Hide Preview" : "Show Preview"}
-          </button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -306,7 +275,6 @@ export default function ReportsTab({
           </div>
           
           <div className="space-y-8 max-h-[700px] overflow-y-auto scrollbar-hide pr-2">
-            {/* Active Session Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl w-fit">
                 <Sparkles size={12} className="text-indigo-400" />
@@ -329,9 +297,6 @@ export default function ReportsTab({
                         selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-600/10 border-indigo-500/40" : "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04]"
                       }`}
                     >
-                      {selectedReportIndices.has(entry.originalIdx) && (
-                        <motion.div layoutId="selection-border" className="absolute inset-0 border-2 border-indigo-500/50 rounded-[2rem] pointer-events-none" />
-                      )}
                       <div className="flex items-start gap-4">
                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
                           selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-500"
@@ -348,7 +313,6 @@ export default function ReportsTab({
               </AnimatePresence>
             </div>
 
-            {/* Historical Archive Section */}
             <div className="space-y-4 pt-6">
               <div className="flex items-center gap-2 px-4 py-2 bg-slate-500/10 border border-slate-500/20 rounded-xl w-fit">
                 <History size={12} className="text-slate-400" />
@@ -371,9 +335,6 @@ export default function ReportsTab({
                         selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-600/10 border-indigo-500/40" : "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04]"
                       }`}
                     >
-                      {selectedReportIndices.has(entry.originalIdx) && (
-                        <motion.div layoutId="selection-border" className="absolute inset-0 border-2 border-indigo-500/50 rounded-[2rem] pointer-events-none" />
-                      )}
                       <div className="flex items-start gap-4">
                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
                           selectedReportIndices.has(entry.originalIdx) ? "bg-indigo-500 text-white" : "bg-white/10 text-slate-500"
@@ -393,48 +354,10 @@ export default function ReportsTab({
               </AnimatePresence>
             </div>
           </div>
-
         </div>
 
         <div className="lg:col-span-5 space-y-6">
           <div className="glass-card p-8 sticky top-24">
-            {showPreview ? (
-              <div className="space-y-6">
-                 <div className="flex items-center justify-between mb-4">
-                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Live Preview</h3>
-                   <button onClick={() => setShowPreview(false)} className="text-xs text-indigo-400">Back to Settings</button>
-                 </div>
-                 
-                 <div className={`aspect-[3/4] rounded-3xl p-6 overflow-y-auto custom-scrollbar border border-white/5 shadow-2xl ${selectedThemeData.bg}`}>
-                    <div className="space-y-6">
-                       <div className="border-b border-slate-200/10 pb-6 text-center">
-                          <div className={`w-8 h-8 rounded-lg mx-auto mb-4 ${selectedTheme === 'dark' ? 'bg-indigo-500' : 'bg-slate-900'}`} />
-                          <h4 className={`text-xl font-bold ${selectedThemeData.text}`}>{reportTitle}</h4>
-                          <p className="text-xs text-slate-500 mt-2 uppercase tracking-widest">Executive Briefing · {new Date().toLocaleDateString()}</p>
-                       </div>
-                       
-                       {reportIntro && <p className={`text-[11px] italic leading-relaxed opacity-70 ${selectedThemeData.text}`}>{reportIntro}</p>}
-                       
-                       <div className="space-y-4">
-                           {allHistory.filter(h => selectedReportIndices.has(h.originalIdx)).map((entry, idx) => (
-                             <div key={idx} className="space-y-2">
-                                <h5 className={`text-[12px] font-bold ${selectedThemeData.text}`}>{entry.query}</h5>
-                                <p className={`text-xs leading-relaxed opacity-60 ${selectedThemeData.text}`}>{entry.ai_response}</p>
-                                {entry.chart && (
-                                  <div className="h-20 rounded-xl bg-slate-500/5 border border-slate-500/10" />
-                                )}
-                             </div>
-                           ))}
-                       </div>
-                    </div>
-                 </div>
-                 
-                 <button onClick={handleGenerateReport} disabled={loading || selectedReportIndices.size === 0} className="btn-primary w-full py-5 rounded-2xl font-bold uppercase text-xs tracking-widest flex items-center justify-center gap-3">
-                   {loading ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                   {isReady ? "Regenerate" : "Confirm & Build PDF"}
-                 </button>
-              </div>
-            ) : (
               <div className="space-y-8">
                 <h3 className="text-xl font-bold text-white flex items-center gap-3">
                   <Settings size={22} className="text-indigo-400" /> Customization
@@ -442,28 +365,11 @@ export default function ReportsTab({
                 
                 <div className="space-y-6">
                   <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-3">Theme</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {THEMES.map(t => (
-                        <button 
-                          key={t.id} 
-                          onClick={() => setSelectedTheme(t.id)}
-                          className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
-                            selectedTheme === t.id ? "bg-indigo-600/20 border-indigo-500 text-indigo-400" : "bg-white/5 border-white/10 text-slate-500 hover:bg-white/10"
-                          }`}
-                        >
-                          <div className={`w-8 h-8 rounded-lg shadow-inner ${t.bg} border border-white/10`} />
-                          <span className="text-[11px] font-bold whitespace-nowrap">{t.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-3">Report Title</label>
                     <input 
                       type="text" value={reportTitle} 
                       onChange={(e) => setReportTitle(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleGenerateReport(); }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-colors"
                     />
                   </div>
@@ -473,6 +379,7 @@ export default function ReportsTab({
                     <textarea 
                       value={reportIntro} 
                       onChange={(e) => setReportIntro(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleGenerateReport(); } }}
                       placeholder="Add a summary or opening remarks..."
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-sm text-white h-32 resize-none focus:border-indigo-500 outline-none transition-colors"
                     />
@@ -506,7 +413,6 @@ export default function ReportsTab({
                   </div>
                 </div>
               </div>
-            )}
           </div>
         </div>
       </div>

@@ -106,9 +106,9 @@ def forecast_revenue(df, periods=3):
         residuals = y - fitted
         std_err = np.std(residuals)
 
-        # Generate forecast
+        # Generate forecast (clamped to 0 for realistic BI metrics)
         forecast_indices = np.arange(len(monthly), len(monthly) + periods)
-        forecast_values = np.polyval(coeffs, forecast_indices)
+        forecast_values = np.maximum(0, np.polyval(coeffs, forecast_indices))
 
         # Create forecast dates
         last_date = monthly["Date"].iloc[-1]

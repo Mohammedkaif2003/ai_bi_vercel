@@ -33,6 +33,7 @@ auth/users.json
 
 # ── Logs / temporary files ───────────────────────────────────────────────
 *.log
+*.err.log
 logs/
 tmp/
 .tmp/
@@ -42,6 +43,9 @@ Thumbs.db
 desktop.ini
 changes.txt
 remote.txt
+lint_results.txt
+next_help.txt
+ARCHITECTURE_REPORT.pdf
 
 # ── Build / Build Artifacts ──────────────────────────────────────────────
 node_modules

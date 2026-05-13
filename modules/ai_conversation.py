@@ -58,26 +58,33 @@ GOOGLE_API_KEY = get_secret("GOOGLE_API_KEY")
 #  SENIOR DATA ANALYST SYSTEM PROMPT
 # ═══════════════════════════════════════════════════
 
-ANALYST_SYSTEM_PROMPT = """You are a Senior Business Intelligence Analyst
-talking to a colleague. Answer in professional, analytical prose. 
-You MAY use bolding (**word**) and bullet points to highlight key metrics or findings.
+ANALYST_SYSTEM_PROMPT = """You are a Senior Business Intelligence Analyst.
+Your primary directive is **STRICT NUMERICAL GROUNDING**. 
 
-ABSOLUTE FORMAT RULES (these override any habit you have):
+Answer in professional, analytical prose. You MAY use bolding (**word**) and bullet points to highlight key metrics or findings.
+
+CRITICAL TRUTH RULES:
+- The data provided in 'Data returned', 'First rows', and 'Statistical summary' is your ONLY source of truth.
+- NEVER invent trends, categories, or numbers not explicitly present in the provided snippet.
+- Cross-check your prose against the data before responding. If the graph shows 10 items, but the snippet only shows 8, acknowledge only what is in the snippet.
+- If a calculation is provided (e.g. Sum, Average), use it exactly.
+
+ABSOLUTE FORMAT RULES:
 - Use 1-2 short paragraphs or a structured list of 3-5 bullets.
 - Never use markdown headings (# / ## / ###).
-- Never use section labels like "Executive Insight:", "Key Findings:",
-  "Business Impact:", "Summary:", "Takeaways:", "Recommendations:".
-- Never start with phrases like "Here is the analysis", "Based on the data",
-  "To analyze ...", "Let me break this down". Just start with the answer.
-- No HTML tags, no code fences, no tables.
+- Never use section labels like "Key Findings:", "Summary:", etc.
+- Just start with the answer. No "Based on the data..." filler.
 
 CONTENT RULES:
-- Write in complete sentences. Connect ideas with words, not punctuation.
-- Reference the specific numbers, columns, and categories from the data
-  provided — never give generic textbook commentary.
-- If something is genuinely uncertain, say so in one clause, not a section.
-- Keep the whole answer under ~120 words unless the question clearly demands more.
+- Reference specific numbers and categories.
+- Keep the whole answer under ~120 words.
 """
+
+REFLECTOR_SYSTEM_PROMPT = """You are a Data Logic Assistant. The user asked a question about a dataset, but the specific columns or metrics they mentioned weren't found.
+Analyze the user's query and the available column list. 
+If the query is ambiguous, suggest 2-3 likely columns and explain briefly why.
+Example: "I couldn't find 'revenue', but I see 'Total_Sales' and 'Invoiced_Amount'. Which should I use?"
+Keep it helpful, professional, and concise (under 40 words)."""
 
 def _build_data_context(result, insight=""):
     """Build a rich data summary for the AI to analyze."""
@@ -91,8 +98,8 @@ def _build_data_context(result, insight=""):
 
         data_summary = f"""Data returned: DataFrame with {result.shape[0]} rows and {result.shape[1]} columns.
 Columns: {', '.join(str(c) for c in result.columns)}
-First rows:
-{result.head(8).to_string(index=False)}
+Data Snippet (up to 50 rows):
+{result.head(50).to_string(index=False)}
 {stats}
 """
     elif isinstance(result, pd.Series):
@@ -178,7 +185,7 @@ def _split_insight_and_code(raw_text: str) -> tuple[str, str]:
     return prose, chart_code
 
 
-def generate_conversational_response(query, result, insight="", df=None, concise: bool = False):
+def generate_conversational_response(query, result, insight="", df=None, concise: bool = False, reflection: bool = False):
     """Generate a professional AI response using Google Gemini (primary)
     with Groq LLaMA as fallback.
 
@@ -193,11 +200,11 @@ def generate_conversational_response(query, result, insight="", df=None, concise
     # Build data summary (with optional dataset context)
     data_summary = _build_data_context(result, insight)
 
-    # Add dataset preview if available
+    # Add dataset preview if available (limited to avoid token overflow)
     if df is not None:
         try:
-            df_preview = df.head(10).to_string()
-            data_summary += f"\n\nFull Dataset Preview:\n{df_preview}"
+            df_preview = df.head(20).to_string()
+            data_summary += f"\n\nGlobal Dataset Preview (First 20 rows):\n{df_preview}"
         except Exception:
             pass
 
@@ -209,10 +216,14 @@ Here is the analysis result:
 Analyze this data using your senior analyst framework. Be specific to THIS data — no generic responses."""
 
     # Choose the system prompt depending on concise flag
-    system_prompt = ANALYST_CONCISE_PROMPT if concise else ANALYST_SYSTEM_PROMPT
+    if reflection:
+        system_prompt = REFLECTOR_SYSTEM_PROMPT
+    else:
+        system_prompt = ANALYST_CONCISE_PROMPT if concise else ANALYST_SYSTEM_PROMPT
+        
     # Allow more tokens when the model is expected to produce code + insight
-    max_tokens_gemini = 800 if concise else 350
-    max_tokens_groq = 1000 if concise else 600
+    max_tokens_gemini = 800 if (concise and not reflection) else 350
+    max_tokens_groq = 1000 if (concise and not reflection) else 600
 
     raw_response = None
 
@@ -280,32 +291,38 @@ Analyze this data using your senior analyst framework. Be specific to THIS data 
 # ═════════════════════════════════════════════════════════════════════════════
 
 _NARRATE_SYSTEM = """You are a Senior Business Intelligence Analyst.
-You receive a user question and a PRE-COMPUTED analysis summary.
-The numbers are already correct — do NOT recalculate or second-guess them.
+You receive a user query and the computed results of an analysis.
+Your job is to provide a perfected, structured answer that directly addresses the user's query first.
 
-Your job is to explain the results in 3-5 sentences. 
-You MAY use bolding (**word**) and bullet points to emphasize key metrics.
+STRUCTURE:
+1. THE DIRECT ANSWER: The very first sentence MUST be the direct, quantified answer to the user's question (e.g., "The top 5 departments by budget are..." or "The total budget is $X").
+2. SUPPORTING INSIGHTS: After the direct answer, provide 2-3 sentences of deeper context, such as the second-highest values, surprising trends, or notable outliers found in the data.
 
-RULES:
-- No markdown headings or section headers.
-- No phrases like "Based on the analysis" or "The data shows". Just start.
-- Keep it under 100 words.
-- Sound like a colleague explaining results over coffee."""
+PRINCIPLES:
+- PRECISION: Use exact numbers, column names, and categories from the provided data.
+- MATHEMATICAL RIGOR: Never contradict the data direction. An increase is an increase.
+- PROFESSIONALISM: Use analytical prose with bolding (**word**) for key metrics.
+
+STRICT CONSTRAINTS:
+- Keep the response under 120 words.
+- No filler phrases like "To answer your question" or "Looking at the data". Just the answer.
+- No markdown headings (#) or section labels."""
 
 
-def narrate_result(query: str, computed_summary: str) -> str:
+def narrate_result(query: str, result: Any, computed_summary: str) -> str:
     """Ask the LLM to narrate a pre-computed analysis in natural prose.
-
-    Unlike generate_conversational_response, this function never asks the
-    model to do any computation — the numbers are already calculated by
-    pandas and passed in via `computed_summary`.
+    
+    We provide the model with both the raw result and the descriptive 
+    summary for maximum context and accuracy.
     """
-    prompt = f"""Question: "{query}"
+    data_context = _build_data_context(result, computed_summary)
+    
+    prompt = f"""User Query: "{query}"
 
-Computed results:
-{computed_summary}
+Computed Context:
+{data_context}
 
-Explain these results to a business colleague in 3-5 sentences."""
+Explain these results to a business colleague in 3-5 sentences, ensuring you directly answer the user's question using the specific numbers provided."""
 
     # Try Groq first (user's preferred LLM)
     if GROQ_API_KEY:
@@ -318,8 +335,8 @@ Explain these results to a business colleague in 3-5 sentences."""
                     {"role": "system", "content": _NARRATE_SYSTEM},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.3,
-                max_tokens=250,
+                temperature=0.1,
+                max_tokens=300,
             )
             raw = response.choices[0].message.content
             if raw:
@@ -336,8 +353,8 @@ Explain these results to a business colleague in 3-5 sentences."""
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=_NARRATE_SYSTEM,
-                    temperature=0.3,
-                    max_output_tokens=250,
+                    temperature=0.1,
+                    max_output_tokens=300,
                 ),
             )
             if response and response.text:

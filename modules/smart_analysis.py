@@ -130,18 +130,37 @@ def _col_mentioned(query_lc: str, col: str) -> bool:
     return False
 
 
-def _find_metrics(query_lc: str, df: pd.DataFrame) -> list[str]:
-    """Return numeric columns relevant to the query, falling back to all."""
+def _find_metrics(query_lc: str, df: pd.DataFrame, semantic_map: dict = None) -> list[str]:
+    """Return numeric columns relevant to the query. 
+    NO LONGER falls back to 'all' automatically to prevent 'Logic Pivots' 
+    (where the AI answers a different question than asked).
+    """
     numeric = df.select_dtypes(include="number").columns.tolist()
     matched = [c for c in numeric if _col_mentioned(query_lc, c)]
-    return matched if matched else numeric
+    
+    # Use semantic mapping if provided
+    if semantic_map:
+        for term, col in semantic_map.items():
+            if term.lower() in query_lc and col in numeric and col not in matched:
+                matched.append(col)
+                
+    # If the query seems to ask for a metric (e.g. 'total', 'average', 'highest')
+    # but we found nothing, return empty so the system can trigger Reflection.
+    return matched
 
 
-def _find_group_col(query_lc: str, df: pd.DataFrame) -> str | None:
+def _find_group_col(query_lc: str, df: pd.DataFrame, semantic_map: dict = None) -> str | None:
     cats = df.select_dtypes(include=["object", "category", "string"]).columns.tolist()
     for c in cats:
         if _col_mentioned(query_lc, c):
             return c
+            
+    # Use semantic mapping if provided
+    if semantic_map:
+        for term, col in semantic_map.items():
+            if term.lower() in query_lc and col in cats:
+                return col
+                
     return cats[0] if cats else None
 
 
@@ -176,15 +195,19 @@ def _polish(fig, height: int = 460):
     return fig
 
 
-def _fmt(val, name: str = "") -> str:
+def _fmt(val: Any, name: str = "") -> str:
     name_lc = name.lower()
-    if isinstance(val, float):
+    if pd.isna(val):
+        return "N/A"
+    
+    # Handle numpy types as well
+    if isinstance(val, (float, np.floating)):
         if any(t in name_lc for t in ("rate", "pct", "percent", "margin")):
             return f"{val:.1f}%"
         if any(t in name_lc for t in ("revenue", "sales", "profit", "cost", "price")):
             return f"${val:,.2f}"
         return f"{val:,.2f}"
-    if isinstance(val, int):
+    if isinstance(val, (int, np.integer)):
         return f"{val:,}"
     return str(val)
 
@@ -195,9 +218,16 @@ def _fmt(val, name: str = "") -> str:
 
 def _analyze_ranking(df, metrics, group_col, query_lc):
     metric = metrics[0]
+    is_sum = any(t in query_lc for t in ("total", "sum", "combined", "aggregate"))
+    is_avg = any(t in query_lc for t in ("average", "avg", "mean"))
+    
+    # Default to mean for ranking unless "total/sum" is explicitly requested
+    agg_func = "sum" if is_sum and not is_avg else "mean"
+    agg_label = "Total" if agg_func == "sum" else "Average"
+
     grouped = (
         df.groupby(group_col, dropna=False)[metric]
-        .mean()
+        .agg(agg_func)
         .sort_values(ascending=False)
         .reset_index()
     )
@@ -207,11 +237,11 @@ def _analyze_ranking(df, metrics, group_col, query_lc):
     bot = grouped.tail(1).iloc[0]
 
     summary = (
-        f"Average {metric} grouped by {group_col}: "
+        f"{agg_label} {metric} grouped by {group_col}: "
         f"highest is {top[group_col]} at {_fmt(top[metric], metric)}, "
         f"lowest is {bot[group_col]} at {_fmt(bot[metric], metric)}. "
         f"Total categories: {len(grouped)}. "
-        f"Overall mean across all {group_col}s: {_fmt(grouped[metric].mean(), metric)}."
+        f"Overall {agg_func} across all {group_col}s: {_fmt(grouped[metric].agg(agg_func), metric)}."
     )
 
     show = grouped.head(12).sort_values(metric)
@@ -219,7 +249,7 @@ def _analyze_ranking(df, metrics, group_col, query_lc):
         show, x=metric, y=group_col,
         orientation="h",
         color_discrete_sequence=[PRIMARY],
-        title=f"Average {metric} by {group_col}",
+        title=f"{agg_label} {metric} by {group_col}",
     )
     fig.update_traces(
         texttemplate="%{x:,.0f}", textposition="outside",
@@ -239,20 +269,24 @@ def _analyze_comparison(df, metrics, group_col, query_lc):
 
     # If the query mentions day-type concepts and we have multiple ride columns,
     # compare those columns directly (not grouped by a category).
+    is_sum = any(t in query_lc for t in ("total", "sum", "combined"))
+    agg_func = "sum" if is_sum else "mean"
+    agg_label = "Total" if agg_func == "sum" else "Average"
+
     if compare_cols:
-        means = {col: df[col].mean() for col in compare_cols}
-        summary_parts = [f"{col}: {_fmt(v, col)}" for col, v in means.items()]
-        summary = f"Comparing averages — " + ", ".join(summary_parts) + "."
+        vals = {col: df[col].agg(agg_func) for col in compare_cols}
+        summary_parts = [f"{col}: {_fmt(v, col)}" for col, v in vals.items()]
+        summary = f"Comparing {agg_label.lower()}s — " + ", ".join(summary_parts) + "."
 
         compare_df = pd.DataFrame(
-            [{"Metric": col, "Average": df[col].mean()} for col in compare_cols]
+            [{"Metric": col, "Average": df[col].agg(agg_func)} for col in compare_cols]
         ).sort_values("Average", ascending=False)
 
         fig = px.bar(
             compare_df, x="Metric", y="Average",
             color="Metric",
             color_discrete_sequence=PALETTE,
-            title="Average Ridership by Day Type",
+            title=f"{agg_label} Ridership by Day Type",
         )
         fig.update_traces(
             texttemplate="%{y:,.0f}", textposition="outside",
@@ -265,9 +299,13 @@ def _analyze_comparison(df, metrics, group_col, query_lc):
     # Fallback: group by category and compare
     if group_col and metrics:
         metric = metrics[0]
+        is_sum = any(t in query_lc for t in ("total", "sum", "combined"))
+        agg_func = "sum" if is_sum else "mean"
+        agg_label = "Total" if agg_func == "sum" else "Average"
+
         grouped = (
             df.groupby(group_col, dropna=False)[metric]
-            .mean()
+            .agg(agg_func)
             .sort_values(ascending=False)
             .reset_index()
         )
@@ -283,7 +321,7 @@ def _analyze_comparison(df, metrics, group_col, query_lc):
             show, x=group_col, y=metric,
             color=group_col,
             color_discrete_sequence=PALETTE,
-            title=f"{metric} Comparison by {group_col}",
+            title=f"{agg_label} {metric} Comparison by {group_col}",
         )
         fig.update_traces(texttemplate="%{y:,.0f}", textposition="outside",
                           textfont=dict(size=11, color="#E2E8F0"))
@@ -462,6 +500,10 @@ def _analyze_forecast(df, metrics, date_col):
     n_fc = max(int(len(grouped) * 0.2), 3)
     future_x = np.arange(len(grouped), len(grouped) + n_fc, dtype=float)
     future_y = np.polyval(coeffs, future_x)
+    
+    # Logic constraint: Business metrics (revenue, count, etc.) rarely go below zero.
+    # We floor to zero to avoid nonsensical 'negative' predictions in BI.
+    future_y = np.maximum(0, future_y)
 
     last_date = grouped[date_col].max()
     try:
@@ -644,19 +686,10 @@ def _analyze_general(df, metrics, group_col, date_col, query_lc):
 # 5.  Main entry point
 # ═════════════════════════════════════════════════════════════════════════════
 
-def run_smart_analysis(query: str, df: pd.DataFrame) -> dict | None:
+def run_smart_analysis(query: str, df: pd.DataFrame, semantic_map: dict = None) -> dict | None:
     """
     Deterministic analysis engine.
-
-    Returns
-    -------
-    dict with keys:
-        result     – DataFrame, Series, or scalar (the computed answer)
-        chart      – plotly Figure or None
-        summary    – human-readable description of what was computed
-        query_type – str identifying the analytical pattern
-
-    Returns None if the query can't be handled deterministically (rare).
+    Now supports semantic_map for AI-powered column discovery.
     """
     if df is None or df.empty:
         return None
@@ -670,19 +703,17 @@ def run_smart_analysis(query: str, df: pd.DataFrame) -> dict | None:
     if not numeric_cols:
         return None
 
-    metrics = _find_metrics(query_lc, df)
-    group_col = _find_group_col(query_lc, df)
+    # Column discovery augmented by semantic_map
+    metrics = _find_metrics(query_lc, df, semantic_map)
+    group_col = _find_group_col(query_lc, df, semantic_map)
     date_col = _find_date_col(df)
 
-    logger.info(
-        "smart_analysis",
-        extra={
-            "query_type": qtype,
-            "metrics": metrics[:3],
-            "group_col": group_col,
-            "date_col": date_col,
-        },
-    )
+    # High-confidence metric check:
+    # If the user is asking for a quantitative pattern (ranking, trend, etc.)
+    # but we found NO matching metrics, we abort deterministic analysis
+    # so the system can fall back to AI Reflection or AI Analyst mode.
+    if not metrics and qtype in ("ranking", "trend", "distribution", "outlier", "forecast", "aggregate", "whatif"):
+        return None
 
     try:
         if qtype == "ranking":

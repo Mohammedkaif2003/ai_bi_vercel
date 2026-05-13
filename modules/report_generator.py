@@ -60,7 +60,7 @@ C_ROW_BORDER = colors.HexColor("#CBD5E1")
 C_COVER_BAND = colors.HexColor("#0B1B3A")
 C_PAGE_BG    = colors.white
 
-def _apply_theme(theme_name: str = "light"):
+def _apply_theme(theme_name: str = "dark"):
     global C_INK, C_BODY, C_MUTED, C_ACCENT, C_ACCENT2, C_HAIRLINE, C_TH_BG, C_ROW_ALT, C_ROW_BORDER, C_COVER_BAND, C_PAGE_BG
     
     if theme_name == "dark":
@@ -75,17 +75,17 @@ def _apply_theme(theme_name: str = "light"):
         C_ROW_BORDER = colors.HexColor("#1E293B")
         C_COVER_BAND = colors.HexColor("#030712")
         C_PAGE_BG = colors.HexColor("#030712")
-    else: # light / standard
-        C_INK = colors.HexColor("#0F172A")
-        C_BODY = colors.HexColor("#1F2937")
-        C_MUTED = colors.HexColor("#64748B")
-        C_ACCENT = colors.HexColor("#6366F1")
-        C_ACCENT2 = colors.HexColor("#4F46E5")
-        C_HAIRLINE = colors.HexColor("#E2E8F0")
-        C_TH_BG = colors.HexColor("#1E3A5F")
-        C_ROW_ALT = colors.HexColor("#F1F5F9")
-        C_ROW_BORDER = colors.HexColor("#CBD5E1")
-        C_COVER_BAND = colors.HexColor("#0B1B3A")
+    else: # Professional Light / Standard
+        C_INK = colors.HexColor("#0F172A")    # Deep Navy for headers
+        C_BODY = colors.HexColor("#334155")   # Slate-700 for readability
+        C_MUTED = colors.HexColor("#64748B")  # Slate-500 for captions
+        C_ACCENT = colors.HexColor("#4F46E5") # Indigo-600 for primary accents
+        C_ACCENT2 = colors.HexColor("#6366F1") # Indigo-500 for secondary
+        C_HAIRLINE = colors.HexColor("#F1F5F9") # Slate-100 for dividers
+        C_TH_BG = colors.HexColor("#0F172A")    # Deep Navy for table headers
+        C_ROW_ALT = colors.HexColor("#F8FAFC")  # Slate-50 for alternating rows
+        C_ROW_BORDER = colors.HexColor("#E2E8F0") # Slate-200 for table borders
+        C_COVER_BAND = colors.HexColor("#0F172A") # Deep Navy top band
         C_PAGE_BG = colors.white
 
 HX_ACCENT = "#6366F1"
@@ -141,8 +141,8 @@ def _build_styles():
         spaceBefore=4, spaceAfter=12, leading=13, alignment=TA_CENTER)
     add(name="Small", fontName="Helvetica", fontSize=9, textColor=C_MUTED,
         spaceAfter=6, leading=13)
-    add(name="TOCItem", fontName="Helvetica", fontSize=11, textColor=C_INK,
-        spaceBefore=4, spaceAfter=4, leading=18)
+    add(name="TOCItem", fontName="Helvetica-Bold", fontSize=14, textColor=C_INK,
+        spaceBefore=6, spaceAfter=6, leading=22)
 
     return base
 
@@ -151,6 +151,7 @@ def _build_styles():
 # Page decorators
 # ─────────────────────────────────────────────────────────────────────────────
 def _decorate_cover(canvas, doc, logo_b64=None):
+    theme = getattr(doc, "theme", "dark")
     canvas.saveState()
     # Background
     canvas.setFillColor(C_PAGE_BG)
@@ -202,6 +203,7 @@ def _decorate_cover(canvas, doc, logo_b64=None):
 
 
 def _decorate_page(canvas, doc):
+    theme = getattr(doc, "theme", "dark")
     canvas.saveState()
     # Background
     canvas.setFillColor(C_PAGE_BG)
@@ -721,7 +723,6 @@ def _build_cover(elements, styles, timestamp: str, n_analyses: int,
     # label column, alternating row shading, and an accent header bar.
     meta_rows = [
         ["Prepared for",   user_name or "—"],
-        ["Dataset",        dataset_name or "—"],
         ["Generated",      timestamp],
         ["Analyses",       str(n_analyses)],
         ["Classification", "Confidential"],
@@ -775,20 +776,32 @@ def _build_cover(elements, styles, timestamp: str, n_analyses: int,
         elements.append(Paragraph(_safe_xml(overview_text, max_len=600), styles["Body"]))
         elements.append(_gap(20))
 
-    # TOC
-    if toc_entries:
-        toc_elements = []
-        toc_elements.append(Paragraph("CONTENTS", styles["Eyebrow"]))
-        toc_elements.append(_accent_rule())
-        for entry in toc_entries:
-            toc_elements.append(Paragraph(entry, styles["TOCItem"]))
-        elements.append(KeepTogether(toc_elements))
+def _build_toc_page(elements, toc_entries, styles):
+    """Render a prominent Table of Contents page."""
+    if not toc_entries:
+        return
+        
+    elements.append(PageBreak())
+    elements.append(_gap(1.2 * inch))
+    
+    elements.append(Paragraph("CONTENTS", styles["H1"]))
+    elements.append(HRFlowable(width=40, thickness=3, color=C_ACCENT, spaceBefore=2, spaceAfter=25, hAlign="LEFT"))
+    
+    for entry in toc_entries:
+        elements.append(Paragraph(entry, styles["TOCItem"]))
+        elements.append(_gap(10))
+
+    elements.append(_gap(40))
+    elements.append(Paragraph(
+        f'<font color="{HX_MUTED}">This briefing contains synthesized intelligence and detailed evidence blocks curated for the current session.</font>',
+        styles["Small"]
+    ))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Executive summary (prose from AI responses)
 # ─────────────────────────────────────────────────────────────────────────────
-def _build_executive_summary(elements, history: list, styles, report_intro: str = ""):
+def _build_executive_summary(elements, history, styles, report_intro: str = "", theme: str = "dark"):
     elements.append(PageBreak())
     elements.append(Paragraph("Executive Summary", styles["H1"]))
     elements.append(_accent_rule())
@@ -811,7 +824,11 @@ def _build_executive_summary(elements, history: list, styles, report_intro: str 
     elements.append(Paragraph(intro, styles["Body"]))
     elements.append(_gap(8))
 
-    # Key takeaways, pulled from the first paragraph of each AI response
+    # If we have a synthesized intro, we don't need to dump raw takeaways
+    if report_intro and len(report_intro) > 200:
+        return
+        
+    # Key takeaways, pulled from the first paragraph of each AI response (Fallback)
     takeaways: list[str] = []
     seen: set[str] = set()
     for entry in history:
@@ -860,23 +877,24 @@ def _render_ai_sections(sections: list[tuple[str, str, list[str]]], styles) -> l
     return out
 
 
-def _build_analysis_section(elements, entry: dict, num: int, styles):
+def _build_analysis_section(entry: dict, num: int, styles):
+    """Generate a list of flowables for a single analysis section."""
+    section_elements = []
     query     = str(entry.get("query") or "N/A")
     ai_resp   = str(entry.get("ai_response") or "").strip()
     insight   = str(entry.get("insight") or "").strip()
     charts    = entry.get("charts") or []
     dataframe = entry.get("result")
-    chart_b64 = entry.get("chart_b64") # Base64 chart image from frontend
+    chart_b64 = entry.get("chart_b64")
 
-    # Section title + divider — the divider is a full-width hairline with a
-    # thick indigo left-accent block so each analysis visibly breaks from
-    # the previous one.
-    elements.append(Paragraph(f"Analysis {num:02d}", styles["Eyebrow"]))
-    short_q = re.sub(r"\s+", " ", query).strip()[:100]
-    elements.append(Paragraph(_safe_xml(short_q, max_len=180), styles["H1"]))
-    elements.append(_gap(2))
-    elements.append(_section_divider())
-    elements.append(_gap(12))
+    # Header
+    section_elements.append(Paragraph(f"Analysis {num:02d}", styles["Eyebrow"]))
+    title = entry.get("dynamic_title") or query
+    short_title = re.sub(r"\s+", " ", title).strip()[:100]
+    section_elements.append(Paragraph(_safe_xml(short_title, max_len=180), styles["H1"]))
+    section_elements.append(_gap(2))
+    section_elements.append(_section_divider())
+    section_elements.append(_gap(12))
 
     # AI response as prose
     sections = _split_ai_response(ai_resp)
@@ -884,17 +902,17 @@ def _build_analysis_section(elements, entry: dict, num: int, styles):
         sections = [("Key Finding", insight, [])]
 
     if sections:
-        elements.append(Paragraph("AI ANALYST RESPONSE", styles["Eyebrow"]))
+        section_elements.append(Paragraph("AI ANALYST RESPONSE", styles["Eyebrow"]))
         for fl in _render_ai_sections(sections, styles):
-            elements.append(fl)
-        elements.append(_gap(4))
+            section_elements.append(fl)
+        section_elements.append(_gap(4))
     else:
-        elements.append(Paragraph(
+        section_elements.append(Paragraph(
             "No AI narrative was captured for this question. Only the raw result is available.",
             styles["Small"],
         ))
 
-    # Supporting chart (small, centered with caption)
+    # Supporting chart
     img_bytes: Optional[bytes] = None
     for item in charts:
         fig = item.get("figure") if isinstance(item, dict) else item
@@ -905,7 +923,6 @@ def _build_analysis_section(elements, entry: dict, num: int, styles):
             break
     if not img_bytes and chart_b64:
         try:
-            # Fix incorrect padding if it exists
             padded_b64 = chart_b64 + "=" * ((4 - len(chart_b64) % 4) % 4)
             img_bytes = base64.b64decode(padded_b64)
         except Exception as e:
@@ -915,30 +932,149 @@ def _build_analysis_section(elements, entry: dict, num: int, styles):
         img_bytes = _chart_from_dataframe(dataframe, title=query[:60])
 
     if img_bytes:
-        elements.append(Paragraph("SUPPORTING VISUAL", styles["Eyebrow"]))
-        img_w = BODY_W * 0.82
-        img_h = img_w * (360 / 780)
+        section_elements.append(Paragraph("SUPPORTING VISUAL", styles["Eyebrow"]))
+        img_w = BODY_W * 0.95
+        img_h = img_w * (400 / 800)
         img = Image(BytesIO(img_bytes), width=img_w, height=img_h)
         img.hAlign = "CENTER"
-        elements.append(img)
-        elements.append(Paragraph(
+        section_elements.append(img)
+        section_elements.append(Paragraph(
             f"Figure {num}. Visual summary of results for this question.",
             styles["Caption"],
         ))
 
-    # Compact supporting table (only if small)
+    # Compact supporting table
     if isinstance(dataframe, (pd.DataFrame, pd.Series)):
         tbl = _compact_table(dataframe, max_rows=6)
         if tbl is not None:
-            elements.append(Paragraph("REFERENCE DATA", styles["Eyebrow"]))
-            elements.append(tbl)
+            section_elements.append(Paragraph("REFERENCE DATA", styles["Eyebrow"]))
+            section_elements.append(tbl)
             n_rows = len(dataframe) if hasattr(dataframe, "__len__") else 0
             if isinstance(n_rows, int) and n_rows > 6:
-                elements.append(Paragraph(
+                section_elements.append(Paragraph(
                     f"Showing top 6 of {n_rows:,} rows.",
                     styles["Small"],
                 ))
-            elements.append(_gap(4))
+            section_elements.append(_gap(4))
+    
+    return section_elements
+
+# ─────────────────────────────────────────────────────────────────────────────
+# KPI Dashboard Page
+# ─────────────────────────────────────────────────────────────────────────────
+def _build_kpi_dashboard(elements, kpis, styles, theme: str = "dark"):
+    """Render a dedicated KPI summary page with enterprise-style metric cards."""
+    if not kpis:
+        return
+        
+    elements.append(PageBreak())
+    elements.append(_gap(0.4 * inch))
+    
+    # Header
+    elements.append(Paragraph("Executive Intelligence Dashboard", styles["H1"]))
+    elements.append(_accent_rule())
+    elements.append(Paragraph(
+        "A synthesized overview of core dataset metrics and operational KPIs detected across the analytical domain.",
+        styles["Body"]
+    ))
+    elements.append(_gap(24))
+
+    # Build KPI cards in a grid
+    # We use a Table to align cards
+    rows = []
+    current_row = []
+    
+    for i, kpi in enumerate(kpis):
+        # Create a card content
+        label = kpi.get("label", "Metric").upper()
+        value = kpi.get("value", "N/A")
+        subtext = kpi.get("subtext", "")
+        
+        card_style = TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), C_ROW_ALT),
+            ('BOX', (0,0), (-1,-1), 1.5, C_ACCENT),
+            ('ROUNDEDCORNERS', [10, 10, 10, 10]),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 15),
+            ('TOPPADDING', (0,0), (-1,-1), 15),
+            ('LEFTPADDING', (0,0), (-1,-1), 15),
+            ('RIGHTPADDING', (0,0), (-1,-1), 15),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ])
+        
+        card_content = [
+            [Paragraph(f'<font size="9" color="{HX_ACCENT}"><b>{label}</b></font>', styles["Small"])],
+            [Paragraph(f'<font size="24" color="{HX_INK if theme == "light" else "white"}"><b>{value}</b></font>', styles["Body"])],
+        ]
+        if subtext:
+            card_content.append([Paragraph(f'<font size="7" color="{HX_MUTED}">{subtext}</font>', styles["Small"])])
+            
+        card_tbl = Table(card_content, colWidths=[1.8 * inch])
+        card_tbl.setStyle(card_style)
+        
+        current_row.append(card_tbl)
+        
+        if len(current_row) == 3 or i == len(kpis) - 1:
+            # Fill out the row if it's the last one
+            while len(current_row) < 3:
+                current_row.append("")
+            rows.append(current_row)
+            current_row = []
+
+    if rows:
+        dashboard_tbl = Table(rows, colWidths=[2.1 * inch] * 3, rowHeights=[1.0 * inch] * len(rows))
+        dashboard_tbl.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 15),
+        ]))
+        elements.append(dashboard_tbl)
+
+    elements.append(_gap(30))
+    elements.append(Paragraph("Strategic Insights Overview", styles["H2"]))
+    elements.append(Paragraph(
+        "The metrics above indicate the primary operational boundaries of the current dataset. "
+        "Further sections provide a granular exploration of the relationships between these variables.",
+        styles["Body"]
+    ))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Strategic Conclusion Page
+# ─────────────────────────────────────────────────────────────────────────────
+def _build_strategic_conclusion(elements, conclusion, styles):
+    """Render the final strategic recommendation page."""
+    if not conclusion:
+        return
+        
+    elements.append(PageBreak())
+    elements.append(_gap(0.5 * inch))
+    elements.append(Paragraph("Strategic Conclusion", styles["H1"]))
+    elements.append(_accent_rule())
+    elements.append(_section_divider())
+    elements.append(_gap(16))
+    
+    # Process conclusion prose
+    for para in conclusion.split("\n\n"):
+        para = para.strip()
+        if not para:
+            continue
+        # Check if it's a bullet
+        if para.startswith("- ") or para.startswith("* "):
+            elements.append(Paragraph(
+                f'<font color="{HX_ACCENT}">&#8226;</font>&#160;&#160;{_safe_xml(para[2:])}',
+                styles["BulletItem"]
+            ))
+        else:
+            elements.append(Paragraph(_safe_xml(para, max_len=3000), styles["Body"]))
+        elements.append(_gap(8))
+
+    elements.append(_gap(24))
+    elements.append(Paragraph("Next Operational Steps", styles["Eyebrow"]))
+    elements.append(Paragraph(
+        "Based on the intelligence synthesized in this briefing, it is recommended to "
+        "monitor the identified outliers and validate the projected trends against "
+        "upcoming quarterly performance data.",
+        styles["Body"]
+    ))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -968,9 +1104,6 @@ def _build_disclaimer(elements, styles, timestamp: str):
     ))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Public entry point
-# ─────────────────────────────────────────────────────────────────────────────
 def generate_pdf(
     query=None,
     summary_text=None,
@@ -982,9 +1115,11 @@ def generate_pdf(
     file_path: str | None = None,
     report_title: str | None = None,
     report_intro: str | None = None,
-    theme: str = "light",
+    theme: str = "dark",
     brand_logo_b64: str | None = None,
-    brand_color: str | None = None
+    brand_color: str | None = None,
+    kpis: list[dict] = None,
+    strategic_conclusion: str | None = None
 ) -> str:
     """
     Generate a narrative-first PDF report.
@@ -1034,6 +1169,8 @@ def generate_pdf(
         title="Nexlytics – Executive Report",
         author="Nexlytics",
     )
+    # Store theme on doc so decorators can access it
+    doc.theme = theme
 
     styles   = _build_styles()
     elements: list = []
@@ -1059,10 +1196,11 @@ def generate_pdf(
         if overview:
             break
 
-    # TOC entries
+    # TOC entries - use dynamic titles if available
     toc_entries = []
     for i, e in enumerate(history, 1):
-        q = _safe_xml(str(e.get("query", ""))[:80], max_len=100)
+        title = e.get("dynamic_title") or e.get("query", "Insight")
+        q = _safe_xml(str(title)[:80], max_len=100)
         toc_entries.append(
             f'<font color="{HX_ACCENT}"><b>{i:02d}.</b></font>&#160;&#160;{q}'
         )
@@ -1070,6 +1208,8 @@ def generate_pdf(
     # ── Cover ─────────────────────────────────────────────────────────────────
     _build_cover(elements, styles, timestamp, n, dataset_name, user_name,
                  overview, toc_entries, report_title=report_title)
+    
+    _build_toc_page(elements, toc_entries, styles)
 
     if n == 0:
         elements.append(PageBreak())
@@ -1081,18 +1221,40 @@ def generate_pdf(
             styles["Body"],
         ))
     else:
-        _build_executive_summary(elements, history, styles, report_intro=report_intro)
+        _build_kpi_dashboard(elements, kpis, styles, theme=theme)
+        _build_executive_summary(elements, history, styles, report_intro=report_intro, theme=theme)
+
+        # Start detailed analysis section on a new page
+        elements.append(PageBreak())
+        elements.append(Paragraph("Detailed Analytical Breakdown", styles["H1"]))
+        elements.append(_accent_rule())
+        elements.append(Paragraph(
+            "The following sections provide granular evidence and supporting visualizations for the "
+            "findings summarized in the executive briefing.",
+            styles["Body"]
+        ))
+        elements.append(_gap(20))
 
         for i, entry in enumerate(history, 1):
-            elements.append(PageBreak())
             try:
-                _build_analysis_section(elements, entry, i, styles)
+                # Add a separator before analysis sections if not the first on the page
+                if i > 1:
+                    elements.append(_gap(20))
+                    elements.append(HRFlowable(width="100%", thickness=0.5, color=C_HAIRLINE, spaceBefore=10, spaceAfter=20))
+                
+                # Wrap each analysis in KeepTogether to ensure it clusters naturally
+                # but allows the document to flow without forced PageBreaks.
+                analysis_flowables = _build_analysis_section(entry, i, styles)
+                elements.append(KeepTogether(analysis_flowables))
             except Exception as exc:
                 logger.error("Failed to build analysis section %s: %s", i, exc)
                 elements.append(Paragraph(
                     f"Analysis {i} could not be rendered: {_safe_xml(str(exc)[:200])}",
                     styles["Body"],
                 ))
+        
+        if strategic_conclusion:
+            _build_strategic_conclusion(elements, strategic_conclusion, styles)
 
     _build_disclaimer(elements, styles, timestamp)
 

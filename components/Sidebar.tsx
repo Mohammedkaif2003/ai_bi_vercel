@@ -278,6 +278,7 @@ export default function Sidebar({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-[11px] text-slate-300 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-inner"
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
               />
             </div>
           </motion.div>

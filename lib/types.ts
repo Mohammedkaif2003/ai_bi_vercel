@@ -55,12 +55,22 @@ export interface ChatSession {
   created_at: string;
 }
 
+/**
+ * Strict Plotly Specification interface
+ */
+export interface PlotlySpec {
+  data: Array<Record<string, any>>;
+  layout: Record<string, any>;
+  config?: Record<string, any>;
+  frames?: Array<Record<string, any>>;
+}
+
 export interface AnalysisResult {
   query_type: string;
   summary: string;
   narration: string;
   result: Record<string, unknown>[];
-  chart: object | null;
+  chart: PlotlySpec | null;
   chart_type: string | null;
 }
 
@@ -73,14 +83,14 @@ export interface ForecastResult {
   std_error?: number;
   forecast?: Record<string, unknown>[];
   historical?: Record<string, unknown>[];
-  chart?: object | null;
+  chart?: PlotlySpec | null;
 }
 
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   result?: Record<string, unknown>[];
-  chart?: object | null;
+  chart?: PlotlySpec | null;
   query_type?: string;
   timestamp: number;
 }
@@ -90,6 +100,6 @@ export interface AnalysisHistoryEntry {
   ai_response: string;
   insight: string;
   result: Record<string, unknown>[];
-  chart?: any;
+  chart?: PlotlySpec | null;
   chart_b64?: string;
 }

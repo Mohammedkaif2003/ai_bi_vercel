@@ -17,14 +17,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from _utils import (  # noqa: E402
     df_from_csv_b64,
+    df_to_csv_b64,
     df_to_records,
     handle_options,
     load_dataset_b64,
+    save_dataset_b64,
     read_json_body,
     require_auth,
     send_error,
     send_json,
-    save_dataset_b64, # Need to add this to _utils or use existing pattern
 )
 from modules.data_loader import normalize_columns  # noqa: E402
 
@@ -115,18 +116,17 @@ class handler(BaseHTTPRequestHandler):
                             df[col] = temp.fillna(0)
 
                 # Convert back to base64
-                import io
-                import base64
-                output = io.StringIO()
-                df.to_csv(output, index=False)
-                new_csv_b64 = base64.b64encode(output.getvalue().encode()).decode()
+                from _utils import df_to_csv_b64, save_dataset_b64
+                new_csv_b64 = df_to_csv_b64(df)
                 
-                # In a real app we'd save this. 
-                # For this demo, we'll return the new shape and a success msg.
+                # Persist the cleaned data
+                save_success = save_dataset_b64(dataset_key, new_csv_b64, user)
+                
                 send_json(self, {
-                    "message": "Data cleaned successfully!",
+                    "message": "Data cleaned and persisted successfully!" if save_success else "Data cleaned but persistence failed.",
                     "new_shape": [len(df), len(df.columns)],
-                    "csv_b64": new_csv_b64 # Return it so frontend can update state
+                    "csv_b64": new_csv_b64,
+                    "persisted": save_success
                 })
 
         except Exception as e:

@@ -170,7 +170,7 @@ export default function LiveBoard({ isActive }: Props) {
 
   useEffect(() => {
     if (isActive && pinnedInsights.length === 0) {
-      fetchInsights();
+      setTimeout(() => fetchInsights(), 0);
     }
   }, [isActive, pinnedInsights.length, fetchInsights]);
 
@@ -234,6 +234,7 @@ export default function LiveBoard({ isActive }: Props) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all"
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           />
         </div>
       </div>

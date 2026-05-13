@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -18,18 +18,20 @@ import {
 import LogoMark from "@/components/LogoMark";
 import LandingDemo from "@/components/LandingDemo";
 
+const placeholders = [
+  "Why did revenue drop in March?",
+  "Show customer growth trends",
+  "Predict next quarter sales",
+  "Analyze marketing spend vs ROI"
+];
+
 export default function LandingPage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isDemoOpen, setIsDemoOpen] = useState(false);
+  const resumeTypingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [placeholder, setPlaceholder] = useState("");
-  const placeholders = [
-    "Why did revenue drop in March?",
-    "Show customer growth trends",
-    "Predict next quarter sales",
-    "Analyze marketing spend vs ROI"
-  ];
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   
   useEffect(() => {
@@ -42,13 +44,19 @@ export default function LandingPage() {
       
       if (charIndex > currentText.length) {
         clearInterval(typingInterval);
-        setTimeout(() => {
+        resumeTypingTimeout.current = setTimeout(() => {
           setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
         }, 2500);
       }
     }, 80);
     
-    return () => clearInterval(typingInterval);
+    return () => {
+      clearInterval(typingInterval);
+      if (resumeTypingTimeout.current) {
+        clearTimeout(resumeTypingTimeout.current);
+        resumeTypingTimeout.current = null;
+      }
+    };
   }, [placeholderIndex]);
 
   useEffect(() => {

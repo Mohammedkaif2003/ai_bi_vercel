@@ -45,46 +45,64 @@ interface AppState {
   removePinnedInsight: (id: string) => void;
 }
 
-export const useStore = create<AppState>((set) => ({
-  user: null,
-  setUser: (user) => set({ user }),
+import { persist, createJSONStorage } from 'zustand/middleware';
 
-  activeTab: "overview",
-  setActiveTab: (activeTab) => set({ activeTab }),
-  sidebarCollapsed: false,
-  setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+export const useStore = create<AppState>()(
+  persist(
+    (set) => ({
+      user: null,
+      setUser: (user) => set({ user }),
 
-  datasetPayload: null,
-  setDatasetPayload: (datasetPayload) => set({ datasetPayload }),
+      activeTab: "overview",
+      setActiveTab: (activeTab) => set({ activeTab }),
+      sidebarCollapsed: false,
+      setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
 
-  activeSessionId: null,
-  setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
+      datasetPayload: null,
+      setDatasetPayload: (datasetPayload) => set({ datasetPayload }),
 
-  chatSessions: [],
-  setChatSessions: (sessions) => 
-    set((state) => ({ 
-      chatSessions: typeof sessions === 'function' ? sessions(state.chatSessions) : sessions 
-    })),
+      activeSessionId: null,
+      setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
 
-  availableDatasets: [],
-  setAvailableDatasets: (availableDatasets) => set({ availableDatasets }),
-  dataSource: "preloaded",
-  setDataSource: (dataSource) => set({ dataSource }),
-  selectedKeys: [],
-  setSelectedKeys: (selectedKeys) => set({ selectedKeys }),
-  loadingDataset: false,
-  setLoadingDataset: (loadingDataset) => set({ loadingDataset }),
-  datasetError: "",
-  setDatasetError: (datasetError) => set({ datasetError }),
-  pendingDatasetToActivate: null,
-  setPendingDatasetToActivate: (pendingDatasetToActivate) => set({ pendingDatasetToActivate }),
+      chatSessions: [],
+      setChatSessions: (sessions) => 
+        set((state) => ({ 
+          chatSessions: typeof sessions === 'function' ? sessions(state.chatSessions) : sessions 
+        })),
 
-  pinnedInsights: [],
-  setPinnedInsights: (pinnedInsights) => set({ pinnedInsights }),
-  addPinnedInsight: (insight) => set((state) => ({ 
-    pinnedInsights: [...state.pinnedInsights, insight] 
-  })),
-  removePinnedInsight: (id) => set((state) => ({ 
-    pinnedInsights: state.pinnedInsights.filter(i => i.id !== id) 
-  })),
-}));
+      availableDatasets: [],
+      setAvailableDatasets: (availableDatasets) => set({ availableDatasets }),
+      dataSource: "preloaded",
+      setDataSource: (dataSource) => set({ dataSource }),
+      selectedKeys: [],
+      setSelectedKeys: (selectedKeys) => set({ selectedKeys }),
+      loadingDataset: false,
+      setLoadingDataset: (loadingDataset) => set({ loadingDataset }),
+      datasetError: "",
+      setDatasetError: (datasetError) => set({ datasetError }),
+      pendingDatasetToActivate: null,
+      setPendingDatasetToActivate: (pendingDatasetToActivate) => set({ pendingDatasetToActivate }),
+
+      pinnedInsights: [],
+      setPinnedInsights: (pinnedInsights) => set({ pinnedInsights }),
+      addPinnedInsight: (insight) => set((state) => ({ 
+        pinnedInsights: [...state.pinnedInsights, insight] 
+      })),
+      removePinnedInsight: (id) => set((state) => ({ 
+        pinnedInsights: state.pinnedInsights.filter(i => i.id !== id) 
+      })),
+    }),
+    {
+      name: 'nexlytics-storage',
+      storage: createJSONStorage(() => localStorage),
+      // Only persist non-heavy state items
+      partialize: (state) => ({ 
+        activeTab: state.activeTab,
+        sidebarCollapsed: state.sidebarCollapsed,
+        activeSessionId: state.activeSessionId,
+        dataSource: state.dataSource,
+        selectedKeys: state.selectedKeys
+      }),
+    }
+  )
+);

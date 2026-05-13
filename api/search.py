@@ -45,7 +45,16 @@ class handler(BaseHTTPRequestHandler):
             csv_b64 = load_dataset_b64(dataset_key, user)
             df = df_from_csv_b64(csv_b64)
 
-            full_results = df
+            query_str = str(data.get("query", "")).strip()
+            
+            if query_str:
+                # Perform a case-insensitive search across all columns
+                # We convert everything to string for the search
+                mask = df.astype(str).apply(lambda x: x.str.contains(query_str, case=False, na=False)).any(axis=1)
+                full_results = df[mask]
+            else:
+                full_results = df
+
             total_matches = len(full_results)
             
             # Apply pagination

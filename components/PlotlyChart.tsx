@@ -22,17 +22,22 @@ interface Props {
 export default function PlotlyChart({ spec, height = 420 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    // If IntersectionObserver isn't available, load immediately.
-    if (typeof window === "undefined" || !('IntersectionObserver' in window)) {
-      setInView(true);
+    if (typeof window === "undefined") return;
+
+    // Staggered hydration to prevent CPU spikes
+    const hydrateTimer = setTimeout(() => setIsHydrated(true), 150);
+
+    if (!('IntersectionObserver' in window)) {
+      setTimeout(() => setInView(true), 0);
       return;
     }
 
     const el = containerRef.current;
     if (!el) {
-      setInView(true);
+      setTimeout(() => setInView(true), 0);
       return;
     }
 
@@ -49,8 +54,22 @@ export default function PlotlyChart({ spec, height = 420 }: Props) {
     );
 
     obs.observe(el);
-    return () => obs.disconnect();
+
+    // Robust resize handling for sidebar shifts
+    const resizeObs = new ResizeObserver(() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('resize'));
+      }
+    });
+    resizeObs.observe(el);
+
+    return () => {
+      obs.disconnect();
+      resizeObs.disconnect();
+      clearTimeout(hydrateTimer);
+    };
   }, []);
+
   const figure = spec as {
     data?: any[];
     layout?: any;
@@ -131,7 +150,7 @@ export default function PlotlyChart({ spec, height = 420 }: Props) {
 
   return (
     <div className="relative group/chart w-full h-full flex items-center justify-center min-w-0 overflow-hidden" ref={containerRef}>
-      {!inView ? (
+      {!inView || !isHydrated ? (
         <div className="w-full flex items-center justify-center text-[#64748B] text-sm" style={{ height: `${height}px` }}>
           Loading chart…
         </div>
