@@ -81,7 +81,8 @@ export async function analyze(
   dataset_key: string,
   dataset_name?: string
 ): Promise<AnalysisResult> {
-  return post<AnalysisResult>("/api/analyze", { query, dataset_key, dataset_name });
+  const requestId = Math.random().toString(36).substring(2, 10);
+  return post<AnalysisResult>("/api/analyze", { query, dataset_key, dataset_name, requestId });
 }
 
 // ---------------------------------------------------------------------------

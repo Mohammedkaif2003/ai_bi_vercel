@@ -72,6 +72,9 @@ class handler(BaseHTTPRequestHandler):
         data = read_json_body(self)
         query = str(data.get("query", "")).strip()
         dataset_key = data.get("dataset_key", "")
+        request_id = data.get("requestId", "unknown")
+
+        logger.info(f"[{request_id}] Incoming Analysis Request: {query[:50]}... (dataset: {dataset_key})")
         dataset_name = str(data.get("dataset_name", ""))
 
         if not query:

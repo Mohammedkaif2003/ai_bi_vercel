@@ -94,13 +94,22 @@ def _build_data_context(result, insight=""):
         stats = ""
         numeric_cols = result.select_dtypes(include="number").columns
         if len(numeric_cols) > 0:
+            # Limit stats to avoid massive text blobs
             desc = result[numeric_cols].describe().to_string()
             stats = f"\nStatistical summary:\n{desc}"
 
+        # Limit columns shown in the snippet if there are too many
+        cols_to_show = result.columns
+        if len(cols_to_show) > 15:
+            cols_to_show = list(cols_to_show[:15]) + ["..."]
+            display_df = result.iloc[:30, :15]
+        else:
+            display_df = result.head(30)
+
         data_summary = f"""Data returned: DataFrame with {result.shape[0]} rows and {result.shape[1]} columns.
-Columns: {', '.join(str(c) for c in result.columns)}
-Data Snippet (up to 50 rows):
-{result.head(50).to_string(index=False)}
+Columns: {', '.join(str(c) for c in cols_to_show)}
+Data Snippet (up to 30 rows):
+{display_df.to_string(index=False)}
 {stats}
 """
     elif isinstance(result, pd.Series):

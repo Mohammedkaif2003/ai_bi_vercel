@@ -129,25 +129,43 @@ export default function AIAnalyst({
     syncPins();
   }, [messages, payload]);
 
-  // Typewriter effect
   const [typedContent, setTypedContent] = useState<Record<number, string>>({});
+  const typingRef = useRef<Set<number>>(new Set());
+
+  // Reset index-based states when messages are cleared, session changes, or dataset switches
   useEffect(() => {
-    messages.forEach((msg, idx) => {
-      if (msg.role === "assistant" && !typedContent[idx]) {
-        let i = 0;
-        const fullText = msg.content;
-        const interval = setInterval(() => {
-          setTypedContent(prev => ({ ...prev, [idx]: fullText.substring(0, i) }));
-          i += 4;
-          if (i > fullText.length) {
-            setTypedContent(prev => ({ ...prev, [idx]: fullText }));
-            clearInterval(interval);
-          }
-        }, 12);
-        return () => clearInterval(interval);
-      }
-    });
-  }, [messages, typedContent]);
+    setTypedContent({});
+    typingRef.current.clear();
+    setPinnedMap({});
+    setCopiedIndex(null);
+    setEditingIndex(null);
+  }, [payload?.dataset_key, messages.length === 0]);
+
+  // Typewriter effect - only for the latest message
+  useEffect(() => {
+    const lastIdx = messages.length - 1;
+    if (lastIdx < 0) return;
+    
+    const msg = messages[lastIdx];
+    if (msg.role === "assistant" && !typedContent[lastIdx] && !typingRef.current.has(lastIdx)) {
+      typingRef.current.add(lastIdx);
+      let i = 0;
+      const fullText = msg.content;
+      const interval = setInterval(() => {
+        setTypedContent(prev => ({ ...prev, [lastIdx]: fullText.substring(0, i) }));
+        i += 4;
+        if (i > fullText.length) {
+          setTypedContent(prev => ({ ...prev, [lastIdx]: fullText }));
+          typingRef.current.delete(lastIdx);
+          clearInterval(interval);
+        }
+      }, 12);
+      return () => {
+        typingRef.current.delete(lastIdx);
+        clearInterval(interval);
+      };
+    }
+  }, [messages.length]);
 
   // Loading steps
   useEffect(() => {

@@ -578,6 +578,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <AIAnalyst 
+                    key={activeSessionId || newChatKey}
                     payload={sessionDataset} user={user!} onSwitchToForecast={() => setActiveTab("forecast")} 
                     messages={messages} sendMessage={sendMessage} clearChat={clearChat}
                     isAnalyzing={isAnalyzing} chatError={chatError}

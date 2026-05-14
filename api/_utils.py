@@ -279,9 +279,13 @@ def save_dataset_b64(dataset_key: str, csv_b64: str, user: dict | None = None) -
 
 @functools.lru_cache(maxsize=4)
 def _parse_csv_bytes(csv_bytes: bytes):
-    """Internal cached parser for CSV bytes."""
+    """Internal cached parser for CSV bytes with encoding fallback."""
     import pandas as pd
-    return pd.read_csv(io.BytesIO(csv_bytes))
+    try:
+        return pd.read_csv(io.BytesIO(csv_bytes), encoding="utf-8")
+    except (UnicodeDecodeError, ValueError):
+        # Fallback to latin-1 if utf-8 fails (common for non-English Excel exports)
+        return pd.read_csv(io.BytesIO(csv_bytes), encoding="latin-1")
 
 
 def df_from_csv_b64(csv_b64: str):

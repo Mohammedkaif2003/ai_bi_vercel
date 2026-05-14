@@ -95,10 +95,33 @@ def execute_code(code, df):
     try:
         tree = validation_result
 
+        # Whitelist safe builtins for the execution environment
+        safe_builtins = {
+            "len": len,
+            "sum": sum,
+            "max": max,
+            "min": min,
+            "abs": abs,
+            "round": round,
+            "list": list,
+            "dict": dict,
+            "set": set,
+            "range": range,
+            "enumerate": enumerate,
+            "zip": zip,
+            "int": int,
+            "float": float,
+            "str": str,
+            "bool": bool,
+            "sorted": sorted,
+            "any": any,
+            "all": all,
+        }
+
         # Execute generated code
         exec(
             compile(tree, "<analysis>", "exec"),
-            {"__builtins__": {}, **global_vars},
+            {"__builtins__": safe_builtins, **global_vars},
             local_vars
         )
 
