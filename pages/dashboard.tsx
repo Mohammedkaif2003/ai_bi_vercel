@@ -578,7 +578,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <AIAnalyst 
-                    key={activeSessionId || newChatKey}
+                    key={`${activeSessionId || newChatKey}-${datasetPayload?.dataset_key}`}
                     payload={sessionDataset} user={user!} onSwitchToForecast={() => setActiveTab("forecast")} 
                     messages={messages} sendMessage={sendMessage} clearChat={clearChat}
                     isAnalyzing={isAnalyzing} chatError={chatError}
@@ -590,7 +590,7 @@ export default function DashboardPage() {
               </div>
 
               <div className={activeTab === "forecast" ? "block h-full overflow-y-auto scrollbar-hide pr-2" : "hidden"}>
-                {datasetPayload ? <ForecastingTab payload={datasetPayload} /> : (
+                {datasetPayload ? <ForecastingTab key={datasetPayload.dataset_key} payload={datasetPayload} /> : (
                   <EmptyState 
                     title="INTELLIGENCE" 
                     subtitle="PREDICTIVE READY"

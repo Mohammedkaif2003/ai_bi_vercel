@@ -48,7 +48,11 @@ export default function ForecastingTab({ payload }: Props) {
       headers.join(","),
       ...result.forecast.map(row => headers.map(h => {
         const val = row[h];
-        return typeof val === 'string' && val.includes(',') ? `"${val}"` : val;
+        if (val === null || val === undefined) return "";
+        const str = String(val);
+        return str.includes(",") || str.includes('"') || str.includes("\n") 
+          ? `"${str.replace(/"/g, '""')}"` 
+          : str;
       }).join(","))
     ].join("\n");
 

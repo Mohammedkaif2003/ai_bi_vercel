@@ -82,13 +82,7 @@ export default function ReportsTab({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  // Reset ready state if selection or content changes to force regeneration
-  useEffect(() => {
-    if (isReady) {
-      setIsReady(false);
-      setPdfUrl(null);
-    }
-  }, [selectedReportIndices, reportTitle, reportIntro]);
+
 
   useEffect(() => {
     const analysisEntries: AnalysisHistoryEntryExtended[] = [];
@@ -174,6 +168,8 @@ export default function ReportsTab({
       else next.add(msgIdx);
       return next;
     });
+    setIsReady(false);
+    setPdfUrl(null);
   };
 
   async function handleGenerateReport() {
@@ -376,7 +372,11 @@ export default function ReportsTab({
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-3">Report Title</label>
                     <input 
                       type="text" value={reportTitle} 
-                      onChange={(e) => setReportTitle(e.target.value)}
+                      onChange={(e) => {
+                        setReportTitle(e.target.value);
+                        setIsReady(false);
+                        setPdfUrl(null);
+                      }}
                       onKeyDown={(e) => { if (e.key === "Enter") handleGenerateReport(); }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-colors"
                     />
@@ -386,7 +386,11 @@ export default function ReportsTab({
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-3">Executive Intro</label>
                     <textarea 
                       value={reportIntro} 
-                      onChange={(e) => setReportIntro(e.target.value)}
+                      onChange={(e) => {
+                        setReportIntro(e.target.value);
+                        setIsReady(false);
+                        setPdfUrl(null);
+                      }}
                       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleGenerateReport(); } }}
                       placeholder="Add a summary or opening remarks..."
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-sm text-white h-32 resize-none focus:border-indigo-500 outline-none transition-colors"

@@ -51,7 +51,14 @@ export default function AIAnalyst({
   setSelectedReportIndices,
   onUpdateMessage,
 }: Props) {
-  const { datasetPayload, user: storeUser, addPinnedInsight, removePinnedInsight, setPendingDatasetToActivate } = useStore();
+  const { 
+    datasetPayload, 
+    user: storeUser, 
+    addPinnedInsight, 
+    removePinnedInsight, 
+    setPendingDatasetToActivate,
+    pinnedInsights // Pull global list for sync
+  } = useStore();
   
   const isReadOnly = !!(propPayload && datasetPayload && propPayload.dataset_key !== datasetPayload.dataset_key);
   const user = propUser || storeUser;
@@ -103,43 +110,29 @@ export default function AIAnalyst({
     setTimeout(() => setShowAutocomplete(false), 0);
   };
 
-  // Sync pins
+  // Sync pins using global store state instead of redundant network calls
   useEffect(() => {
-    async function syncPins() {
-      if (!payload) return;
-      try {
-        const pins = await listPinnedInsights();
-        const newMap: Record<number, string> = {};
-        messages.forEach((msg, idx) => {
-          if (msg.role === 'assistant' && msg.chart) {
-            const query = messages[idx-1]?.role === 'user' ? messages[idx-1].content : "Analysis";
-            const existing = pins.find((p: any) => 
-              p.dataset_key === payload.dataset_key && 
-              p.query === query &&
-              p.narration === msg.content
-            );
-            if (existing) newMap[idx] = existing.id;
-          }
-        });
-        setPinnedMap(newMap);
-      } catch (err) {
-        console.error("Failed to sync pins:", err);
+    if (!payload) return;
+    const newMap: Record<number, string> = {};
+    messages.forEach((msg, idx) => {
+      if (msg.role === 'assistant' && msg.chart) {
+        const query = messages[idx-1]?.role === 'user' ? messages[idx-1].content : "Analysis";
+        const existing = pinnedInsights.find((p: any) => 
+          p.dataset_key === payload.dataset_key && 
+          p.query === query &&
+          p.narration === msg.content
+        );
+        if (existing) newMap[idx] = existing.id;
       }
-    }
-    syncPins();
-  }, [messages, payload]);
+    });
+    setPinnedMap(newMap);
+  }, [messages, payload, pinnedInsights]);
 
   const [streamedMessages, setStreamedMessages] = useState<Record<number, string>>({});
   const typingRef = useRef<Set<number>>(new Set());
 
-  // Reset index-based states when messages are cleared, session changes, or dataset switches
-  useEffect(() => {
-    setStreamedMessages({});
-    typingRef.current.clear();
-    setPinnedMap({});
-    setCopiedIndex(null);
-    setEditingIndex(null);
-  }, [payload?.dataset_key, messages.length === 0]);
+  const isMessagesEmpty = messages.length === 0;
+  const datasetKey = payload?.dataset_key;
 
   // Typewriter effect - only for the latest message
   useEffect(() => {
@@ -147,8 +140,10 @@ export default function AIAnalyst({
     if (lastIdx < 0) return;
     
     const msg = messages[lastIdx];
-    if (msg.role === "assistant" && !streamedMessages[lastIdx] && !typingRef.current.has(lastIdx)) {
-      typingRef.current.add(lastIdx);
+    const typing = typingRef.current;
+
+    if (msg.role === "assistant" && !streamedMessages[lastIdx] && !typing.has(lastIdx)) {
+      typing.add(lastIdx);
       let i = 0;
       const fullText = msg.content;
       const interval = setInterval(() => {
@@ -156,16 +151,18 @@ export default function AIAnalyst({
         i += 4;
         if (i > fullText.length) {
           setStreamedMessages(prev => ({ ...prev, [lastIdx]: fullText }));
-          typingRef.current.delete(lastIdx);
+          typing.delete(lastIdx);
           clearInterval(interval);
         }
       }, 12);
       return () => {
-        typingRef.current.delete(lastIdx);
+        if (typing) {
+          typing.delete(lastIdx);
+        }
         clearInterval(interval);
       };
     }
-  }, [messages.length]);
+  }, [messages, streamedMessages]);
 
   // Loading steps
   useEffect(() => {
@@ -202,29 +199,37 @@ export default function AIAnalyst({
 
     try {
       const tempId = `temp-${Date.now()}`;
-      const newPin = {
-        id: tempId,
-        dataset_key: payload.dataset_key,
-        filename: payload.filename,
-        query: messages[idx-1]?.content || "Insight",
-        chart_spec: msg.chart,
-        narration: msg.content,
-        created_at: new Date().toISOString()
-      };
-      addPinnedInsight(newPin);
-      setPinnedMap(prev => ({ ...prev, [idx]: tempId }));
-      const savedPin = await pinInsight({
+      const newPinData = {
         dataset_key: payload.dataset_key,
         filename: payload.filename,
         query: messages[idx-1]?.content || "Insight",
         chart_spec: msg.chart,
         narration: msg.content
+      };
+
+      // Optimistic Update
+      addPinnedInsight({ ...newPinData, id: tempId, created_at: new Date().toISOString() });
+      setPinnedMap(prev => ({ ...prev, [idx]: tempId }));
+      
+      const savedPin = await pinInsight(newPinData);
+      
+      // Update with real ID only if it hasn't been unpinned in the meantime
+      setPinnedMap(prev => {
+        if (prev[idx] === tempId) {
+          return { ...prev, [idx]: savedPin.id };
+        }
+        return prev;
       });
-      setPinnedMap(prev => ({ ...prev, [idx]: savedPin.id }));
+      
       toast.success("Pinned to dashboard");
     } catch (err) {
       toast.error("Failed to pin insight");
-      setPinnedMap(prev => { const next = { ...prev }; delete next[idx]; return next; });
+      // Rollback
+      setPinnedMap(prev => {
+        const next = { ...prev };
+        delete next[idx];
+        return next;
+      });
     }
   };
 
@@ -236,7 +241,11 @@ export default function AIAnalyst({
     recognition.lang = "en-US";
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event: any) => { setInput(event.results[0][0].transcript); setIsListening(false); };
+    recognition.onresult = (event: any) => { 
+      const transcript = event.results[0][0].transcript;
+      setInput(prev => prev ? `${prev} ${transcript}` : transcript);
+      setIsListening(false); 
+    };
     recognition.start();
   };
 
@@ -249,9 +258,10 @@ export default function AIAnalyst({
     } else {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onstart = () => setCurrentlySpeakingIdx(idx);
       utterance.onend = () => setCurrentlySpeakingIdx(null);
+      utterance.onerror = () => setCurrentlySpeakingIdx(null);
       window.speechSynthesis.speak(utterance);
-      setCurrentlySpeakingIdx(idx);
     }
   };
 
