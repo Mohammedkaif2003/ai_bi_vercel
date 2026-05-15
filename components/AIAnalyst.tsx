@@ -133,39 +133,28 @@ export default function AIAnalyst({
   const isMessagesEmpty = messages.length === 0;
   const datasetKey = payload?.dataset_key;
 
-  // Stable Typewriter Effect
-  const typingIdxRef = useRef<number>(-1);
+  // Stable Recursive Typewriter Effect
   useEffect(() => {
     const lastIdx = messages.length - 1;
-    if (lastIdx < 0) {
-      typingIdxRef.current = -1;
-      return;
-    }
+    if (lastIdx < 0) return;
     
     const msg = messages[lastIdx];
-    if (msg.role !== "assistant") {
-      typingIdxRef.current = -1;
-      return;
-    }
+    if (msg.role !== "assistant") return;
 
-    // Skip if already finished or already in progress for this index
-    if (streamedMessages[lastIdx] === msg.content || typingIdxRef.current === lastIdx) return;
-
-    typingIdxRef.current = lastIdx;
-    let i = (streamedMessages[lastIdx] || "").length;
     const fullText = msg.content;
-    
-    const interval = setInterval(() => {
-      i += 4;
-      if (i >= fullText.length) {
-        setStreamedMessages(prev => ({ ...prev, [lastIdx]: fullText }));
-        clearInterval(interval);
-      } else {
-        setStreamedMessages(prev => ({ ...prev, [lastIdx]: fullText.substring(0, i) }));
-      }
+    const currentText = streamedMessages[lastIdx] || "";
+
+    // Stop if already finished
+    if (currentText === fullText) return;
+
+    // Schedule next character chunk
+    const timeout = setTimeout(() => {
+      const nextLength = Math.min(currentText.length + 4, fullText.length);
+      const nextText = fullText.substring(0, nextLength);
+      setStreamedMessages(prev => ({ ...prev, [lastIdx]: nextText }));
     }, 12);
 
-    return () => clearInterval(interval);
+    return () => clearTimeout(timeout);
   }, [messages, streamedMessages]);
 
   // Loading steps
