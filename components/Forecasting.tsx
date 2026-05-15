@@ -241,12 +241,16 @@ export default function ForecastingTab({ payload }: Props) {
                     <Clock size={18} className="text-indigo-400" />
                     Future Values
                   </h3>
-                  <Download 
-                    size={16} 
-                    className="text-slate-600 hover:text-white cursor-pointer transition-colors" 
+                  <div 
+                    className="p-1.5 hover:bg-white/5 rounded-lg cursor-pointer transition-all active:scale-90"
                     onClick={downloadForecast}
                     title="Export Forecast Data"
-                  />
+                  >
+                    <Download 
+                      size={16} 
+                      className="text-slate-500 hover:text-white transition-colors" 
+                    />
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
