@@ -992,23 +992,43 @@ def _build_kpi_dashboard(elements, kpis, styles, theme: str = "dark"):
         
         card_style = TableStyle([
             ('BACKGROUND', (0,0), (-1,-1), C_ROW_ALT),
-            ('BOX', (0,0), (-1,-1), 1.5, C_ACCENT),
-            ('ROUNDEDCORNERS', [10, 10, 10, 10]),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 15),
-            ('TOPPADDING', (0,0), (-1,-1), 15),
-            ('LEFTPADDING', (0,0), (-1,-1), 15),
-            ('RIGHTPADDING', (0,0), (-1,-1), 15),
+            ('BOX', (0,0), (-1,-1), 1.2, C_ACCENT),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+            ('TOPPADDING', (0,0), (-1,-1), 12),
+            ('LEFTPADDING', (0,0), (-1,-1), 10),
+            ('RIGHTPADDING', (0,0), (-1,-1), 10),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ])
         
+        # Create specific styles for the card content to ensure perfect alignment
+        value_style = copy.copy(styles["Body"])
+        value_style.fontSize = 20
+        value_style.leading = 24
+        value_style.alignment = TA_CENTER
+        value_style.textColor = C_INK if theme == "light" else colors.white
+
+        label_style = copy.copy(styles["Small"])
+        label_style.alignment = TA_CENTER
+        label_style.fontName = "Helvetica-Bold"
+        label_style.fontSize = 8
+        label_style.leading = 10
+        label_style.textColor = C_ACCENT
+        
+        sub_style = copy.copy(styles["Small"])
+        sub_style.alignment = TA_CENTER
+        sub_style.fontSize = 7
+        sub_style.leading = 9
+        sub_style.textColor = C_MUTED
+
         card_content = [
-            [Paragraph(f'<font size="9" color="{HX_ACCENT}"><b>{label}</b></font>', styles["Small"])],
-            [Paragraph(f'<font size="24" color="{HX_INK if theme == "light" else "white"}"><b>{value}</b></font>', styles["Body"])],
+            [Paragraph(label, label_style)],
+            [Paragraph(str(value), value_style)],
         ]
         if subtext:
-            card_content.append([Paragraph(f'<font size="7" color="{HX_MUTED}">{subtext}</font>', styles["Small"])])
+            card_content.append([Paragraph(str(subtext), sub_style)])
             
-        card_tbl = Table(card_content, colWidths=[1.8 * inch])
+        card_tbl = Table(card_content, colWidths=[(BODY_W / 3.0) - 20])
         card_tbl.setStyle(card_style)
         
         current_row.append(card_tbl)
@@ -1021,11 +1041,14 @@ def _build_kpi_dashboard(elements, kpis, styles, theme: str = "dark"):
             current_row = []
 
     if rows:
-        dashboard_tbl = Table(rows, colWidths=[2.1 * inch] * 3, rowHeights=[1.0 * inch] * len(rows))
+        # Use dynamic row heights by omitting the rowHeights argument
+        dashboard_tbl = Table(rows, colWidths=[BODY_W / 3.0] * 3)
         dashboard_tbl.setStyle(TableStyle([
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 15),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 20), # Increased spacing between rows
+            ('LEFTPADDING', (0,0), (-1,-1), 4),
+            ('RIGHTPADDING', (0,0), (-1,-1), 4),
         ]))
         elements.append(dashboard_tbl)
 

@@ -129,12 +129,12 @@ export default function AIAnalyst({
     syncPins();
   }, [messages, payload]);
 
-  const [typedContent, setTypedContent] = useState<Record<number, string>>({});
+  const [streamedMessages, setStreamedMessages] = useState<Record<number, string>>({});
   const typingRef = useRef<Set<number>>(new Set());
 
   // Reset index-based states when messages are cleared, session changes, or dataset switches
   useEffect(() => {
-    setTypedContent({});
+    setStreamedMessages({});
     typingRef.current.clear();
     setPinnedMap({});
     setCopiedIndex(null);
@@ -147,15 +147,15 @@ export default function AIAnalyst({
     if (lastIdx < 0) return;
     
     const msg = messages[lastIdx];
-    if (msg.role === "assistant" && !typedContent[lastIdx] && !typingRef.current.has(lastIdx)) {
+    if (msg.role === "assistant" && !streamedMessages[lastIdx] && !typingRef.current.has(lastIdx)) {
       typingRef.current.add(lastIdx);
       let i = 0;
       const fullText = msg.content;
       const interval = setInterval(() => {
-        setTypedContent(prev => ({ ...prev, [lastIdx]: fullText.substring(0, i) }));
+        setStreamedMessages(prev => ({ ...prev, [lastIdx]: fullText.substring(0, i) }));
         i += 4;
         if (i > fullText.length) {
-          setTypedContent(prev => ({ ...prev, [lastIdx]: fullText }));
+          setStreamedMessages(prev => ({ ...prev, [lastIdx]: fullText }));
           typingRef.current.delete(lastIdx);
           clearInterval(interval);
         }
@@ -295,7 +295,7 @@ export default function AIAnalyst({
 
       <ChatHistory 
         messages={messages} payload={payload} isAnalyzing={isAnalyzing} thinkingSteps={THINKING_STEPS} loadingStep={loadingStep}
-        typedContent={typedContent} editingIndex={editingIndex} editingContent={editingContent} setEditingContent={setEditingContent}
+        typedContent={streamedMessages} editingIndex={editingIndex} editingContent={editingContent} setEditingContent={setEditingContent}
         onEdit={(idx) => { setEditingIndex(idx); setEditingContent(messages[idx].content); }}
         onSaveEdit={(idx) => { onUpdateMessage?.(idx, editingContent); setEditingIndex(null); toast.success("Updated locally"); }}
         onCancelEdit={() => setEditingIndex(null)}

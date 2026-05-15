@@ -82,6 +82,14 @@ export default function ReportsTab({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
+  // Reset ready state if selection or content changes to force regeneration
+  useEffect(() => {
+    if (isReady) {
+      setIsReady(false);
+      setPdfUrl(null);
+    }
+  }, [selectedReportIndices, reportTitle, reportIntro]);
+
   useEffect(() => {
     const analysisEntries: AnalysisHistoryEntryExtended[] = [];
     for (let i = 0; i < messages.length; i++) {

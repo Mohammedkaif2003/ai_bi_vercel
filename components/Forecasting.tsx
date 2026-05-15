@@ -40,6 +40,29 @@ export default function ForecastingTab({ payload }: Props) {
     }
   }
 
+  const downloadForecast = () => {
+    if (!result || !result.forecast || result.forecast.length === 0) return;
+    
+    const headers = Object.keys(result.forecast[0]);
+    const csvContent = [
+      headers.join(","),
+      ...result.forecast.map(row => headers.map(h => {
+        const val = row[h];
+        return typeof val === 'string' && val.includes(',') ? `"${val}"` : val;
+      }).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `forecast_${payload.filename.replace(/\.[^/.]+$/, "")}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const trendColor = (trend?: string) => {
     if (trend === "increasing") return "text-[#10B981]";
     if (trend === "declining") return "text-[#EF4444]";
@@ -218,7 +241,12 @@ export default function ForecastingTab({ payload }: Props) {
                     <Clock size={18} className="text-indigo-400" />
                     Future Values
                   </h3>
-                  <Download size={16} className="text-slate-600 hover:text-white cursor-pointer transition-colors" />
+                  <Download 
+                    size={16} 
+                    className="text-slate-600 hover:text-white cursor-pointer transition-colors" 
+                    onClick={downloadForecast}
+                    title="Export Forecast Data"
+                  />
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
