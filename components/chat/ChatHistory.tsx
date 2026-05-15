@@ -120,7 +120,7 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({
           <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0 border border-indigo-500/20">
             <Loader2 size={18} className="animate-spin" />
           </div>
-          <div className="flex flex-col gap-2 w-full max-w-[85%]">
+          <div className="flex flex-col gap-2 w-full max-w-[92%]">
             <div className="chat-bubble-ai w-full">
               <div className="flex items-center gap-3 mb-3 text-indigo-400">
                 <Sparkles size={14} className="animate-pulse" />

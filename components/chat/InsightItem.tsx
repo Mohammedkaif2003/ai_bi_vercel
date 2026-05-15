@@ -71,7 +71,7 @@ export const InsightItem: React.FC<InsightItemProps> = ({
         </div>
       )}
       
-      <div className={`flex flex-col gap-2 group transition-all duration-300 ${isEditing ? "w-full max-w-full" : "max-w-[92%]"}`}>
+      <div className={`flex flex-col gap-2 group transition-all duration-300 ${msg.role === "assistant" ? "flex-1" : ""} ${isEditing ? "w-full max-w-full" : "max-w-[92%]"}`}>
         <div className={`${msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"} relative group ${isEditing ? "w-full !max-w-full" : ""}`}>
           {msg.role === "assistant" && (
             <div className="absolute -top-3 -right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">

@@ -129,39 +129,43 @@ export default function AIAnalyst({
   }, [messages, payload, pinnedInsights]);
 
   const [streamedMessages, setStreamedMessages] = useState<Record<number, string>>({});
-  const typingRef = useRef<Set<number>>(new Set());
 
   const isMessagesEmpty = messages.length === 0;
   const datasetKey = payload?.dataset_key;
 
-  // Typewriter effect - only for the latest message
+  // Stable Typewriter Effect
+  const typingIdxRef = useRef<number>(-1);
   useEffect(() => {
     const lastIdx = messages.length - 1;
-    if (lastIdx < 0) return;
+    if (lastIdx < 0) {
+      typingIdxRef.current = -1;
+      return;
+    }
     
     const msg = messages[lastIdx];
-    const typing = typingRef.current;
-
-    if (msg.role === "assistant" && !streamedMessages[lastIdx] && !typing.has(lastIdx)) {
-      typing.add(lastIdx);
-      let i = 0;
-      const fullText = msg.content;
-      const interval = setInterval(() => {
-        setStreamedMessages(prev => ({ ...prev, [lastIdx]: fullText.substring(0, i) }));
-        i += 4;
-        if (i > fullText.length) {
-          setStreamedMessages(prev => ({ ...prev, [lastIdx]: fullText }));
-          typing.delete(lastIdx);
-          clearInterval(interval);
-        }
-      }, 12);
-      return () => {
-        if (typing) {
-          typing.delete(lastIdx);
-        }
-        clearInterval(interval);
-      };
+    if (msg.role !== "assistant") {
+      typingIdxRef.current = -1;
+      return;
     }
+
+    // Skip if already finished or already in progress for this index
+    if (streamedMessages[lastIdx] === msg.content || typingIdxRef.current === lastIdx) return;
+
+    typingIdxRef.current = lastIdx;
+    let i = (streamedMessages[lastIdx] || "").length;
+    const fullText = msg.content;
+    
+    const interval = setInterval(() => {
+      i += 4;
+      if (i >= fullText.length) {
+        setStreamedMessages(prev => ({ ...prev, [lastIdx]: fullText }));
+        clearInterval(interval);
+      } else {
+        setStreamedMessages(prev => ({ ...prev, [lastIdx]: fullText.substring(0, i) }));
+      }
+    }, 12);
+
+    return () => clearInterval(interval);
   }, [messages, streamedMessages]);
 
   // Loading steps
