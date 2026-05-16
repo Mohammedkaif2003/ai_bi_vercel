@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useStore } from "@/hooks/useStore";
 import { ChatHistory } from "./chat/ChatHistory";
 import { QueryInput } from "./chat/QueryInput";
+import PlotlyChart from "./PlotlyChart";
 
 interface Props {
   payload: DatasetPayload | null;
@@ -331,9 +332,25 @@ export default function AIAnalyst({
                 </div>
                 <button onClick={() => setFocusedIndex(null)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 hover:text-white transition-all"><X size={24} /></button>
               </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar bg-white/[0.02] border border-white/5 rounded-[2rem] p-8">
-                <div className="prose prose-invert prose-indigo max-w-none prose-p:text-xl prose-p:leading-[1.7] prose-p:text-slate-200">
-                  <ReactMarkdown>{messages[focusedIndex as number].content}</ReactMarkdown>
+              <div className="flex-1 overflow-y-auto custom-scrollbar bg-white/[0.02] border border-white/5 rounded-[2rem] p-8 md:p-12">
+                <div className="max-w-4xl mx-auto space-y-10">
+                  <div className="prose prose-invert prose-indigo max-w-none prose-p:text-xl prose-p:md:text-2xl prose-p:leading-relaxed prose-p:text-slate-200">
+                    <ReactMarkdown>{messages[focusedIndex as number].content}</ReactMarkdown>
+                  </div>
+
+                  {messages[focusedIndex as number].chart && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="bg-black/40 rounded-[2.5rem] p-8 border border-white/5 shadow-inner"
+                    >
+                      <PlotlyChart 
+                        spec={messages[focusedIndex as number].chart!} 
+                        height={500} 
+                      />
+                    </motion.div>
+                  )}
                 </div>
               </div>
             </motion.div>

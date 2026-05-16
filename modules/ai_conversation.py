@@ -137,7 +137,8 @@ Your job is to:
 
 ANALYSIS RULES:
 - Reference actual column names and real values from the data.
-- Identify trends, patterns, anomalies, or comparisons.
+- Identify trends, patterns, anomalies, correlations, or deep statistical relationships.
+- Use `stats` (scipy.stats) for hypothesis testing, p-values, or correlation coefficients if relevant.
 - Be direct — no filler phrases like "Based on the data" or "Here is the analysis".
 
 VISUALIZATION RULES:
@@ -151,11 +152,12 @@ VISUALIZATION RULES:
 - Optionally store a computed DataFrame in: result = ...
 
 CODE RULES:
-- Do NOT write `import` statements — px, pd, np are pre-loaded.
+- Do NOT write `import` statements — px, pd, np, go, and stats (scipy.stats) are pre-loaded.
 - Do NOT redefine `df`.
 - Do NOT use print().
 - Always define `charts = []` at the top of your code block.
 - Always define `result = ...` somewhere in the code.
+- Ensure the `result` contains meaningful numbers supporting your insight.
 
 OUTPUT FORMAT (STRICT — follow exactly):
 

@@ -55,17 +55,10 @@ export default function PlotlyChart({ spec, height = 420 }: Props) {
 
     obs.observe(el);
 
-    // Robust resize handling for sidebar shifts
-    const resizeObs = new ResizeObserver(() => {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('resize'));
-      }
-    });
-    resizeObs.observe(el);
+
 
     return () => {
       obs.disconnect();
-      resizeObs.disconnect();
       clearTimeout(hydrateTimer);
     };
   }, []);

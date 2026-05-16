@@ -70,7 +70,7 @@ export default function Sidebar({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className={`flex flex-col h-full glass-sidebar transition-all duration-500 ease-in-out ${sidebarCollapsed ? "w-20 items-center py-4" : "w-64"}`}>
+    <div className={`flex flex-col h-full glass-sidebar transition-all duration-300 ease-out will-change-transform ${sidebarCollapsed ? "w-20 items-center py-4" : "w-64"}`}>
       {/* Fixed Top Section */}
       <div className={`shrink-0 w-full ${sidebarCollapsed ? "flex flex-col items-center" : ""}`}>
         {/* Logo and Toggle Header */}

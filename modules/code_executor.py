@@ -82,11 +82,13 @@ def execute_code(code, df):
     # Provide pandas, numpy, and plotting libs in the execution scope
     # so AI-generated code like df.groupby().agg() works correctly
     import plotly.graph_objects as _go
+    import scipy.stats as _stats
     global_vars = {
         "pd": pd,
         "np": np,
         "px": px,
         "go": _go,
+        "stats": _stats,
     }
 
     safe_df = df.head(MAX_INPUT_ROWS).copy() if isinstance(df, pd.DataFrame) else df

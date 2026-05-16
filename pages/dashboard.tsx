@@ -508,7 +508,7 @@ export default function DashboardPage() {
       />
 
       <div className="flex flex-1 overflow-hidden w-full h-full relative z-10">
-          <aside className={`${sidebarCollapsed ? "w-20" : "w-72"} shrink-0 hidden md:block transition-all duration-500 ease-in-out will-change-[width]`}>
+          <aside className={`${sidebarCollapsed ? "w-20" : "w-72"} shrink-0 hidden md:block transition-all duration-300 ease-out will-change-[width]`}>
               <Sidebar 
                 onLoadSelected={handleLoadSelected} onProcessFile={processFile} onFileUpload={handleFileUpload}
                 onNewChat={handleNewChat} onLoadSession={handleLoadSession} onDeleteSession={handleDeleteSession}
@@ -523,7 +523,7 @@ export default function DashboardPage() {
                 {tabs.map((t) => (
                   <button
                     key={t.id}
-                    className={`flex-1 shrink-0 min-w-[120px] md:min-w-[160px] flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-3 md:py-4 rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-500 relative snap-center ${activeTab === t.id ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
+                    className={`flex-1 shrink-0 min-w-[120px] md:min-w-[160px] flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-3 md:py-4 rounded-xl text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 relative snap-center ${activeTab === t.id ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
                     onClick={() => setActiveTab(t.id)}
                   >
                     {activeTab === t.id && (
